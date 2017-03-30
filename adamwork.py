@@ -198,7 +198,7 @@ if __name__ == '__main__':
 def main2():
 
     # Import counts
-    raw_counts = pd.read_csv("/Users/adamgayoso/Google Drive/Computational Genomics/pbmc8k_dense.csv", index_col=0)
+    raw_counts = pd.read_csv(FNAME, index_col=0)
 
     synthetic = create_synthetic_data(raw_counts)
 
