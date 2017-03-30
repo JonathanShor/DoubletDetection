@@ -148,19 +148,26 @@ def dataAcquisition(FNAME, normalize=False, useTFIDF=False):
 # Slow but works
 def create_synthetic_data(raw_counts):
 
+    synthetic = pd.DataFrame()
+
     cell_count = raw_counts.shape[0]
     doublet_rate = 0.07
-    doublets = doublet_rate*cell_count/(1-doublet_rate)
+    doublets = int(doublet_rate*cell_count/(1-doublet_rate))
 
-    for i in range(int(doublets)):
+    # Add labels column to know which ones are doublets
+    labels = np.zeros(cell_count + doublets)
+    labels[cell_count:] = 1
+
+
+    for i in range(doublets):
         row1 = int(np.random.rand()*cell_count)
         row2 = int(np.random.rand()*cell_count)
 
         new_row = raw_counts.iloc[row1] + raw_counts.iloc[row2]
 
-        raw_counts = raw_counts.append(new_row, ignore_index=True)
+        synthetic = synthetic.append(new_row, ignore_index=True)
 
-    return raw_counts
+    return raw_counts.append(synthetic), labels
 
 
 def analysisSuite(counts):
@@ -225,8 +232,10 @@ if __name__ == '__main__':
     raw_counts = dataAcquisition(FNAME)
     # raw_counts = dataAcquisition(FNAME, normalize=True, useTFIDF=True)
 
-    synthetic = create_synthetic_data(raw_counts)
+    synthetic, labels = create_synthetic_data(raw_counts)
 
-    # synthetic.to_csv("/Users/adamgayoso/Google Drive/Computational Genomics/synthetic.csv")
+    synthetic['labels'] = labels
+
+    synthetic.to_csv("/Users/adamgayoso/Google Drive/Computational Genomics/synthetic.csv")
 
     analysisSuite(synthetic)
