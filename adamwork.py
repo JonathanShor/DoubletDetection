@@ -47,10 +47,6 @@ def normalize_tf_idf(X):
 # Takes PD dataframe
 # Following method in 10x paper
 def normalize_counts_10x(raw_counts):
-    # Grab cells and delete from DF
-    cells = raw_counts.index
-#    del raw_counts['Unnamed: 0']   # Assumed to be in index, not data column, see pd.read_csv option
-
     # Sum across cells and divide each cell by sum
     cell_sums = raw_counts.sum(axis=1).as_matrix()
     raw_counts = raw_counts.as_matrix()
@@ -70,7 +66,7 @@ def normalize_counts_10x(raw_counts):
     # Replace NaN with 0
     normed = np.nan_to_num(normed)
 
-    return cells, normed
+    return normed
 
 
 # Elementary modeling
@@ -128,21 +124,19 @@ def knn(counts, labels):
 
 def dataAcquisition(FNAME, normalize=False, useTFIDF=False):
     # Import counts
-    raw_counts = pd.read_csv(FNAME, index_col=0)
-
-    # Replacing with NaN makes it easier to ignore these values
-    counts = raw_counts.copy()
-    counts[raw_counts == 0] = np.nan
+    counts = pd.read_csv(FNAME, index_col=0)
 
     # Normalize
     if normalize:
+        # Replacing with NaN makes it easier to ignore these values
+        counts[raw_counts == 0] = np.nan
+
         if useTFIDF:
             counts = normalize_tf_idf(counts)
         else:   # 10x paper normalization
-            _, counts = normalize_counts_10x(counts)
-        return counts
-    else:
-        return counts
+            counts = normalize_counts_10x(counts)
+
+    return counts
 
 
 # Slow but works
@@ -170,10 +164,11 @@ def create_synthetic_data(raw_counts):
     return raw_counts.append(synthetic), labels
 
 
-def analysisSuite(counts):
+def analysisSuite(counts, usePCA=True):
     # Dimensionality reduction
-    pca = PCA(n_components=30)
-    reduced_counts = pca.fit_transform(counts)
+    if usePCA:
+        pca = PCA(n_components=30)
+        reduced_counts = pca.fit_transform(counts)
 
     # Run Phenograph
     communities, graph, Q = phenograph.cluster(reduced_counts)
