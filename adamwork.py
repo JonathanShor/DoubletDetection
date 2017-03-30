@@ -23,7 +23,6 @@ import matplotlib.pyplot as plt
 
 # FNAME = "/Users/adamgayoso/Google Drive/Computational Genomics/pbmc8k_dense.csv"
 FNAME = "/Users/jonathanshor/Google Drive/Computational Genomics/pbmc8k_dense.csv"
-USETFIDF = False
 
 
 # Standardize columns of matrix X: (X - X.mean) / X.std
@@ -66,6 +65,7 @@ def normalize_counts_10x(raw_counts):
     # Normalize to have genes with mean 0 and std 1
     std = np.nanstd(raw_counts, axis=0)[np.newaxis,:]
     normed = (raw_counts - np.nanmean(raw_counts, axis=0)) / std
+    # TODO: Use standardize() if we need to inverse or repeat stardardization
 
     # Replace NaN with 0
     normed = np.nan_to_num(normed)
@@ -83,6 +83,7 @@ def naive_bayes_bernoulli(counts, labels):
 
     return predictions, probabilities
 
+
 # Elementary modeling
 def naive_bayes_gauss(counts, labels):
 
@@ -92,6 +93,7 @@ def naive_bayes_gauss(counts, labels):
     probabilities = clf.predict_proba(counts)
 
     return predictions, probabilities
+
 
 # Elementary modeling
 def naive_bayes_multinomial(counts, labels):
@@ -103,6 +105,7 @@ def naive_bayes_multinomial(counts, labels):
 
     return predictions, probabilities
 
+
 # Elementary modeling
 def gaussian_mixture(counts, labels):
 
@@ -113,8 +116,8 @@ def gaussian_mixture(counts, labels):
 
     return predictions, probabilities
 
-def knn(counts, labels):
 
+def knn(counts, labels):
 
     clf = NearestNeighbors(n_neighbors=10)
     clf.fit(counts)
@@ -123,9 +126,7 @@ def knn(counts, labels):
     return clf.kneighbors(counts, 10)[0]
 
 
-#def main():
-if __name__ == '__main__':
-
+def dataAcquisition(FNAME, normalize=False, useTFIDF=False):
     # Import counts
     raw_counts = pd.read_csv(FNAME, index_col=0)
 
@@ -134,12 +135,35 @@ if __name__ == '__main__':
     counts[raw_counts == 0] = np.nan
 
     # Normalize
-    if USETFIDF:
-        cells = raw_counts.index
-        counts = normalize_tf_idf(counts)
-    else:   # 10x paper normalization
-        cells, counts = normalize_counts_10x(counts)
+    if normalize:
+        if useTFIDF:
+            counts = normalize_tf_idf(counts)
+        else:   # 10x paper normalization
+            _, counts = normalize_counts_10x(counts)
+        return counts
+    else:
+        return counts
 
+
+# Slow but works
+def create_synthetic_data(raw_counts):
+
+    cell_count = raw_counts.shape[0]
+    doublet_rate = 0.07
+    doublets = doublet_rate*cell_count/(1-doublet_rate)
+
+    for i in range(int(doublets)):
+        row1 = int(np.random.rand()*cell_count)
+        row2 = int(np.random.rand()*cell_count)
+
+        new_row = raw_counts.iloc[row1] + raw_counts.iloc[row2]
+
+        raw_counts = raw_counts.append(new_row, ignore_index=True)
+
+    return raw_counts
+
+
+def analysisSuite(counts):
     # Dimensionality reduction
     pca = PCA(n_components=30)
     reduced_counts = pca.fit_transform(counts)
@@ -195,33 +219,14 @@ if __name__ == '__main__':
     far = distances[0][:,9]
 
 
-def main2():
+if __name__ == '__main__':
 
     # Import counts
-    raw_counts = pd.read_csv(FNAME, index_col=0)
+    raw_counts = dataAcquisition(FNAME)
+    # raw_counts = dataAcquisition(FNAME, normalize=True, useTFIDF=True)
 
     synthetic = create_synthetic_data(raw_counts)
 
-    synthetic.to_csv("/Users/adamgayoso/Google Drive/Computational Genomics/synthetic.csv")
+    # synthetic.to_csv("/Users/adamgayoso/Google Drive/Computational Genomics/synthetic.csv")
 
-
-
-
-# Slow but works
-def create_synthetic_data(raw_counts):
-
-    cell_count = raw_counts.shape[0]
-    doublet_rate = 0.07
-    doublets = doublet_rate*cell_count/(1-doublet_rate)
-
-    for i in range(int(doublets)):
-        row1 = int(np.random.rand()*cell_count)
-        row2 = int(np.random.rand()*cell_count)
-
-        new_row = raw_counts.iloc[row1] + raw_counts.iloc[row2]
-
-        raw_counts = raw_counts.append(new_row, ignore_index=True)
-
-    return raw_counts
-
-main2()
+    analysisSuite(synthetic)
