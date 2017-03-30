@@ -16,12 +16,13 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.mixture import GaussianMixture
 from sklearn.neighbors import NearestNeighbors
+from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 
 
 # Takes PD dataframe
 # Following method in 10x paper
-def normalize_counts(raw_counts):
+def normalize_counts_10x(raw_counts):
     
     # Grab cells and delete from DF
     cells = raw_counts['Unnamed: 0']
@@ -107,7 +108,7 @@ def main():
     counts[raw_counts == 0] = np.nan
 
     # Normalize           
-    cells, counts = normalize_counts(counts)
+    cells, counts = normalize_counts_10x(counts)
     
     # Dimensionality reduction
     pca = PCA(n_components=30)
@@ -162,6 +163,39 @@ def main():
     # KNN outlier detection
     distances = knn(GM_data, labels)
     far = distances[0][:,9]
+  
+    
+def main2():
+    
+    # Import counts 
+    raw_counts = pd.read_csv("/Users/adamgayoso/Google Drive/Computational Genomics/pbmc8k_dense.csv", index_col=0)
+    
+    synthetic = create_synthetic_data(raw_counts)
+    
+    synthetic.to_csv("/Users/adamgayoso/Google Drive/Computational Genomics/synthetic.csv")
+    
+    
+    
+    
+# Slow but works
+def create_synthetic_data(raw_counts):
+    
+    cell_count = raw_counts.shape[0]
+    doublet_rate = 0.07
+    doublets = doublet_rate*cell_count/(1-doublet_rate)
+    
+    for i in range(int(doublets)):
+        row1 = int(np.random.rand()*cell_count)
+        row2 = int(np.random.rand()*cell_count)
+        
+        new_row = raw_counts.iloc[row1] + raw_counts.iloc[row2]
+        
+        raw_counts = raw_counts.append(new_row, ignore_index=True)
+    
+    return raw_counts
+
+main2()
+    
     
      
     
