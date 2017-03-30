@@ -16,6 +16,7 @@ from sklearn.naive_bayes import BernoulliNB
 from sklearn.naive_bayes import GaussianNB
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.mixture import GaussianMixture
+from sklearn.model_selection import train_test_split
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import StandardScaler
 from sklearn.manifold import TSNE
@@ -23,6 +24,7 @@ import matplotlib.pyplot as plt
 
 # FNAME = "/Users/adamgayoso/Google Drive/Computational Genomics/pbmc8k_dense.csv"
 FNAME = "/Users/jonathanshor/Google Drive/Computational Genomics/pbmc8k_dense.csv"
+DOUBLETRATE = 0.07
 
 
 # Standardize columns of matrix X: (X - X.mean) / X.std
@@ -46,7 +48,7 @@ def normalize_tf_idf(X):
 
 # Takes PD dataframe
 # Following method in 10x paper
-def normalize_counts_10x(raw_counts):
+def normalize_counts_10x(raw_counts, doStandardize=True):
     # Sum across cells and divide each cell by sum
     cell_sums = raw_counts.sum(axis=1).as_matrix()
     raw_counts = raw_counts.as_matrix()
@@ -55,13 +57,16 @@ def normalize_counts_10x(raw_counts):
     median = np.median(cell_sums)
     raw_counts = raw_counts*median/cell_sums[:, np.newaxis]
 
-    # Take log and normalize to have mean 0 and std 1 in each gene across all cells
-    raw_counts = np.log(raw_counts)
+    if doStandardize:
+        # Take log and normalize to have mean 0 and std 1 in each gene across all cells
+        raw_counts = np.log(raw_counts)
 
-    # Normalize to have genes with mean 0 and std 1
-    std = np.nanstd(raw_counts, axis=0)[np.newaxis,:]
-    normed = (raw_counts - np.nanmean(raw_counts, axis=0)) / std
-    # TODO: Use standardize() if we need to inverse or repeat stardardization
+        # Normalize to have genes with mean 0 and std 1
+        std = np.nanstd(raw_counts, axis=0)[np.newaxis,:]
+        normed = (raw_counts - np.nanmean(raw_counts, axis=0)) / std
+        # TODO: Use standardize() if we need to inverse or repeat stardardization
+    else:
+        normed = raw_counts
 
     # Replace NaN with 0
     normed = np.nan_to_num(normed)
@@ -145,7 +150,7 @@ def create_synthetic_data(raw_counts):
     synthetic = pd.DataFrame()
 
     cell_count = raw_counts.shape[0]
-    doublet_rate = 0.07
+    doublet_rate = DOUBLETRATE
     doublets = int(doublet_rate*cell_count/(1-doublet_rate))
 
     # Add labels column to know which ones are doublets
@@ -162,6 +167,22 @@ def create_synthetic_data(raw_counts):
         synthetic = synthetic.append(new_row, ignore_index=True)
 
     return raw_counts.append(synthetic), labels
+
+
+#
+# from sklearn.model_selection import train_test_split
+def testModel(model, X, y, testName, testSize=DOUBLETRATE, randomState=None):
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=testSize,
+                                                        random_state=randomState)
+    if hasattr(model, "random_state"):
+        model.set_params(random_state=randomState)
+
+    model.fit(X_train, y_train)
+    # predictionss = model.predict(X)
+    # probabilities = model.predict_proba(X)
+    print ("%s train set score: %.4g" % (testName, model.score(X_train, y_train)))
+    print ("%s test set score: %.4g" % (testName, model.score(X_test, y_test)))
+    return model #, predictions, probabilities
 
 
 def analysisSuite(counts, usePCA=True):
@@ -209,7 +230,6 @@ def analysisSuite(counts, usePCA=True):
     # Entries where second max is greater than arbitrary number
     # Check out entropy of values
     outliersM = max_2_valuesM[max_2_valuesM[:,0] > 0.0005]
-
 
     # Gaussian Mixture Model
     pca = PCA(n_components=50)
