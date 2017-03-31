@@ -134,7 +134,7 @@ def dataAcquisition(FNAME, normalize=False, useTFIDF=False):
     # Normalize
     if normalize:
         # Replacing with NaN makes it easier to ignore these values
-        counts[raw_counts == 0] = np.nan
+        counts[counts == 0] = np.nan
 
         if useTFIDF:
             counts = normalize_tf_idf(counts)
@@ -252,5 +252,5 @@ if __name__ == '__main__':
     synthetic['labels'] = labels
 
     synthetic.to_csv("/Users/adamgayoso/Google Drive/Computational Genomics/synthetic.csv")
-
+    
     analysisSuite(synthetic)
