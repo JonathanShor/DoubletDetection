@@ -134,7 +134,7 @@ def dataAcquisition(FNAME, normalize=False, useTFIDF=False):
     # Normalize
     if normalize:
         # Replacing with NaN makes it easier to ignore these values
-        counts[raw_counts == 0] = np.nan
+        counts[counts == 0] = np.nan
 
         if useTFIDF:
             counts = normalize_tf_idf(counts)
@@ -169,9 +169,12 @@ def create_synthetic_data(raw_counts):
     return raw_counts.append(synthetic), labels
 
 
-#
+# Score model on a 0.2 test/train split of X, y.
+# Returns fit model.
+# Use randomState when you want to fix the train/test set split, and any random
+# start aspects of model, for comparable repeat runs.
 # from sklearn.model_selection import train_test_split
-def testModel(model, X, y, testName, testSize=DOUBLETRATE, randomState=None):
+def testModel(model, X, y, testName, testSize=0.2, randomState=None):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=testSize,
                                                         random_state=randomState)
     if hasattr(model, "random_state"):
@@ -180,9 +183,10 @@ def testModel(model, X, y, testName, testSize=DOUBLETRATE, randomState=None):
     model.fit(X_train, y_train)
     # predictionss = model.predict(X)
     # probabilities = model.predict_proba(X)
-    print ("%s train set score: %.4g" % (testName, model.score(X_train, y_train)))
-    print ("%s test set score: %.4g" % (testName, model.score(X_test, y_test)))
+    print ("{0} train set score: {1:.4g}".format(testName, model.score(X_train, y_train)))
+    print ("{0} test set score: {1:.4g}".format(testName, model.score(X_test, y_test)))
     return model #, predictions, probabilities
+    # TODO: return indices to recover train/test sets
 
 
 def analysisSuite(counts, usePCA=True):
@@ -241,6 +245,49 @@ def analysisSuite(counts, usePCA=True):
     far = distances[0][:,9]
 
 
+# Supervised classification using sythetic data
+def syntheticTesting(X_geneCounts, y_doubletLabels, useTruncSVD=False):
+#    X_standardized = normalize_counts_10x(X_geneCounts)
+
+    # Naive classifier test: library size
+    librarySize = X_geneCounts.sum(axis=1).reshape(-1, 1)
+    #librarySizeSt = X_standardized.sum(axis=1).reshape(-1, 1)
+    print("librarySize.shape: ", (librarySize.shape))
+#    print("X_stardardized.shape: ", (X_stardardized.shape))
+    print("y_doubletLabels.shape: ", (y_doubletLabels.shape))
+    testModel(BernoulliNB(), librarySize, y_doubletLabels, 'Library size; NBB')
+#    testModel(BernoulliNB(), librarySizeSt, y_doubletLabels, 'Library size; NBB, standardized X')
+    # clfGMM = GaussianMixture(n_components=2, weights_init=[1 - DOUBLETRATE, DOUBLETRATE])
+    # testModel(clfGMM, librarySize, y_doubletLabels, 'Library size; GMM')
+
+    numGenesExpressed = np.count_nonzero(X_geneCounts, axis=1).reshape(-1, 1)
+    testModel(BernoulliNB(), numGenesExpressed, y_doubletLabels, 'Unique Genes; NBB')
+
+    if useTruncSVD:
+        print("TODO: Actually implement TruncatedSVD")
+    else:
+        pca = PCA(n_components=30)
+        X_reduced_counts = pca.fit_transform(X_geneCounts)
+
+    # Run Phenograph
+    communities, graph, Q = phenograph.cluster(X_reduced_counts)
+    for communityID in np.unique(communities):
+        X_community = X_geneCounts[communities == communityID]
+        y_community = y_doubletLabels[communities == communityID]
+
+        librarySize = X_community.sum(axis=1).reshape(-1, 1)
+        testModel(BernoulliNB(), librarySize, y_community,
+                  "Community {} Library size; NBB".format(communityID))
+
+        numGenesExpressed = np.count_nonzero(X_community, axis=1).reshape(-1, 1)
+        testModel(BernoulliNB(), numGenesExpressed, y_community,
+                  "Community {} Unique Genes; NBB".format(communityID))
+
+        clfGMM = GaussianMixture(n_components=2, weights_init=[1 - DOUBLETRATE, DOUBLETRATE])
+        testModel(clfGMM, X_community, y_doubletLabels[communities == communityID],
+                  "Community {}; GMM".format(communityID))
+
+
 if __name__ == '__main__':
 
     # Import counts
@@ -249,8 +296,9 @@ if __name__ == '__main__':
 
     synthetic, labels = create_synthetic_data(raw_counts)
 
-    synthetic['labels'] = labels
+    # synthetic['labels'] = labels
 
-    synthetic.to_csv("/Users/adamgayoso/Google Drive/Computational Genomics/synthetic.csv")
+    # synthetic.to_csv("/Users/adamgayoso/Google Drive/Computational Genomics/synthetic.csv")
 
-    analysisSuite(synthetic)
+    syntheticTesting(synthetic.as_matrix(), labels)
+    # analysisSuite(synthetic)
