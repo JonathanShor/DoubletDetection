@@ -24,20 +24,21 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 
-FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
+FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense_100lines.csv"
 DOUBLETRATE = 0.07
+CELLTYPESAMPLEMEAN = 0.05   # Mean percent of cell gene expression captured per cell read
 
 
 # Standardize columns of matrix X: (X - X.mean) / X.std
 # Also returns StandardScaler object for consistent further (inverse) standardization
-#from sklearn.preprocessing import StandardScaler
+# from sklearn.preprocessing import StandardScaler
 def standardize(X):
     scaleX = StandardScaler().fit(X)
     return scaleX.transform(X), scaleX
 
 
 # tf-idf normalizing: cells as documents, genes as words
-#from sklearn.feature_extraction.text import TfidfTransformer
+# from sklearn.feature_extraction.text import TfidfTransformer
 def normalize_tf_idf(X):
     if isinstance(X, pd.dataframe):
         X = X.as_matrix()
@@ -145,8 +146,10 @@ def dataAcquisition(FNAME, normalize=False, useTFIDF=False):
     return counts
 
 
-# Slow but works
-def create_synthetic_data(raw_counts):
+# Generate 2D synthetic data matching dataShape given celltypes
+def create_synthetic_data(dataShape, celltypes=None):
+    if celltypes is None:
+        celltypes = getCellTypes()
 
     synthetic = pd.DataFrame()
 
@@ -158,7 +161,6 @@ def create_synthetic_data(raw_counts):
     labels = np.zeros(cell_count + doublets)
     labels[cell_count:] = 1
 
-
     for i in range(doublets):
         row1 = int(np.random.rand()*cell_count)
         row2 = int(np.random.rand()*cell_count)
@@ -168,6 +170,36 @@ def create_synthetic_data(raw_counts):
         synthetic = synthetic.append(new_row, ignore_index=True)
 
     return raw_counts.append(synthetic), labels
+
+
+# Cell type generation for synthetic data generation
+# Return celltypes like counts
+def getCellTypes(counts=None):
+    if counts is None:
+        raise Exception("Random celltype generation not implemented.")
+    else:
+        try:
+            npcounts = counts.as_matrix()
+        except AttributeError:
+            npcounts = counts
+
+        # Naive initial attempt: does not remove dublets in the orig data in any way
+        # TODO: Revise to remove doublet noise (to at least some degree)
+        reduced_counts = PCA(n_components=30).fit_transform(npcounts)
+        communities, graph, Q = phenograph.cluster(reduced_counts)
+
+        # celltypes = np.zeros((max(communities), npcounts.shape[1]))
+        celltypes = np.array([np.sum(npcounts[communities == i], axis=0)
+                              for i in range(max(communities))])
+        assert(~(any(np.max(celltypes, axis=0) == 0)), "zero vector cell type")
+        celltypes /= CELLTYPESAMPLEMEAN * np.array([len(communities[communities == i])
+                                                    for i in max(communities)], ndim=2)
+
+    try:
+        celltypes = pd.DataFrame(celltypes, columns=counts.columns)
+    except AttributeError:
+        pass
+    return celltypes
 
 
 # Score model on a 0.2 test/train split of X, y.
@@ -321,9 +353,6 @@ if __name__ == '__main__':
 
     # synthetic['labels'] = labels
 
-    start_Phon_time = time.time()
-    communities, graph, Q = phenograph.cluster(synthetic)
-    print("No PCA Phenograph run time: {0:.2f} seconds".format(time.time() - start_Phon_time))
     # pca = PCA(n_components=30)
     start_PCA_time = time.time()
     reduced_counts = PCA(n_components=30).fit_transform(synthetic)
@@ -332,6 +361,7 @@ if __name__ == '__main__':
     communities, graph, Q = phenograph.cluster(reduced_counts)
     print("After PCA Phenograph run time: {0:.2f} seconds".format(time.time() - start_Phon_time))
     print("PCA + Phenograph run time: {0:.2f} seconds".format(time.time() - start_PCA_time))
+    print("communities: {}".format(communities))
 
     # synthetic.to_csv("/Users/adamgayoso/Google Drive/Computational Genomics/synthetic.csv")
 
