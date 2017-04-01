@@ -3,11 +3,12 @@
 """
 Created on Wed Mar 22 14:55:34 2017
 
-@author: adamgayoso
+@author: adamgayoso, JonathanShor, ryanbrand
 """
 
 import pandas as pd
 import numpy as np
+import time
 import phenograph
 import collections
 from sklearn.decomposition import PCA
@@ -15,6 +16,7 @@ from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.naive_bayes import BernoulliNB
 from sklearn.naive_bayes import GaussianNB
 from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import precision_recall_fscore_support
 from sklearn.mixture import GaussianMixture
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import NearestNeighbors
@@ -22,8 +24,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 
-# FNAME = "/Users/adamgayoso/Google Drive/Computational Genomics/pbmc8k_dense.csv"
-FNAME = "/Users/jonathanshor/Google Drive/Computational Genomics/pbmc8k_dense.csv"
+FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
 DOUBLETRATE = 0.07
 
 
@@ -41,7 +42,7 @@ def normalize_tf_idf(X):
     if isinstance(X, pd.dataframe):
         X = X.as_matrix()
 
-    tfidf = TfidfTransformer(norm=None,smooth_idf=True, sublinear_tf=False)
+    tfidf = TfidfTransformer(norm=None, smooth_idf=True, sublinear_tf=False)
     tfidf.fit(X)
     return tfidf.transform(X)
 
@@ -181,11 +182,15 @@ def testModel(model, X, y, testName, testSize=0.2, randomState=None):
         model.set_params(random_state=randomState)
 
     model.fit(X_train, y_train)
-    # predictionss = model.predict(X)
+    predictions = model.predict(X_test)
+    precision, recall, f1_score = precision_recall_fscore_support(y_test, predictions)
     # probabilities = model.predict_proba(X)
     print ("{0} train set score: {1:.4g}".format(testName, model.score(X_train, y_train)))
     print ("{0} test set score: {1:.4g}".format(testName, model.score(X_test, y_test)))
-    return model #, predictions, probabilities
+    print("{0} test set precision: {1:.4g}".format(testName, precision))
+    print("{0} test set recall: {1:.4g}".format(testName, recall))
+    print("{0} test set f1 score: {1:.4g}".format(testName, f1_score))
+    return model
     # TODO: return indices to recover train/test sets
 
 
@@ -245,6 +250,19 @@ def analysisSuite(counts, usePCA=True):
     far = distances[0][:,9]
 
 
+# Print l_2 distance from each synthetic cell to closest non-synth.
+# Average distance from non-synth to closest other non-synth printed for comparison
+def checkSyntheticDistance(synthetic, labels):
+    # synthetic = synthetic.as_matrix()
+    raw_counts = synthetic[labels == 0]
+    print("Mean minimum l_2 distance between cells: {0:.4f}".format(
+          np.array([np.min(np.linalg.norm(raw_counts[np.arange(len(raw_counts)) != i] - x, ord=2,
+                                          axis=1)) for i, x in enumerate(raw_counts)]).mean()))
+    min_synth_sim = np.array([np.min(np.linalg.norm(synthetic[labels == 0] - i, ord=2, axis=1))
+                              for i in synthetic[labels == 1]])
+    print(np.round(min_synth_sim, 4).reshape(-1, 1))
+
+
 # Supervised classification using sythetic data
 def syntheticTesting(X_geneCounts, y_doubletLabels, useTruncSVD=False):
 #    X_standardized = normalize_counts_10x(X_geneCounts)
@@ -271,9 +289,13 @@ def syntheticTesting(X_geneCounts, y_doubletLabels, useTruncSVD=False):
 
     # Run Phenograph
     communities, graph, Q = phenograph.cluster(X_reduced_counts)
+    print("Num communities found: {}".format(communities.max_()))
+
     for communityID in np.unique(communities):
         X_community = X_geneCounts[communities == communityID]
+        X_reduced_community = X_reduced_counts[communities == communityID]
         y_community = y_doubletLabels[communities == communityID]
+        print("Community {0}: {1} cells".format(communityID, len(y_community)))
 
         librarySize = X_community.sum(axis=1).reshape(-1, 1)
         testModel(BernoulliNB(), librarySize, y_community,
@@ -284,11 +306,12 @@ def syntheticTesting(X_geneCounts, y_doubletLabels, useTruncSVD=False):
                   "Community {} Unique Genes; NBB".format(communityID))
 
         clfGMM = GaussianMixture(n_components=2, weights_init=[1 - DOUBLETRATE, DOUBLETRATE])
-        testModel(clfGMM, X_community, y_doubletLabels[communities == communityID],
+        testModel(clfGMM, X_reduced_community, y_community,
                   "Community {}; GMM".format(communityID))
 
 
 if __name__ == '__main__':
+    start_time = time.time()
 
     # Import counts
     raw_counts = dataAcquisition(FNAME)
@@ -298,7 +321,21 @@ if __name__ == '__main__':
 
     # synthetic['labels'] = labels
 
+    start_Phon_time = time.time()
+    communities, graph, Q = phenograph.cluster(synthetic)
+    print("No PCA Phenograph run time: {0:.2f} seconds".format(time.time() - start_Phon_time))
+    # pca = PCA(n_components=30)
+    start_PCA_time = time.time()
+    reduced_counts = PCA(n_components=30).fit_transform(synthetic)
+    print("PCA run time: {0:.2f} seconds".format(time.time() - start_PCA_time))
+    start_Phon_time = time.time()
+    communities, graph, Q = phenograph.cluster(reduced_counts)
+    print("After PCA Phenograph run time: {0:.2f} seconds".format(time.time() - start_Phon_time))
+    print("PCA + Phenograph run time: {0:.2f} seconds".format(time.time() - start_PCA_time))
+
     # synthetic.to_csv("/Users/adamgayoso/Google Drive/Computational Genomics/synthetic.csv")
 
-    syntheticTesting(synthetic.as_matrix(), labels)
+    # syntheticTesting(synthetic.as_matrix(), labels)
     # analysisSuite(synthetic)
+
+    print("Total run time: {0:.2f} seconds".format(time.time() - start_time))
