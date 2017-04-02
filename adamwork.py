@@ -146,34 +146,65 @@ def dataAcquisition(FNAME, normalize=False, useTFIDF=False):
     return counts
 
 
-# Generate 2D synthetic data matching dataShape given celltypes
-def create_synthetic_data(dataShape, celltypes=None):
+# Generate 2D synthetic data from celltypes
+# Celltypes expected to be a dict with members 'genecounts':2d(celltypes x genes)
+#  and 'frequences': 1d(number of cells to generate for each type)
+def create_synthetic_data(celltypes=None):
     if celltypes is None:
         celltypes = getCellTypes()
 
-    synthetic = pd.DataFrame()
+    def sampleCellRead(mean_reads, gene_probs, num_cells=1):
+        num_genes = len(gene_probs)
+        draws = np.random.binomial([mean_reads] * num_genes,
+                                   gene_probs,
+                                   size=(num_cells, num_genes))
+        return draws
 
-    cell_count = raw_counts.shape[0]
-    doublet_rate = DOUBLETRATE
-    doublets = int(doublet_rate*cell_count/(1-doublet_rate))
+    genecounts = celltypes['genecounts']
+    cellcounts = celltypes['cellcounts']
+
+    num_genes = genecounts.shape[1]
+    synthetic = np.empty((0, num_genes))
+
+    mean_reads = np.array(int(np.sum(genecounts, axis=0) * CELLTYPESAMPLEMEAN))
+    celltypesProb = genecounts / np.array(np.sum(genecounts, axis=0))
+    # Create non-doublet base
+    for i, cellcount in enumerate(cellcounts):
+        # num_reads = int(sum_reads[i] * CELLTYPESAMPLEMEAN)
+        # synthetic = np.concatenate((synthetic,
+        #                            np.random.multinomial(num_reads,
+        #                                                  celltypesProb[i],
+        #                                                  size=cellcount)),
+        #                            axis=0)
+        # synthetic = np.concatenate((synthetic,
+        #                            np.random.binomial([num_reads] * num_genes,
+        #                                               celltypesProb[i],
+        #                                               size=(cellcount, num_genes))),
+        #                            axis=0)
+        synthetic = np.concatenate((synthetic,
+                                   sampleCellRead(mean_reads[i], celltypesProb[i], cellcount)),
+                                   axis=0)
+    num_cells = synthetic.shape[0]
+    assert (num_cells == np.sum(cellcounts))
+
+    # Replace DOUBLETRATE * num_cells with doublets
+    num_doublets = int(num_cells * DOUBLETRATE)
+    doublets = np.random.permutation(num_cells)[:num_doublets]
+    for doublet in doublets:
+        # TODO: pick celltype to mix with chance proportional to cellcounts
+        type_i = np.random.randint(len(cellcounts))
+        synthetic[doublet] += sampleCellRead(mean_reads[type_i],
+                                             celltypesProb[type_i], cellcounts[type_i])
 
     # Add labels column to know which ones are doublets
-    labels = np.zeros(cell_count + doublets)
-    labels[cell_count:] = 1
+    labels = np.zeros(num_cells)
+    labels[doublets] = 1
 
-    for i in range(doublets):
-        row1 = int(np.random.rand()*cell_count)
-        row2 = int(np.random.rand()*cell_count)
-
-        new_row = raw_counts.iloc[row1] + raw_counts.iloc[row2]
-
-        synthetic = synthetic.append(new_row, ignore_index=True)
-
-    return raw_counts.append(synthetic), labels
+    return synthetic, labels
 
 
 # Cell type generation for synthetic data generation
-# Return celltypes like counts
+# Return dictionary of genecounts for each type (2d), and relative cellcounts (1d)
 def getCellTypes(counts=None):
     if counts is None:
         raise Exception("Random celltype generation not implemented.")
@@ -188,18 +219,21 @@ def getCellTypes(counts=None):
         reduced_counts = PCA(n_components=30).fit_transform(npcounts)
         communities, graph, Q = phenograph.cluster(reduced_counts)
 
-        # celltypes = np.zeros((max(communities), npcounts.shape[1]))
-        celltypes = np.array([np.sum(npcounts[communities == i], axis=0)
+        cellcounts = [len(np.where(communities == i)) for i in np.unique(communities)]
+
+        # genecounts = np.zeros((max(communities), npcounts.shape[1]))
+        genecounts = np.array([np.sum(npcounts[communities == i], axis=0)
                               for i in range(max(communities))])
-        assert(~(any(np.max(celltypes, axis=0) == 0)), "zero vector cell type")
-        celltypes /= CELLTYPESAMPLEMEAN * np.array([len(communities[communities == i])
+        assert(~(any(np.max(genecounts, axis=0) == 0)), "zero vector cell type")
+        genecounts /= CELLTYPESAMPLEMEAN * np.array([len(communities[communities == i])
                                                     for i in max(communities)], ndim=2)
 
     try:
-        celltypes = pd.DataFrame(celltypes, columns=counts.columns)
+        genecounts = pd.DataFrame(genecounts, columns=counts.columns)
     except AttributeError:
         pass
-    return celltypes
+
+    return {'genecounts': genecounts, 'cellcounts': cellcounts}
 
 
 # Score model on a 0.2 test/train split of X, y.
