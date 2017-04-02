@@ -155,6 +155,9 @@ def create_synthetic_data(celltypes=None):
 
     def sampleCellRead(mean_reads, gene_probs, num_cells=1):
         num_genes = len(gene_probs)
+        # draws = np.random.multinomial([mean_reads] * num_genes,
+        #                               gene_probs,
+        #                               size=num_cells)
         draws = np.random.binomial([mean_reads] * num_genes,
                                    gene_probs,
                                    size=(num_cells, num_genes))
@@ -219,19 +222,20 @@ def getCellTypes(counts=None):
         reduced_counts = PCA(n_components=30).fit_transform(npcounts)
         communities, graph, Q = phenograph.cluster(reduced_counts)
 
-        cellcounts = [len(np.where(communities == i)) for i in np.unique(communities)]
+        cellcounts = np.array([len(np.where(communities == i)) for i in np.unique(communities)])
 
         # genecounts = np.zeros((max(communities), npcounts.shape[1]))
         genecounts = np.array([np.sum(npcounts[communities == i], axis=0)
                               for i in range(max(communities))])
-        assert(~(any(np.max(genecounts, axis=0) == 0)), "zero vector cell type")
-        genecounts /= CELLTYPESAMPLEMEAN * np.array([len(communities[communities == i])
-                                                    for i in max(communities)], ndim=2)
+        assert ~(any(np.max(genecounts, axis=0) == 0)), "zero vector cell type"
+        genecounts = genecounts / (CELLTYPESAMPLEMEAN * cellcounts.reshape(-1, 1))
 
+    print ("Trying to pandas-ify genecounts")
     try:
         genecounts = pd.DataFrame(genecounts, columns=counts.columns)
     except AttributeError:
         pass
+    print ("Returning from getCellTypes")
 
     return {'genecounts': genecounts, 'cellcounts': cellcounts}
 
@@ -331,16 +335,16 @@ def checkSyntheticDistance(synthetic, labels):
 
 # Supervised classification using sythetic data
 def syntheticTesting(X_geneCounts, y_doubletLabels, useTruncSVD=False):
-#    X_standardized = normalize_counts_10x(X_geneCounts)
+    # X_standardized = normalize_counts_10x(X_geneCounts)
 
     # Naive classifier test: library size
     librarySize = X_geneCounts.sum(axis=1).reshape(-1, 1)
     #librarySizeSt = X_standardized.sum(axis=1).reshape(-1, 1)
     print("librarySize.shape: ", (librarySize.shape))
-#    print("X_stardardized.shape: ", (X_stardardized.shape))
+    # print("X_stardardized.shape: ", (X_stardardized.shape))
     print("y_doubletLabels.shape: ", (y_doubletLabels.shape))
     testModel(BernoulliNB(), librarySize, y_doubletLabels, 'Library size; NBB')
-#    testModel(BernoulliNB(), librarySizeSt, y_doubletLabels, 'Library size; NBB, standardized X')
+    # testModel(BernoulliNB(), librarySizeSt, y_doubletLabels, 'Library size; NBB, standardized X')
     # clfGMM = GaussianMixture(n_components=2, weights_init=[1 - DOUBLETRATE, DOUBLETRATE])
     # testModel(clfGMM, librarySize, y_doubletLabels, 'Library size; GMM')
 
@@ -383,20 +387,11 @@ if __name__ == '__main__':
     raw_counts = dataAcquisition(FNAME)
     # raw_counts = dataAcquisition(FNAME, normalize=True, useTFIDF=True)
 
-    synthetic, labels = create_synthetic_data(raw_counts)
+    synthetic, labels = create_synthetic_data(getCellTypes(raw_counts))
 
     # synthetic['labels'] = labels
 
     # pca = PCA(n_components=30)
-    start_PCA_time = time.time()
-    reduced_counts = PCA(n_components=30).fit_transform(synthetic)
-    print("PCA run time: {0:.2f} seconds".format(time.time() - start_PCA_time))
-    start_Phon_time = time.time()
-    communities, graph, Q = phenograph.cluster(reduced_counts)
-    print("After PCA Phenograph run time: {0:.2f} seconds".format(time.time() - start_Phon_time))
-    print("PCA + Phenograph run time: {0:.2f} seconds".format(time.time() - start_PCA_time))
-    print("communities: {}".format(communities))
-
     # synthetic.to_csv("/Users/adamgayoso/Google Drive/Computational Genomics/synthetic.csv")
 
     # syntheticTesting(synthetic.as_matrix(), labels)
