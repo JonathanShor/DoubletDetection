@@ -24,9 +24,22 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 
-FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense_100lines.csv"
+FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
 DOUBLETRATE = 0.07
 CELLTYPESAMPLEMEAN = 0.05   # Mean percent of cell gene expression captured per cell read
+
+
+# TODO: Remove these print blocking funcs
+import sys, os
+
+# Disable
+def blockPrint():
+    sys.stdout = open(os.devnull, 'w')
+
+# Restore
+def enablePrint():
+    sys.stdout = sys.__stdout__
+# TODO: Remove these print blocking funcs
 
 
 # Standardize columns of matrix X: (X - X.mean) / X.std
@@ -163,52 +176,51 @@ def create_synthetic_data(celltypes=None):
                                    size=(num_cells, num_genes))
         return draws
 
-    genecounts = celltypes['genecounts']
-    cellcounts = celltypes['cellcounts']
+    genecounts = np.array(celltypes['genecounts'])
+    cellcounts = np.array(celltypes['cellcounts'])
 
     num_genes = genecounts.shape[1]
     synthetic = np.empty((0, num_genes))
 
-    mean_reads = np.array(int(np.sum(genecounts, axis=0) * CELLTYPESAMPLEMEAN))
-    celltypesProb = genecounts / np.array(np.sum(genecounts, axis=0))
-    # Create non-doublet base
+    mean_reads = np.array(np.sum(genecounts, axis=0) * CELLTYPESAMPLEMEAN, dtype=int)
+    celltypesProb = genecounts / np.sum(genecounts, axis=1).reshape(-1, 1)
+    assert all(abs(np.sum(celltypesProb, axis=1) - 1) < 1e-8),\
+        [[i, x] for i, x in enumerate(np.sum(celltypesProb, axis=1)) if abs() >= 1e-8]
+
+    # Create non-doublet base data
     for i, cellcount in enumerate(cellcounts):
-        # num_reads = int(sum_reads[i] * CELLTYPESAMPLEMEAN)
-        # synthetic = np.concatenate((synthetic,
-        #                            np.random.multinomial(num_reads,
-        #                                                  celltypesProb[i],
-        #                                                  size=cellcount)),
-        #                            axis=0)
-        # synthetic = np.concatenate((synthetic,
-        #                            np.random.binomial([num_reads] * num_genes,
-        #                                               celltypesProb[i],
-        #                                               size=(cellcount, num_genes))),
-        #                            axis=0)
         synthetic = np.concatenate((synthetic,
                                    sampleCellRead(mean_reads[i], celltypesProb[i], cellcount)),
                                    axis=0)
     num_cells = synthetic.shape[0]
-    assert (num_cells == np.sum(cellcounts))
+    assert (num_cells == np.sum(cellcounts)), "made num_cells: {0}, expected np.sum(cellcounts): \
+                                              {1}".format(num_cells, np.sum(cellcounts))
 
     # Replace DOUBLETRATE * num_cells with doublets
     num_doublets = int(num_cells * DOUBLETRATE)
     doublets = np.random.permutation(num_cells)[:num_doublets]
     for doublet in doublets:
         # TODO: pick celltype to mix with chance proportional to cellcounts
-        type_i = np.random.randint(len(cellcounts))
-        synthetic[doublet] += sampleCellRead(mean_reads[type_i],
-                                             celltypesProb[type_i], cellcounts[type_i])
+        type_i = np.random.randint(genecounts.shape[0])
+        synthetic[doublet] = synthetic[doublet] + sampleCellRead(mean_reads[type_i],
+                                                                 celltypesProb[type_i])
 
-    # Add labels column to know which ones are doublets
+    # Set labels[i] == 1 where synthetic[i,:] is a doublet
     labels = np.zeros(num_cells)
     labels[doublets] = 1
+
+    try:    # return pandas if we got pandas
+        synthetic = pd.DataFrame(synthetic, columns=celltypes['genecounts'].columns)
+        labels = pd.Series(labels)
+    except AttributeError:
+        pass
 
     return synthetic, labels
 
 
 # Cell type generation for synthetic data generation
 # Return dictionary of genecounts for each type (2d), and relative cellcounts (1d)
-def getCellTypes(counts=None):
+def getCellTypes(counts=None, PCA_components=30):
     if counts is None:
         raise Exception("Random celltype generation not implemented.")
     else:
@@ -219,23 +231,29 @@ def getCellTypes(counts=None):
 
         # Naive initial attempt: does not remove dublets in the orig data in any way
         # TODO: Revise to remove doublet noise (to at least some degree)
-        reduced_counts = PCA(n_components=30).fit_transform(npcounts)
+        reduced_counts = PCA(n_components=PCA_components).fit_transform(npcounts)
+        blockPrint()
         communities, graph, Q = phenograph.cluster(reduced_counts)
+        enablePrint()
+        print("Found these communities: {0}, with sizes: {1}".format(np.unique(communities),
+              [np.count_nonzero(communities == i) for i in np.unique(communities)]))
 
-        cellcounts = np.array([len(np.where(communities == i)) for i in np.unique(communities)])
+        # Throw out outliers in cluster -1
+        npcounts = npcounts[communities >= 0]
+        communities = communities[communities >= 0]
+
+        cellcounts = np.array([np.count_nonzero(communities == i) for i in np.unique(communities)])
 
         # genecounts = np.zeros((max(communities), npcounts.shape[1]))
         genecounts = np.array([np.sum(npcounts[communities == i], axis=0)
-                              for i in range(max(communities))])
-        assert ~(any(np.max(genecounts, axis=0) == 0)), "zero vector cell type"
+                              for i in np.unique(communities)])
+        assert ~(any(np.max(genecounts, axis=1) == 0)), "zero vector cell type"
         genecounts = genecounts / (CELLTYPESAMPLEMEAN * cellcounts.reshape(-1, 1))
 
-    print ("Trying to pandas-ify genecounts")
-    try:
+    try:    # return pandas if we got pandas
         genecounts = pd.DataFrame(genecounts, columns=counts.columns)
     except AttributeError:
         pass
-    print ("Returning from getCellTypes")
 
     return {'genecounts': genecounts, 'cellcounts': cellcounts}
 
