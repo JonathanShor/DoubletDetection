@@ -12,81 +12,18 @@ import time
 import phenograph
 import collections
 from sklearn.decomposition import PCA
-from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.naive_bayes import BernoulliNB
 from sklearn.naive_bayes import GaussianNB
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.metrics import precision_recall_fscore_support
 from sklearn.mixture import GaussianMixture
-from sklearn.model_selection import train_test_split
 from sklearn.neighbors import NearestNeighbors
-from sklearn.preprocessing import StandardScaler
-from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
+from synthetic import getCellTypes
+from synthetic import create_synthetic_data
+import utils
 
 FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
 DOUBLETRATE = 0.07
-CELLTYPESAMPLEMEAN = 0.05   # Mean percent of cell gene expression captured per cell read
-
-
-# TODO: Remove these print blocking funcs
-import sys, os
-
-# Disable
-def blockPrint():
-    sys.stdout = open(os.devnull, 'w')
-
-# Restore
-def enablePrint():
-    sys.stdout = sys.__stdout__
-# TODO: Remove these print blocking funcs
-
-
-# Standardize columns of matrix X: (X - X.mean) / X.std
-# Also returns StandardScaler object for consistent further (inverse) standardization
-# from sklearn.preprocessing import StandardScaler
-def standardize(X):
-    scaleX = StandardScaler().fit(X)
-    return scaleX.transform(X), scaleX
-
-
-# tf-idf normalizing: cells as documents, genes as words
-# from sklearn.feature_extraction.text import TfidfTransformer
-def normalize_tf_idf(X):
-    if isinstance(X, pd.dataframe):
-        X = X.as_matrix()
-
-    tfidf = TfidfTransformer(norm=None, smooth_idf=True, sublinear_tf=False)
-    tfidf.fit(X)
-    return tfidf.transform(X)
-
-
-# Takes PD dataframe
-# Following method in 10x paper
-def normalize_counts_10x(raw_counts, doStandardize=True):
-    # Sum across cells and divide each cell by sum
-    cell_sums = raw_counts.sum(axis=1).as_matrix()
-    raw_counts = raw_counts.as_matrix()
-
-    # Mutiply by median and divide by cell sum
-    median = np.median(cell_sums)
-    raw_counts = raw_counts*median/cell_sums[:, np.newaxis]
-
-    if doStandardize:
-        # Take log and normalize to have mean 0 and std 1 in each gene across all cells
-        raw_counts = np.log(raw_counts)
-
-        # Normalize to have genes with mean 0 and std 1
-        std = np.nanstd(raw_counts, axis=0)[np.newaxis,:]
-        normed = (raw_counts - np.nanmean(raw_counts, axis=0)) / std
-        # TODO: Use standardize() if we need to inverse or repeat stardardization
-    else:
-        normed = raw_counts
-
-    # Replace NaN with 0
-    normed = np.nan_to_num(normed)
-
-    return normed
 
 
 # Elementary modeling
@@ -140,146 +77,6 @@ def knn(counts, labels):
     clf.kneighbors(counts, 10)
 
     return clf.kneighbors(counts, 10)[0]
-
-
-def dataAcquisition(FNAME, normalize=False, useTFIDF=False):
-    # Import counts
-    counts = pd.read_csv(FNAME, index_col=0)
-
-    # Normalize
-    if normalize:
-        # Replacing with NaN makes it easier to ignore these values
-        counts[counts == 0] = np.nan
-
-        if useTFIDF:
-            counts = normalize_tf_idf(counts)
-        else:   # 10x paper normalization
-            counts = normalize_counts_10x(counts)
-
-    return counts
-
-
-# Generate 2D synthetic data from celltypes
-# Celltypes expected to be a dict with members 'genecounts':2d(celltypes x genes)
-#  and 'frequences': 1d(number of cells to generate for each type)
-def create_synthetic_data(celltypes=None):
-    if celltypes is None:
-        celltypes = getCellTypes()
-
-    def sampleCellRead(mean_reads, gene_probs, num_cells=1):
-        num_genes = len(gene_probs)
-        # draws = np.random.multinomial([mean_reads] * num_genes,
-        #                               gene_probs,
-        #                               size=num_cells)
-        draws = np.random.binomial([mean_reads] * num_genes,
-                                   gene_probs,
-                                   size=(num_cells, num_genes))
-        return draws
-
-    genecounts = np.array(celltypes['genecounts'])
-    cellcounts = np.array(celltypes['cellcounts'])
-
-    num_genes = genecounts.shape[1]
-    synthetic = np.empty((0, num_genes))
-
-    mean_reads = np.array(np.sum(genecounts, axis=0) * CELLTYPESAMPLEMEAN, dtype=int)
-    celltypesProb = genecounts / np.sum(genecounts, axis=1).reshape(-1, 1)
-    assert all(abs(np.sum(celltypesProb, axis=1) - 1) < 1e-8),\
-        [[i, x] for i, x in enumerate(np.sum(celltypesProb, axis=1)) if abs() >= 1e-8]
-
-    # Create non-doublet base data
-    for i, cellcount in enumerate(cellcounts):
-        synthetic = np.concatenate((synthetic,
-                                   sampleCellRead(mean_reads[i], celltypesProb[i], cellcount)),
-                                   axis=0)
-    num_cells = synthetic.shape[0]
-    assert (num_cells == np.sum(cellcounts)), "made num_cells: {0}, expected np.sum(cellcounts): \
-                                              {1}".format(num_cells, np.sum(cellcounts))
-
-    # Replace DOUBLETRATE * num_cells with doublets
-    num_doublets = int(num_cells * DOUBLETRATE)
-    doublets = np.random.permutation(num_cells)[:num_doublets]
-    for doublet in doublets:
-        # TODO: pick celltype to mix with chance proportional to cellcounts
-        type_i = np.random.randint(genecounts.shape[0])
-        synthetic[doublet] = synthetic[doublet] + sampleCellRead(mean_reads[type_i],
-                                                                 celltypesProb[type_i])
-
-    # Set labels[i] == 1 where synthetic[i,:] is a doublet
-    labels = np.zeros(num_cells)
-    labels[doublets] = 1
-
-    try:    # return pandas if we got pandas
-        synthetic = pd.DataFrame(synthetic, columns=celltypes['genecounts'].columns)
-        labels = pd.Series(labels)
-    except AttributeError:
-        pass
-
-    return synthetic, labels
-
-
-# Cell type generation for synthetic data generation
-# Return dictionary of genecounts for each type (2d), and relative cellcounts (1d)
-def getCellTypes(counts=None, PCA_components=30):
-    if counts is None:
-        raise Exception("Random celltype generation not implemented.")
-    else:
-        try:
-            npcounts = counts.as_matrix()
-        except AttributeError:
-            npcounts = counts
-
-        # Naive initial attempt: does not remove dublets in the orig data in any way
-        # TODO: Revise to remove doublet noise (to at least some degree)
-        reduced_counts = PCA(n_components=PCA_components).fit_transform(npcounts)
-        blockPrint()
-        communities, graph, Q = phenograph.cluster(reduced_counts)
-        enablePrint()
-        print("Found these communities: {0}, with sizes: {1}".format(np.unique(communities),
-              [np.count_nonzero(communities == i) for i in np.unique(communities)]))
-
-        # Throw out outliers in cluster -1
-        npcounts = npcounts[communities >= 0]
-        communities = communities[communities >= 0]
-
-        cellcounts = np.array([np.count_nonzero(communities == i) for i in np.unique(communities)])
-
-        # genecounts = np.zeros((max(communities), npcounts.shape[1]))
-        genecounts = np.array([np.sum(npcounts[communities == i], axis=0)
-                              for i in np.unique(communities)])
-        assert ~(any(np.max(genecounts, axis=1) == 0)), "zero vector cell type"
-        genecounts = genecounts / (CELLTYPESAMPLEMEAN * cellcounts.reshape(-1, 1))
-
-    try:    # return pandas if we got pandas
-        genecounts = pd.DataFrame(genecounts, columns=counts.columns)
-    except AttributeError:
-        pass
-
-    return {'genecounts': genecounts, 'cellcounts': cellcounts}
-
-
-# Score model on a 0.2 test/train split of X, y.
-# Returns fit model.
-# Use randomState when you want to fix the train/test set split, and any random
-# start aspects of model, for comparable repeat runs.
-# from sklearn.model_selection import train_test_split
-def testModel(model, X, y, testName, testSize=0.2, randomState=None):
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=testSize,
-                                                        random_state=randomState)
-    if hasattr(model, "random_state"):
-        model.set_params(random_state=randomState)
-
-    model.fit(X_train, y_train)
-    predictions = model.predict(X_test)
-    precision, recall, f1_score = precision_recall_fscore_support(y_test, predictions)
-    # probabilities = model.predict_proba(X)
-    print ("{0} train set score: {1:.4g}".format(testName, model.score(X_train, y_train)))
-    print ("{0} test set score: {1:.4g}".format(testName, model.score(X_test, y_test)))
-    print("{0} test set precision: {1:.4g}".format(testName, precision))
-    print("{0} test set recall: {1:.4g}".format(testName, recall))
-    print("{0} test set f1 score: {1:.4g}".format(testName, f1_score))
-    return model
-    # TODO: return indices to recover train/test sets
 
 
 def analysisSuite(counts, usePCA=True):
@@ -338,71 +135,11 @@ def analysisSuite(counts, usePCA=True):
     far = distances[0][:,9]
 
 
-# Print l_2 distance from each synthetic cell to closest non-synth.
-# Average distance from non-synth to closest other non-synth printed for comparison
-def checkSyntheticDistance(synthetic, labels):
-    # synthetic = synthetic.as_matrix()
-    raw_counts = synthetic[labels == 0]
-    print("Mean minimum l_2 distance between cells: {0:.4f}".format(
-          np.array([np.min(np.linalg.norm(raw_counts[np.arange(len(raw_counts)) != i] - x, ord=2,
-                                          axis=1)) for i, x in enumerate(raw_counts)]).mean()))
-    min_synth_sim = np.array([np.min(np.linalg.norm(synthetic[labels == 0] - i, ord=2, axis=1))
-                              for i in synthetic[labels == 1]])
-    print(np.round(min_synth_sim, 4).reshape(-1, 1))
-
-
-# Supervised classification using sythetic data
-def syntheticTesting(X_geneCounts, y_doubletLabels, useTruncSVD=False):
-    # X_standardized = normalize_counts_10x(X_geneCounts)
-
-    # Naive classifier test: library size
-    librarySize = X_geneCounts.sum(axis=1).reshape(-1, 1)
-    #librarySizeSt = X_standardized.sum(axis=1).reshape(-1, 1)
-    print("librarySize.shape: ", (librarySize.shape))
-    # print("X_stardardized.shape: ", (X_stardardized.shape))
-    print("y_doubletLabels.shape: ", (y_doubletLabels.shape))
-    testModel(BernoulliNB(), librarySize, y_doubletLabels, 'Library size; NBB')
-    # testModel(BernoulliNB(), librarySizeSt, y_doubletLabels, 'Library size; NBB, standardized X')
-    # clfGMM = GaussianMixture(n_components=2, weights_init=[1 - DOUBLETRATE, DOUBLETRATE])
-    # testModel(clfGMM, librarySize, y_doubletLabels, 'Library size; GMM')
-
-    numGenesExpressed = np.count_nonzero(X_geneCounts, axis=1).reshape(-1, 1)
-    testModel(BernoulliNB(), numGenesExpressed, y_doubletLabels, 'Unique Genes; NBB')
-
-    if useTruncSVD:
-        print("TODO: Actually implement TruncatedSVD")
-    else:
-        pca = PCA(n_components=30)
-        X_reduced_counts = pca.fit_transform(X_geneCounts)
-
-    # Run Phenograph
-    communities, graph, Q = phenograph.cluster(X_reduced_counts)
-    print("Num communities found: {}".format(communities.max_()))
-
-    for communityID in np.unique(communities):
-        X_community = X_geneCounts[communities == communityID]
-        X_reduced_community = X_reduced_counts[communities == communityID]
-        y_community = y_doubletLabels[communities == communityID]
-        print("Community {0}: {1} cells".format(communityID, len(y_community)))
-
-        librarySize = X_community.sum(axis=1).reshape(-1, 1)
-        testModel(BernoulliNB(), librarySize, y_community,
-                  "Community {} Library size; NBB".format(communityID))
-
-        numGenesExpressed = np.count_nonzero(X_community, axis=1).reshape(-1, 1)
-        testModel(BernoulliNB(), numGenesExpressed, y_community,
-                  "Community {} Unique Genes; NBB".format(communityID))
-
-        clfGMM = GaussianMixture(n_components=2, weights_init=[1 - DOUBLETRATE, DOUBLETRATE])
-        testModel(clfGMM, X_reduced_community, y_community,
-                  "Community {}; GMM".format(communityID))
-
-
 if __name__ == '__main__':
     start_time = time.time()
 
     # Import counts
-    raw_counts = dataAcquisition(FNAME)
+    raw_counts = utils.dataAcquisition(FNAME)
     # raw_counts = dataAcquisition(FNAME, normalize=True, useTFIDF=True)
 
     synthetic, labels = create_synthetic_data(getCellTypes(raw_counts))
