@@ -54,10 +54,12 @@ def create_synthetic_data(celltypes=None):
     num_genes = genecounts.shape[1]
     synthetic = np.empty((0, num_genes))
 
-    mean_reads = np.array(np.sum(genecounts, axis=0) * CELLTYPESAMPLEMEAN, dtype=int)
+    # Mean number of transcript reads for one cell
+    mean_reads = np.array(np.sum(genecounts, axis=1) * CELLTYPESAMPLEMEAN, dtype=int)
+
     celltypesProb = genecounts / np.sum(genecounts, axis=1).reshape(-1, 1)
-    assert all(abs(np.sum(celltypesProb, axis=1) - 1) < 1e-8),\
-        [[i, x] for i, x in enumerate(np.sum(celltypesProb, axis=1)) if abs() >= 1e-8]
+    assert all(abs(np.sum(celltypesProb, axis=1) - 1) < 1e-8), (
+        [[i, x] for i, x in enumerate(np.sum(celltypesProb, axis=1)) if abs() >= 1e-8])
 
     # Create non-doublet base data
     for i, cellcount in enumerate(cellcounts):
@@ -65,18 +67,18 @@ def create_synthetic_data(celltypes=None):
                                    sampleCellRead(mean_reads[i], celltypesProb[i], cellcount)),
                                    axis=0)
     num_cells = synthetic.shape[0]
-    assert (num_cells == np.sum(cellcounts)), "made num_cells: {0}, expected np.sum(cellcounts): \
-                                              {1}".format(num_cells, np.sum(cellcounts))
+    assert num_cells == np.sum(cellcounts), (
+        "made num_cells:{0}, expect np.sum(cellcounts): {1}".format(num_cells, np.sum(cellcounts)))
 
-    # fullmean_reads = [c for ms in [[m] * m for m in mean_reads] for c in ms]
-    # exceptions = [[i, sum(x), fullmean_reads[i]] for i, x in enumerate(synthetic)
-    #               if abs(sum(x) - fullmean_reads[i]) >
-    #               np.sqrt(fullmean_reads[i] * np.mean(x) * (1 - np.mean(x)))]
-    # print (exceptions)
-    cellsums = pd.Series(np.sum(synthetic, axis=1))
-    print (cellsums.describe())
-    print ("{} cells with zero reads...".format(np.count_nonzero(np.sum(synthetic, axis=1) == 0)))
-    # assert np.array([], ndims=2).mean()
+    # print ("pd.Series(np.sum(synthetic, axis=1)).describe()",
+    #        pd.Series(np.sum(synthetic, axis=1)).describe())
+    # celltypesProbnan = celltypesProb.copy()
+    # celltypesProbnan[celltypesProbnan == 0] = np.nan
+    # print ("(Mean, count, mean_reads), non-zero entries of celltypesProb: ",
+    #        [(np.nanmean(x), np.count_nonzero(~np.isnan(x)), mean_reads[i])
+    #         for i, x in enumerate([celltypesProbnan])])
+    assert np.count_nonzero(np.sum(synthetic, axis=1) == 0) == 0, (
+        "{} cells with zero reads... ".format(np.count_nonzero(np.sum(synthetic, axis=1) == 0)))
 
     # Replace DOUBLETRATE * num_cells with doublets
     num_doublets = int(num_cells * DOUBLETRATE)
@@ -129,7 +131,7 @@ def getCellTypes(counts=None, PCA_components=30):
         # genecounts = np.zeros((max(communities), npcounts.shape[1]))
         genecounts = np.array([np.sum(npcounts[communities == i], axis=0)
                               for i in np.unique(communities)])
-        assert ~(any(np.max(genecounts, axis=1) == 0)), "zero vector cell type"
+        assert ~(any(np.max(genecounts, axis=1) == 0)), "zero vector celltype"
         genecounts = genecounts / (CELLTYPESAMPLEMEAN * cellcounts.reshape(-1, 1))
 
     try:    # return pandas if we got pandas
