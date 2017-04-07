@@ -12,11 +12,10 @@ import phenograph
 from sklearn.decomposition import PCA
 from sklearn.mixture import GaussianMixture
 from sklearn.naive_bayes import BernoulliNB
-import adamwork.py
 from utils import testModel
 
 CELLTYPESAMPLEMEAN = 0.05   # Mean percent of cell gene expression captured per cell read
-DOUBLETRATE = adamwork.DOUBLETRATE
+DOUBLETRATE = 0.07
 
 
 # TODO: Remove these print blocking funcs
@@ -77,6 +76,7 @@ def create_synthetic_data(celltypes=None):
     cellsums = pd.Series(np.sum(synthetic, axis=1))
     print (cellsums.describe())
     print ("{} cells with zero reads...".format(np.count_nonzero(np.sum(synthetic, axis=1) == 0)))
+    # assert np.array([], ndims=2).mean()
 
     # Replace DOUBLETRATE * num_cells with doublets
     num_doublets = int(num_cells * DOUBLETRATE)
@@ -163,13 +163,13 @@ def syntheticTesting(X_geneCounts, y_doubletLabels, useTruncSVD=False):
     print("librarySize.shape: ", (librarySize.shape))
     # print("X_stardardized.shape: ", (X_stardardized.shape))
     print("y_doubletLabels.shape: ", (y_doubletLabels.shape))
-    adamwork.testModel(BernoulliNB(), librarySize, y_doubletLabels, 'Library size; NBB')
+    testModel(BernoulliNB(), librarySize, y_doubletLabels, 'Library size; NBB')
     # testModel(BernoulliNB(), librarySizeSt, y_doubletLabels, 'Library size; NBB, standardized X')
     # clfGMM = GaussianMixture(n_components=2, weights_init=[1 - DOUBLETRATE, DOUBLETRATE])
     # testModel(clfGMM, librarySize, y_doubletLabels, 'Library size; GMM')
 
     numGenesExpressed = np.count_nonzero(X_geneCounts, axis=1).reshape(-1, 1)
-    adamwork.testModel(BernoulliNB(), numGenesExpressed, y_doubletLabels, 'Unique Genes; NBB')
+    testModel(BernoulliNB(), numGenesExpressed, y_doubletLabels, 'Unique Genes; NBB')
 
     if useTruncSVD:
         print("TODO: Actually implement TruncatedSVD")

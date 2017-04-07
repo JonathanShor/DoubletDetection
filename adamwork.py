@@ -18,12 +18,13 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.mixture import GaussianMixture
 from sklearn.neighbors import NearestNeighbors
 import matplotlib.pyplot as plt
-from synthetic import getCellTypes
 from synthetic import create_synthetic_data
+from synthetic import DOUBLETRATE as SYNTHDOUBLETRATE
+from synthetic import getCellTypes
 import utils
 
 FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
-DOUBLETRATE = 0.07
+DOUBLETRATE = SYNTHDOUBLETRATE
 
 
 # Elementary modeling
