@@ -23,7 +23,7 @@ from classifiers import *
 FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
 DOUBLETRATE = SYNTHDOUBLETRATE
 
-
+# This analysis needs work, this is an old version and might not work
 def basic_analysis(counts, doublet_label, usePCA=True):
     # Dimensionality reduction
     if usePCA:
@@ -109,18 +109,24 @@ if __name__ == '__main__':
     # Import counts
     # Normalize = False returns DataFrame
     raw_counts, _ = utils.dataAcquisition(FNAME, normalize=False)
-
-    # Probabilistic synthetic data
-    synthetic, labels = synthetic.create_synthetic_data(getCellTypes(raw_counts))
-      
-    #Simple synthetic data
-    synthetic, doublet_labels = create_simple_synthetic_data(raw_counts, write=False, 0.5, 0.5)
-    #synthetic, labels = dataAcquisition(SYN_FNAME, normalize=True, synthetic=True)
-    perm = np.random.permutation(synthetic.shape[0])
     
-    counts = synthetic[perm]
-    doublet_labels = doublet_labels[perm]
+    probabilistic = False
+    
+    if probabilistic:
         
-    #GMManalysisSuite(counts, doublet_labels)
+        # Probabilistic synthetic data
+        synthetic, doublet_labels = synthetic.create_synthetic_data(getCellTypes(raw_counts))
+    else: 
+        
+        #Simple synthetic data
+        synthetic, doublet_labels = create_simple_synthetic_data(raw_counts, write=False, 0.5, 0.5)
+        #synthetic, labels = dataAcquisition(SYN_FNAME, normalize=True, synthetic=True)
+        perm = np.random.permutation(synthetic.shape[0])
+    
+        counts = synthetic[perm]
+        doublet_labels = doublet_labels[perm]
+        
+        
+    GMManalysisSuite(synthetic, doublet_labels)
 
     print("Total run time: {0:.2f} seconds".format(time.time() - start_time))
