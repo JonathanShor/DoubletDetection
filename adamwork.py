@@ -27,28 +27,6 @@ FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
 DOUBLETRATE = SYNTHDOUBLETRATE
 
 
-
-def dataAcquisition(FNAME, normalize=False, useTFIDF=False, synthetic=False):
-    # Import counts
-    counts = pd.read_csv(FNAME, index_col=0)
-    labels = None
-    
-    if synthetic:
-        labels = counts['labels']
-        del counts['labels']
-        
-    # Normalize
-    if normalize:
-        # Replacing with NaN makes it easier to ignore these values
-        counts[counts == 0] = np.nan
-
-        if useTFIDF:
-            counts = normalize_tf_idf(counts)
-        else:   # 10x paper normalization
-            counts = normalize_counts_10x(counts)
-
-    return counts, labels
-
 # Elementary modeling
 def naive_bayes_bernoulli(counts, labels):
 

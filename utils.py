@@ -14,10 +14,15 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 
-def dataAcquisition(FNAME, normalize=False, useTFIDF=False):
+def dataAcquisition(FNAME, normalize=False, useTFIDF=False, synthetic=False):
     # Import counts
     counts = pd.read_csv(FNAME, index_col=0)
-
+    labels = None
+    
+    if synthetic:
+        labels = counts['labels']
+        del counts['labels']
+        
     # Normalize
     if normalize:
         # Replacing with NaN makes it easier to ignore these values
@@ -28,7 +33,7 @@ def dataAcquisition(FNAME, normalize=False, useTFIDF=False):
         else:   # 10x paper normalization
             counts = normalize_counts_10x(counts)
 
-    return counts
+    return counts, labels
 
 
 # Standardize columns of matrix X: (X - X.mean) / X.std
