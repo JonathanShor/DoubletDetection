@@ -23,64 +23,15 @@ from synthetic import create_simple_synthetic_data
 from synthetic import DOUBLETRATE as SYNTHDOUBLETRATE
 from synthetic import getCellTypes
 import utils
+from classifiers import *
 
 FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
 DOUBLETRATE = SYNTHDOUBLETRATE
 
 
-# Elementary modeling
-def naive_bayes_bernoulli(counts, labels):
-
-    clf = BernoulliNB()
-    clf.fit(counts, labels)
-    predictions = clf.predict(counts)
-    probabilities = clf.predict_proba(counts)
-
-    return predictions, probabilities
 
 
-# Elementary modeling
-def naive_bayes_gauss(counts, labels):
-
-    clf = GaussianNB()
-    clf.fit(counts, labels)
-    predictions = clf.predict(counts)
-    probabilities = clf.predict_proba(counts)
-
-    return predictions, probabilities
-
-
-# Elementary modeling
-def naive_bayes_multinomial(counts, labels):
-
-    clf = MultinomialNB()
-    clf.fit(counts, labels)
-    predictions = clf.predict(counts)
-    probabilities = clf.predict_proba(counts)
-
-    return predictions, probabilities
-
-
-# Elementary modeling
-def gaussian_mixture(counts, labels):
-
-    clf = GaussianMixture(n_components=2, weights_init = [0.93, 0.07])
-    clf.fit(counts)
-    predictions = clf.predict(counts)
-    probabilities = clf.predict_proba(counts)
-
-    return predictions, probabilities
-
-
-def knn(counts, labels):
-
-    clf = NearestNeighbors(n_neighbors=10)
-    clf.fit(counts)
-    clf.kneighbors(counts, 10)
-
-    return clf.kneighbors(counts, 10)[0]
-
-def analysisSuite(counts, doublet_label, usePCA=True):
+def basic_analysis(counts, doublet_label, usePCA=True):
     # Dimensionality reduction
     if usePCA:
         pca = PCA(n_components=30)
@@ -131,7 +82,7 @@ def analysisSuite(counts, doublet_label, usePCA=True):
     far = distances[0][:,9]
     
     
-def GMManalysisSuite(counts, doublet_labels):
+def GMManalysis(counts, doublet_labels):
     
     # Gaussian Mixture Model
     library_size = counts.sum(axis=1)[:,np.newaxis]
@@ -163,7 +114,7 @@ if __name__ == '__main__':
     start_time = time.time()
 
     # Import counts
-    raw_counts = utils.dataAcquisition(FNAME)
+    raw_counts, _ = utils.dataAcquisition(FNAME, normalize=False)
     # raw_counts = dataAcquisition(FNAME, normalize=True, useTFIDF=True)
 
     synthetic, labels = synthetic.create_synthetic_data(getCellTypes(raw_counts))
@@ -179,7 +130,7 @@ if __name__ == '__main__':
     # FROM OLD
     # Import counts
     # Normalize = False returns DataFrame
-    raw_counts, _ = dataAcquisition(FNAME, normalize=False)
+    
     
     synthetic, labels = create_simple_synthetic_data(raw_counts, write=False, 0.5, 0.5)
     #synthetic, labels = dataAcquisition(SYN_FNAME, normalize=True, synthetic=True)
