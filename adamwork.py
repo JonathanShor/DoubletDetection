@@ -23,6 +23,7 @@ from classifiers import *
 FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
 DOUBLETRATE = SYNTHDOUBLETRATE
 
+
 # This analysis needs work, this is an old version and might not work
 def basic_analysis(counts, doublet_label, usePCA=True):
     # Dimensionality reduction
@@ -73,10 +74,9 @@ def basic_analysis(counts, doublet_label, usePCA=True):
     # KNN outlier detection
     distances = knn(GM_data, labels)
     far = distances[0][:,9]
-    
-    
+
+
 def GMManalysis(counts, doublet_labels):
-    
     # Gaussian Mixture Model
     library_size = counts.sum(axis=1)[:,np.newaxis]
     num_genes = np.count_nonzero(counts, axis=1)[:,np.newaxis]

@@ -19,14 +19,14 @@ def dataAcquisition(FNAME, normalize=False, useTFIDF=False, synthetic=False):
     if not synthetic:
         counts = pd.read_csv(FNAME, index_col=0)
         doublet_labels = None
-    
+
     # Synthetic data doesn't have index column
     if synthetic:
         counts = pd.read_csv(FNAME)
         labels = counts['labels']
         del counts['labels']
         doublet_labels = labels.as_matrix()
-        
+
     # Normalize
     if normalize:
         # Replacing with NaN makes it easier to ignore these values

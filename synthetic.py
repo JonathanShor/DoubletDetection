@@ -34,7 +34,7 @@ def enablePrint():
 # Generate 2D synthetic data from celltypes
 # Celltypes expected to be a dict with members 'genecounts':2d(celltypes x genes)
 #  and 'frequences': 1d(number of cells to generate for each type)
-def create_synthetic_data(celltypes=None):
+def create_synthetic_data(celltypes=None, doublet_weight=1):
     if celltypes is None:
         celltypes = getCellTypes()
 
@@ -86,8 +86,8 @@ def create_synthetic_data(celltypes=None):
     for doublet in doublets:
         # TODO: pick celltype to mix with chance proportional to cellcounts
         type_i = np.random.randint(genecounts.shape[0])
-        synthetic[doublet] = synthetic[doublet] + sampleCellRead(mean_reads[type_i],
-                                                                 celltypesProb[type_i])
+        synthetic[doublet] = (synthetic[doublet] * doublet_weight +
+                              sampleCellRead(mean_reads[type_i], celltypesProb[type_i]))
 
     # Set labels[i] == 1 where synthetic[i,:] is a doublet
     labels = np.zeros(num_cells)
@@ -157,7 +157,7 @@ def checkSyntheticDistance(synthetic, labels):
 
 # Slow but works
 # Takes a pd DataFrame
-# Returns numpy matrices 
+# Returns numpy matrices
 def create_simple_synthetic_data(raw_counts, write=False, alpha1=1, alpha2=1):
 
     synthetic = pd.DataFrame()
@@ -170,7 +170,6 @@ def create_simple_synthetic_data(raw_counts, write=False, alpha1=1, alpha2=1):
     labels = np.zeros(cell_count + doublets)
     labels[cell_count:] = 1
 
-
     for i in range(doublets):
         row1 = int(np.random.rand()*cell_count)
         row2 = int(np.random.rand()*cell_count)
@@ -180,12 +179,13 @@ def create_simple_synthetic_data(raw_counts, write=False, alpha1=1, alpha2=1):
         synthetic = synthetic.append(new_row, ignore_index=True)
 
     synthetic = raw_counts.append(synthetic)
-       
+
     synthetic['labels'] = labels
     if write:
         synthetic.to_csv("~/Google Drive/Computational Genomics/synthetic.csv")
 
     return synthetic.as_matrix(), labels.as_matrix()
+
 
 # Supervised classification using sythetic data
 def syntheticTesting(X_geneCounts, y_doubletLabels, useTruncSVD=False):
