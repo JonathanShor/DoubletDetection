@@ -18,7 +18,7 @@ def dataAcquisition(FNAME, normalize=False, useTFIDF=False, synthetic=False):
     # Import counts
     if not synthetic:
         counts = pd.read_csv(FNAME, index_col=0)
-        labels = None
+        doublet_labels = None
     
     # Synthetic data doesn't have index column
     if synthetic:
