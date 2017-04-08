@@ -115,7 +115,7 @@ if __name__ == '__main__':
     if probabilistic:
         
         # Probabilistic synthetic data
-        synthetic, doublet_labels = synthetic.create_synthetic_data(getCellTypes(raw_counts))
+        synthetic, doublet_labels = create_synthetic_data(getCellTypes(raw_counts))
     else: 
         
         #Simple synthetic data
