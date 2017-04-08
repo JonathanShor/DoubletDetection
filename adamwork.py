@@ -12,75 +12,20 @@ import time
 import phenograph
 import collections
 from sklearn.decomposition import PCA
-from sklearn.naive_bayes import BernoulliNB
-from sklearn.naive_bayes import GaussianNB
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.mixture import GaussianMixture
-from sklearn.neighbors import NearestNeighbors
 import matplotlib.pyplot as plt
 from synthetic import create_synthetic_data
+from synthetic import create_simple_synthetic_data
 from synthetic import DOUBLETRATE as SYNTHDOUBLETRATE
 from synthetic import getCellTypes
 import utils
+from classifiers import *
 
 FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
 DOUBLETRATE = SYNTHDOUBLETRATE
 
 
-# Elementary modeling
-def naive_bayes_bernoulli(counts, labels):
-
-    clf = BernoulliNB()
-    clf.fit(counts, labels)
-    predictions = clf.predict(counts)
-    probabilities = clf.predict_proba(counts)
-
-    return predictions, probabilities
-
-
-# Elementary modeling
-def naive_bayes_gauss(counts, labels):
-
-    clf = GaussianNB()
-    clf.fit(counts, labels)
-    predictions = clf.predict(counts)
-    probabilities = clf.predict_proba(counts)
-
-    return predictions, probabilities
-
-
-# Elementary modeling
-def naive_bayes_multinomial(counts, labels):
-
-    clf = MultinomialNB()
-    clf.fit(counts, labels)
-    predictions = clf.predict(counts)
-    probabilities = clf.predict_proba(counts)
-
-    return predictions, probabilities
-
-
-# Elementary modeling
-def gaussian_mixture(counts, labels):
-
-    clf = GaussianMixture(n_components=2, weights_init = [0.93, 0.07])
-    clf.fit(counts)
-    predictions = clf.predict(counts)
-    probabilities = clf.predict_proba(counts)
-
-    return predictions, probabilities
-
-
-def knn(counts, labels):
-
-    clf = NearestNeighbors(n_neighbors=10)
-    clf.fit(counts)
-    clf.kneighbors(counts, 10)
-
-    return clf.kneighbors(counts, 10)[0]
-
-
-def analysisSuite(counts, usePCA=True):
+# This analysis needs work, this is an old version and might not work
+def basic_analysis(counts, doublet_label, usePCA=True):
     # Dimensionality reduction
     if usePCA:
         pca = PCA(n_components=30)
@@ -126,31 +71,63 @@ def analysisSuite(counts, usePCA=True):
     # Check out entropy of values
     outliersM = max_2_valuesM[max_2_valuesM[:,0] > 0.0005]
 
-    # Gaussian Mixture Model
-    pca = PCA(n_components=50)
-    GM_data = pca.fit_transform(raw_counts)
-    predictionsGM, probabilitiesGM = gaussian_mixture(GM_data, labels)
-
     # KNN outlier detection
     distances = knn(GM_data, labels)
     far = distances[0][:,9]
+
+
+def GMManalysis(counts, doublet_labels):
+
+    # Gaussian Mixture Model
+    library_size = counts.sum(axis=1)[:,np.newaxis]
+    num_genes = np.count_nonzero(counts, axis=1)[:,np.newaxis]
+    features = np.concatenate((library_size, num_genes), axis=1)
+    predictionsGM, probabilitiesGM = gaussian_mixture(features)
+    GMM_error1 = (len(doublet_labels) - np.sum(doublet_labels==predictionsGM))/len(doublet_labels)
+    GMM_error2 = (len(doublet_labels) - np.sum(doublet_labels==(1-predictionsGM)))/len(doublet_labels)
+
+    print("Test error over all cells = ")
+    print(np.min([GMM_error1, GMM_error2]))
+
+    # False positives, negative
+    doublets = np.where(doublet_labels == 1)[0]
+    GMM_error1 = (len(doublet_labels[doublets]) - np.sum(doublet_labels[doublets]==predictionsGM[doublets]))/len(doublet_labels[doublets])
+    GMM_error2 = (len(doublet_labels[doublets]) - np.sum(doublet_labels[doublets]==(1-predictionsGM[doublets])))/len(doublet_labels[doublets])
+    print("Test error over synthetic doublets = ")
+    print(np.min([GMM_error1, GMM_error2]))
+
+    # Attempting to do it within each phenograph cluster
+    pca = PCA(n_components=50)
+    reduced_counts = pca.fit_transform(counts)
+    communities, graph, Q = phenograph.cluster(reduced_counts)
+
+    labels = np.append(doublet_labels[:,np.newaxis], communities[:,np.newaxis], axis=1)
 
 
 if __name__ == '__main__':
     start_time = time.time()
 
     # Import counts
-    raw_counts = utils.dataAcquisition(FNAME)
-    # raw_counts = dataAcquisition(FNAME, normalize=True, useTFIDF=True)
+    # Normalize = False returns DataFrame
+    raw_counts, _ = utils.dataAcquisition(FNAME, normalize=False)
 
-    synthetic, labels = create_synthetic_data(getCellTypes(raw_counts))
+    probabilistic = False
 
-    # synthetic['labels'] = labels
+    if probabilistic:
 
-    # pca = PCA(n_components=30)
-    # synthetic.to_csv("/Users/adamgayoso/Google Drive/Computational Genomics/synthetic.csv")
+        # Probabilistic synthetic data
+        synthetic, doublet_labels = create_synthetic_data(getCellTypes(raw_counts))
+    else:
 
-    # syntheticTesting(synthetic.as_matrix(), labels)
-    # analysisSuite(synthetic)
+        #Simple synthetic data
+        synthetic, doublet_labels = create_simple_synthetic_data(raw_counts, write=False, 0.5, 0.5)
+        #synthetic, labels = dataAcquisition(SYN_FNAME, normalize=True, synthetic=True)
+        perm = np.random.permutation(synthetic.shape[0])
+
+        counts = synthetic[perm]
+        doublet_labels = doublet_labels[perm]
+
+
+    GMManalysisSuite(synthetic, doublet_labels)
 
     print("Total run time: {0:.2f} seconds".format(time.time() - start_time))

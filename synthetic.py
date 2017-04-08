@@ -155,6 +155,38 @@ def checkSyntheticDistance(synthetic, labels):
     print(np.round(min_synth_sim, 4).reshape(-1, 1))
 
 
+# Slow but works
+# Takes a pd DataFrame
+# Returns numpy matrices
+def create_simple_synthetic_data(raw_counts, write=False, alpha1=1, alpha2=1):
+
+    synthetic = pd.DataFrame()
+
+    cell_count = raw_counts.shape[0]
+    doublet_rate = DOUBLETRATE
+    doublets = int(doublet_rate * cell_count / (1 - doublet_rate))
+
+    # Add labels column to know which ones are doublets
+    labels = np.zeros(cell_count + doublets)
+    labels[cell_count:] = 1
+
+    for i in range(doublets):
+        row1 = int(np.random.rand()*cell_count)
+        row2 = int(np.random.rand()*cell_count)
+
+        new_row = alpha1*raw_counts.iloc[row1] + alpha2*raw_counts.iloc[row2]
+
+        synthetic = synthetic.append(new_row, ignore_index=True)
+
+    synthetic = raw_counts.append(synthetic)
+
+    synthetic['labels'] = labels
+    if write:
+        synthetic.to_csv("~/Google Drive/Computational Genomics/synthetic.csv")
+
+    return synthetic.as_matrix(), labels.as_matrix()
+
+
 # Supervised classification using sythetic data
 def syntheticTesting(X_geneCounts, y_doubletLabels, useTruncSVD=False):
     # X_standardized = normalize_counts_10x(X_geneCounts)
