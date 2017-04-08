@@ -164,7 +164,7 @@ def create_simple_synthetic_data(raw_counts, write=False, alpha1=1, alpha2=1):
 
     cell_count = raw_counts.shape[0]
     doublet_rate = DOUBLETRATE
-    doublets = int(doublet_rate * cell_count / (1 - doublet_rate))
+    doublets = int(doublet_rate*cell_count/(1-doublet_rate))
 
     # Add labels column to know which ones are doublets
     labels = np.zeros(cell_count + doublets)

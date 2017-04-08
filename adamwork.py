@@ -77,7 +77,6 @@ def basic_analysis(counts, doublet_label, usePCA=True):
 
 
 def GMManalysis(counts, doublet_labels):
-
     # Gaussian Mixture Model
     library_size = counts.sum(axis=1)[:,np.newaxis]
     num_genes = np.count_nonzero(counts, axis=1)[:,np.newaxis]
@@ -85,24 +84,24 @@ def GMManalysis(counts, doublet_labels):
     predictionsGM, probabilitiesGM = gaussian_mixture(features)
     GMM_error1 = (len(doublet_labels) - np.sum(doublet_labels==predictionsGM))/len(doublet_labels)
     GMM_error2 = (len(doublet_labels) - np.sum(doublet_labels==(1-predictionsGM)))/len(doublet_labels)
-
+    
     print("Test error over all cells = ")
     print(np.min([GMM_error1, GMM_error2]))
-
+    
     # False positives, negative
     doublets = np.where(doublet_labels == 1)[0]
     GMM_error1 = (len(doublet_labels[doublets]) - np.sum(doublet_labels[doublets]==predictionsGM[doublets]))/len(doublet_labels[doublets])
     GMM_error2 = (len(doublet_labels[doublets]) - np.sum(doublet_labels[doublets]==(1-predictionsGM[doublets])))/len(doublet_labels[doublets])
     print("Test error over synthetic doublets = ")
     print(np.min([GMM_error1, GMM_error2]))
-
+    
     # Attempting to do it within each phenograph cluster
     pca = PCA(n_components=50)
     reduced_counts = pca.fit_transform(counts)
     communities, graph, Q = phenograph.cluster(reduced_counts)
-
-    labels = np.append(doublet_labels[:,np.newaxis], communities[:,np.newaxis], axis=1)
-
+    
+    labels = np.append(doublet_labels[:,np.newaxis], communities[:,np.newaxis], axis=1)    
+    
 
 if __name__ == '__main__':
     start_time = time.time()
@@ -110,24 +109,24 @@ if __name__ == '__main__':
     # Import counts
     # Normalize = False returns DataFrame
     raw_counts, _ = utils.dataAcquisition(FNAME, normalize=False)
-
+    
     probabilistic = False
-
+    
     if probabilistic:
-
+        
         # Probabilistic synthetic data
         synthetic, doublet_labels = create_synthetic_data(getCellTypes(raw_counts))
-    else:
-
+    else: 
+        
         #Simple synthetic data
         synthetic, doublet_labels = create_simple_synthetic_data(raw_counts, write=False, 0.5, 0.5)
         #synthetic, labels = dataAcquisition(SYN_FNAME, normalize=True, synthetic=True)
         perm = np.random.permutation(synthetic.shape[0])
-
+    
         counts = synthetic[perm]
         doublet_labels = doublet_labels[perm]
-
-
+        
+        
     GMManalysisSuite(synthetic, doublet_labels)
 
     print("Total run time: {0:.2f} seconds".format(time.time() - start_time))
