@@ -18,7 +18,8 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.mixture import GaussianMixture
 from sklearn.neighbors import NearestNeighbors
 import matplotlib.pyplot as plt
-from synthetic
+from synthetic import create_synthetic_data
+from synthetic import create_simple_synthetic_data
 from synthetic import DOUBLETRATE as SYNTHDOUBLETRATE
 from synthetic import getCellTypes
 import utils
@@ -180,7 +181,7 @@ if __name__ == '__main__':
     # Normalize = False returns DataFrame
     raw_counts, _ = dataAcquisition(FNAME, normalize=False)
     
-    synthetic, labels = create_synthetic_data(raw_counts, write=False, 0.5, 0.5)
+    synthetic, labels = create_simple_synthetic_data(raw_counts, write=False, 0.5, 0.5)
     #synthetic, labels = dataAcquisition(SYN_FNAME, normalize=True, synthetic=True)
     perm = np.random.permutation(synthetic.shape[0])
     
