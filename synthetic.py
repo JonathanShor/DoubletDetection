@@ -34,7 +34,7 @@ def enablePrint():
 # Generate 2D synthetic data from celltypes
 # Celltypes expected to be a dict with members 'genecounts':2d(celltypes x genes)
 #  and 'frequences': 1d(number of cells to generate for each type)
-def create_synthetic_data(celltypes=None):
+def create_synthetic_data(celltypes=None, doublet_weight=1):
     if celltypes is None:
         celltypes = getCellTypes()
 
@@ -86,8 +86,8 @@ def create_synthetic_data(celltypes=None):
     for doublet in doublets:
         # TODO: pick celltype to mix with chance proportional to cellcounts
         type_i = np.random.randint(genecounts.shape[0])
-        synthetic[doublet] = synthetic[doublet] + sampleCellRead(mean_reads[type_i],
-                                                                 celltypesProb[type_i])
+        synthetic[doublet] = (synthetic[doublet] * doublet_weight +
+                              sampleCellRead(mean_reads[type_i], celltypesProb[type_i]))
 
     # Set labels[i] == 1 where synthetic[i,:] is a doublet
     labels = np.zeros(num_cells)
