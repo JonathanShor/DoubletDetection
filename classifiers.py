@@ -13,8 +13,6 @@ from sklearn.mixture import GaussianMixture
 from sklearn.neighbors import NearestNeighbors
 
 
-
-# Elementary modeling
 def naive_bayes_bernoulli(counts, labels):
 
     clf = BernoulliNB()
@@ -25,7 +23,6 @@ def naive_bayes_bernoulli(counts, labels):
     return predictions, probabilities
 
 
-# Elementary modeling
 def naive_bayes_gauss(counts, labels):
 
     clf = GaussianNB()
@@ -36,7 +33,6 @@ def naive_bayes_gauss(counts, labels):
     return predictions, probabilities
 
 
-# Elementary modeling
 def naive_bayes_multinomial(counts, labels):
 
     clf = MultinomialNB()
@@ -47,7 +43,6 @@ def naive_bayes_multinomial(counts, labels):
     return predictions, probabilities
 
 
-# Elementary modeling
 def gaussian_mixture(counts, labels):
 
     clf = GaussianMixture(n_components=2, weights_init = [0.93, 0.07])

@@ -12,11 +12,6 @@ import time
 import phenograph
 import collections
 from sklearn.decomposition import PCA
-from sklearn.naive_bayes import BernoulliNB
-from sklearn.naive_bayes import GaussianNB
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.mixture import GaussianMixture
-from sklearn.neighbors import NearestNeighbors
 import matplotlib.pyplot as plt
 from synthetic import create_synthetic_data
 from synthetic import create_simple_synthetic_data
@@ -27,8 +22,6 @@ from classifiers import *
 
 FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
 DOUBLETRATE = SYNTHDOUBLETRATE
-
-
 
 
 def basic_analysis(counts, doublet_label, usePCA=True):
@@ -114,38 +107,20 @@ if __name__ == '__main__':
     start_time = time.time()
 
     # Import counts
-    raw_counts, _ = utils.dataAcquisition(FNAME, normalize=False)
-    # raw_counts = dataAcquisition(FNAME, normalize=True, useTFIDF=True)
-
-    synthetic, labels = synthetic.create_synthetic_data(getCellTypes(raw_counts))
-
-    # synthetic['labels'] = labels
-
-    # pca = PCA(n_components=30)
-    # synthetic.to_csv("/Users/adamgayoso/Google Drive/Computational Genomics/synthetic.csv")
-
-    # syntheticTesting(synthetic.as_matrix(), labels)
-    # analysisSuite(synthetic)
-    
-    # FROM OLD
-    # Import counts
     # Normalize = False returns DataFrame
-    
-    
-    synthetic, labels = create_simple_synthetic_data(raw_counts, write=False, 0.5, 0.5)
+    raw_counts, _ = utils.dataAcquisition(FNAME, normalize=False)
+
+    # Probabilistic synthetic data
+    synthetic, labels = synthetic.create_synthetic_data(getCellTypes(raw_counts))
+      
+    #Simple synthetic data
+    synthetic, doublet_labels = create_simple_synthetic_data(raw_counts, write=False, 0.5, 0.5)
     #synthetic, labels = dataAcquisition(SYN_FNAME, normalize=True, synthetic=True)
     perm = np.random.permutation(synthetic.shape[0])
     
     counts = synthetic[perm]
-    doublet_labels = labels.as_matrix()
     doublet_labels = doublet_labels[perm]
-    
-    #synthetic = pd.read_csv(SYN_FNAME, index_col=0)
-    #synthetic = synthetic.as_matrix()
-    #doublet_label = synthetic[:, len(synthetic[0])-1]
-    #syn_counts = synthetic[:,:len(synthetic[0])-1]
-
-    
+        
     #GMManalysisSuite(counts, doublet_labels)
 
     print("Total run time: {0:.2f} seconds".format(time.time() - start_time))

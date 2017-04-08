@@ -16,12 +16,16 @@ from sklearn.preprocessing import StandardScaler
 
 def dataAcquisition(FNAME, normalize=False, useTFIDF=False, synthetic=False):
     # Import counts
-    counts = pd.read_csv(FNAME, index_col=0)
-    labels = None
+    if not synthetic:
+        counts = pd.read_csv(FNAME, index_col=0)
+        labels = None
     
+    # Synthetic data doesn't have index column
     if synthetic:
+        counts = pd.read_csv(FNAME)
         labels = counts['labels']
         del counts['labels']
+        doublet_labels = labels.as_matrix()
         
     # Normalize
     if normalize:
@@ -33,7 +37,7 @@ def dataAcquisition(FNAME, normalize=False, useTFIDF=False, synthetic=False):
         else:   # 10x paper normalization
             counts = normalize_counts_10x(counts)
 
-    return counts, labels
+    return counts, doublet_labels
 
 
 # Standardize columns of matrix X: (X - X.mean) / X.std

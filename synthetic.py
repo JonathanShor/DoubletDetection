@@ -154,8 +154,10 @@ def checkSyntheticDistance(synthetic, labels):
                               for i in synthetic[labels == 1]])
     print(np.round(min_synth_sim, 4).reshape(-1, 1))
 
+
 # Slow but works
 # Takes a pd DataFrame
+# Returns numpy matrices 
 def create_simple_synthetic_data(raw_counts, write=False, alpha1=1, alpha2=1):
 
     synthetic = pd.DataFrame()
@@ -178,14 +180,12 @@ def create_simple_synthetic_data(raw_counts, write=False, alpha1=1, alpha2=1):
         synthetic = synthetic.append(new_row, ignore_index=True)
 
     synthetic = raw_counts.append(synthetic)
-    if not write:
-        return synthetic, labels
-    
-    
+       
     synthetic['labels'] = labels
     if write:
         synthetic.to_csv("~/Google Drive/Computational Genomics/synthetic.csv")
 
+    return synthetic.as_matrix(), labels.as_matrix()
 
 # Supervised classification using sythetic data
 def syntheticTesting(X_geneCounts, y_doubletLabels, useTruncSVD=False):
