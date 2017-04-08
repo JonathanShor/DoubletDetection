@@ -18,7 +18,7 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.mixture import GaussianMixture
 from sklearn.neighbors import NearestNeighbors
 import matplotlib.pyplot as plt
-from synthetic import create_synthetic_data
+from synthetic
 from synthetic import DOUBLETRATE as SYNTHDOUBLETRATE
 from synthetic import getCellTypes
 import utils
@@ -26,6 +26,58 @@ import utils
 FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
 DOUBLETRATE = SYNTHDOUBLETRATE
 
+# Slow but works
+# Takes a pd DataFrame
+def create_synthetic_data(raw_counts, write=False, alpha1=1, alpha2=1):
+
+    synthetic = pd.DataFrame()
+
+    cell_count = raw_counts.shape[0]
+    doublet_rate = DOUBLETRATE
+    doublets = int(doublet_rate*cell_count/(1-doublet_rate))
+
+    # Add labels column to know which ones are doublets
+    labels = np.zeros(cell_count + doublets)
+    labels[cell_count:] = 1
+
+
+    for i in range(doublets):
+        row1 = int(np.random.rand()*cell_count)
+        row2 = int(np.random.rand()*cell_count)
+
+        new_row = alpha1*raw_counts.iloc[row1] + alpha2*raw_counts.iloc[row2]
+
+        synthetic = synthetic.append(new_row, ignore_index=True)
+
+    synthetic = raw_counts.append(synthetic)
+    if not write:
+        return synthetic, labels
+    
+    
+    synthetic['labels'] = labels
+    if write:
+        synthetic.to_csv("/Users/adamgayoso/Google Drive/Computational Genomics/synthetic.csv")
+
+def dataAcquisition(FNAME, normalize=False, useTFIDF=False, synthetic=False):
+    # Import counts
+    counts = pd.read_csv(FNAME, index_col=0)
+    labels = None
+    
+    if synthetic:
+        labels = counts['labels']
+        del counts['labels']
+        
+    # Normalize
+    if normalize:
+        # Replacing with NaN makes it easier to ignore these values
+        counts[counts == 0] = np.nan
+
+        if useTFIDF:
+            counts = normalize_tf_idf(counts)
+        else:   # 10x paper normalization
+            counts = normalize_counts_10x(counts)
+
+    return counts, labels
 
 # Elementary modeling
 def naive_bayes_bernoulli(counts, labels):
@@ -134,7 +186,34 @@ def analysisSuite(counts, usePCA=True):
     # KNN outlier detection
     distances = knn(GM_data, labels)
     far = distances[0][:,9]
-
+    
+def GMManalysisSuite(counts, doublet_labels):
+    
+    # Gaussian Mixture Model
+    library_size = counts.sum(axis=1)[:,np.newaxis]
+    num_genes = np.count_nonzero(counts, axis=1)[:,np.newaxis]
+    features = np.concatenate((library_size, num_genes), axis=1)
+    predictionsGM, probabilitiesGM = gaussian_mixture(features)
+    GMM_error1 = (len(doublet_labels) - np.sum(doublet_labels==predictionsGM))/len(doublet_labels)
+    GMM_error2 = (len(doublet_labels) - np.sum(doublet_labels==(1-predictionsGM)))/len(doublet_labels)
+    
+    print("Test error over all cells = ")
+    print(np.min([GMM_error1, GMM_error2]))
+    
+    # False positives, negative
+    doublets = np.where(doublet_labels == 1)[0]
+    GMM_error1 = (len(doublet_labels[doublets]) - np.sum(doublet_labels[doublets]==predictionsGM[doublets]))/len(doublet_labels[doublets])
+    GMM_error2 = (len(doublet_labels[doublets]) - np.sum(doublet_labels[doublets]==(1-predictionsGM[doublets])))/len(doublet_labels[doublets])
+    print("Test error over synthetic doublets = ")
+    print(np.min([GMM_error1, GMM_error2]))
+    
+    # Attempting to do it within each phenograph cluster
+    pca = PCA(n_components=50)
+    reduced_counts = pca.fit_transform(counts)
+    communities, graph, Q = phenograph.cluster(reduced_counts)
+    
+    labels = np.append(doublet_labels[:,np.newaxis], communities[:,np.newaxis], axis=1)    
+    
 
 if __name__ == '__main__':
     start_time = time.time()
@@ -143,7 +222,7 @@ if __name__ == '__main__':
     raw_counts = utils.dataAcquisition(FNAME)
     # raw_counts = dataAcquisition(FNAME, normalize=True, useTFIDF=True)
 
-    synthetic, labels = create_synthetic_data(getCellTypes(raw_counts))
+    synthetic, labels = synthetic.create_synthetic_data(getCellTypes(raw_counts))
 
     # synthetic['labels'] = labels
 
@@ -152,5 +231,26 @@ if __name__ == '__main__':
 
     # syntheticTesting(synthetic.as_matrix(), labels)
     # analysisSuite(synthetic)
+    
+    # FROM OLD
+    # Import counts
+    # Normalize = False returns DataFrame
+    raw_counts, _ = dataAcquisition(FNAME, normalize=False)
+    
+    synthetic, labels = create_synthetic_data(raw_counts, write=False, 0.5, 0.5)
+    #synthetic, labels = dataAcquisition(SYN_FNAME, normalize=True, synthetic=True)
+    perm = np.random.permutation(synthetic.shape[0])
+    
+    counts = synthetic[perm]
+    doublet_labels = labels.as_matrix()
+    doublet_labels = doublet_labels[perm]
+    
+    #synthetic = pd.read_csv(SYN_FNAME, index_col=0)
+    #synthetic = synthetic.as_matrix()
+    #doublet_label = synthetic[:, len(synthetic[0])-1]
+    #syn_counts = synthetic[:,:len(synthetic[0])-1]
+
+    
+    #GMManalysisSuite(counts, doublet_labels)
 
     print("Total run time: {0:.2f} seconds".format(time.time() - start_time))
