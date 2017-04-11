@@ -19,11 +19,14 @@ DOUBLETRATE = 0.07
 
 
 # TODO: Remove these print blocking funcs
-import sys, os
+import sys
+import os
+
 
 # Disable
 def blockPrint():
     sys.stdout = open(os.devnull, 'w')
+
 
 # Restore
 def enablePrint():
@@ -64,19 +67,11 @@ def create_synthetic_data(celltypes=None, doublet_weight=1):
     # Create non-doublet base data
     for i, cellcount in enumerate(cellcounts):
         synthetic = np.concatenate((synthetic,
-                                   sampleCellRead(mean_reads[i], celltypesProb[i], cellcount)),
+                                    sampleCellRead(mean_reads[i], celltypesProb[i], cellcount)),
                                    axis=0)
     num_cells = synthetic.shape[0]
     assert num_cells == np.sum(cellcounts), (
         "made num_cells:{0}, expect np.sum(cellcounts): {1}".format(num_cells, np.sum(cellcounts)))
-
-    # print ("pd.Series(np.sum(synthetic, axis=1)).describe()",
-    #        pd.Series(np.sum(synthetic, axis=1)).describe())
-    # celltypesProbnan = celltypesProb.copy()
-    # celltypesProbnan[celltypesProbnan == 0] = np.nan
-    # print ("(Mean, count, mean_reads), non-zero entries of celltypesProb: ",
-    #        [(np.nanmean(x), np.count_nonzero(~np.isnan(x)), mean_reads[i])
-    #         for i, x in enumerate([celltypesProbnan])])
     assert np.count_nonzero(np.sum(synthetic, axis=1) == 0) == 0, (
         "{} cells with zero reads... ".format(np.count_nonzero(np.sum(synthetic, axis=1) == 0)))
 
@@ -84,8 +79,7 @@ def create_synthetic_data(celltypes=None, doublet_weight=1):
     num_doublets = int(num_cells * DOUBLETRATE)
     doublets = np.random.permutation(num_cells)[:num_doublets]
     for doublet in doublets:
-        # TODO: pick celltype to mix with chance proportional to cellcounts
-        type_i = np.random.randint(genecounts.shape[0])
+        type_i = np.random.choice(range(len(cellcounts)), p=cellcounts / sum(cellcounts))
         synthetic[doublet] = (synthetic[doublet] * doublet_weight +
                               sampleCellRead(mean_reads[type_i], celltypesProb[type_i]))
 
@@ -102,10 +96,20 @@ def create_synthetic_data(celltypes=None, doublet_weight=1):
     return synthetic, labels
 
 
+# Return mean of cluster members for each cluster
+def getCentroids(data, clusters):
+    assert all(np.arange(max(clusters) + 1) == np.unique(clusters)), "gap in cluster IDs"
+    centroids = np.empty_like(data[:max(clusters)])
+    for i in range(len(centroids)):
+        centroids[i] = np.mean(data[clusters == i], axis=0)
+    return centroids
+
+
 # Cell type generation for synthetic data generation
 # Return dictionary of genecounts for each type (2d), and relative cellcounts (1d)
-def getCellTypes(counts=None, PCA_components=30):
+def getCellTypes(counts=None, PCA_components=30, shrink=0.01):
     if counts is None:
+        # TODO: Implement randomly generated celltypes?
         raise Exception("Random celltype generation not implemented.")
     else:
         try:
@@ -113,8 +117,8 @@ def getCellTypes(counts=None, PCA_components=30):
         except AttributeError:
             npcounts = counts
 
-        # Naive initial attempt: does not remove dublets in the orig data in any way
-        # TODO: Revise to remove doublet noise (to at least some degree)
+        # Basic doublet removal: each cluster pruned by shrink% most-distant-from-centroid cells
+        # TODO: Better doublet removal techniques?
         reduced_counts = PCA(n_components=PCA_components).fit_transform(npcounts)
         blockPrint()
         communities, graph, Q = phenograph.cluster(reduced_counts)
@@ -122,15 +126,38 @@ def getCellTypes(counts=None, PCA_components=30):
         print("Found these communities: {0}, with sizes: {1}".format(np.unique(communities),
               [np.count_nonzero(communities == i) for i in np.unique(communities)]))
 
-        # Throw out outliers in cluster -1
+        # Throw out outlier cluster (ID = -1)
         npcounts = npcounts[communities >= 0]
         communities = communities[communities >= 0]
 
+        preshrink_cellcounts = np.array([np.count_nonzero(communities == i) for i in
+                                        np.unique(communities)])
+
+        # assert all(np.arange(max(communities) + 1) == np.unique(communities)), (
+        #     "gap in communities IDs")
+        # Shrink each community by shrink, ranked by l_2 distance from cluster centroid
+        centroids = getCentroids(npcounts, communities)
+        distances = np.zeros(npcounts.shape[0])
+        for i, centroid in enumerate(centroids):
+            members = np.nonzero(communities == i)[0]
+
+            # set each cell's distance from its centroid
+            for member in members:
+                distances[member] = np.linalg.norm(npcounts[member] - centroid, ord=2, axis=0)
+
+            # Delete the smallest shrink%
+            for _ in range(int(preshrink_cellcounts[i] * shrink)):
+                smallest = np.argsort(distances[members])[0]
+                npcounts = np.delete(npcounts, smallest, axis=0)
+                communities = np.delete(communities, smallest, axis=0)
+                distances = np.delete(distances, smallest, axis=0)
+
         cellcounts = np.array([np.count_nonzero(communities == i) for i in np.unique(communities)])
+        assert sum(preshrink_cellcounts) * (1 - shrink) <= sum(cellcounts), "bad shrink"
 
         # genecounts = np.zeros((max(communities), npcounts.shape[1]))
         genecounts = np.array([np.sum(npcounts[communities == i], axis=0)
-                              for i in np.unique(communities)])
+                               for i in np.unique(communities)])
         assert ~(any(np.max(genecounts, axis=1) == 0)), "zero vector celltype"
         genecounts = genecounts / (CELLTYPESAMPLEMEAN * cellcounts.reshape(-1, 1))
 
@@ -164,17 +191,17 @@ def create_simple_synthetic_data(raw_counts, write=False, alpha1=1, alpha2=1):
 
     cell_count = raw_counts.shape[0]
     doublet_rate = DOUBLETRATE
-    doublets = int(doublet_rate*cell_count/(1-doublet_rate))
+    doublets = int(doublet_rate * cell_count / (1 - doublet_rate))
 
     # Add labels column to know which ones are doublets
     labels = np.zeros(cell_count + doublets)
     labels[cell_count:] = 1
 
     for i in range(doublets):
-        row1 = int(np.random.rand()*cell_count)
-        row2 = int(np.random.rand()*cell_count)
+        row1 = int(np.random.rand() * cell_count)
+        row2 = int(np.random.rand() * cell_count)
 
-        new_row = alpha1*raw_counts.iloc[row1] + alpha2*raw_counts.iloc[row2]
+        new_row = alpha1 * raw_counts.iloc[row1] + alpha2 * raw_counts.iloc[row2]
 
         synthetic = synthetic.append(new_row, ignore_index=True)
 
@@ -189,14 +216,23 @@ def create_simple_synthetic_data(raw_counts, write=False, alpha1=1, alpha2=1):
 
 # Supervised classification using sythetic data
 def syntheticTesting(X_geneCounts, y_doubletLabels, useTruncSVD=False):
+    try:
+        X_geneCounts = X_geneCounts.as_matrix()
+    except AttributeError:
+        pass
+    try:
+        y_doubletLabels = y_doubletLabels.as_matrix()
+    except AttributeError:
+        pass
+
     # X_standardized = normalize_counts_10x(X_geneCounts)
 
     # Naive classifier test: library size
-    librarySize = X_geneCounts.sum(axis=1).reshape(-1, 1)
+    librarySize = np.sum(X_geneCounts, axis=1).reshape(-1, 1)
     # librarySizeSt = X_standardized.sum(axis=1).reshape(-1, 1)
-    print("librarySize.shape: ", (librarySize.shape))
+    print("librarySize.shape: {}".format(librarySize.shape))
     # print("X_stardardized.shape: ", (X_stardardized.shape))
-    print("y_doubletLabels.shape: ", (y_doubletLabels.shape))
+    print("y_doubletLabels.shape: {}".format(y_doubletLabels.shape))
     testModel(BernoulliNB(), librarySize, y_doubletLabels, 'Library size; NBB')
     # testModel(BernoulliNB(), librarySizeSt, y_doubletLabels, 'Library size; NBB, standardized X')
     # clfGMM = GaussianMixture(n_components=2, weights_init=[1 - DOUBLETRATE, DOUBLETRATE])
@@ -212,8 +248,11 @@ def syntheticTesting(X_geneCounts, y_doubletLabels, useTruncSVD=False):
         X_reduced_counts = pca.fit_transform(X_geneCounts)
 
     # Run Phenograph
+    blockPrint()
     communities, graph, Q = phenograph.cluster(X_reduced_counts)
-    print("Num communities found: {}".format(communities.max_()))
+    enablePrint()
+    print("Found these communities: {0}, with sizes: {1}".format(np.unique(communities),
+          [np.count_nonzero(communities == i) for i in np.unique(communities)]))
 
     for communityID in np.unique(communities):
         X_community = X_geneCounts[communities == communityID]

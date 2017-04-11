@@ -14,9 +14,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 
-def dataAcquisition(FNAME, normalize=False):
+# To read only the first X rows, set read_rows=X
+def dataAcquisition(FNAME, normalize=False, read_rows=None):
     # Import counts
-    counts = pd.read_csv(FNAME, index_col=0)
+    counts = pd.read_csv(FNAME, index_col=0, nrows=read_rows)
 
     # Normalize
     if normalize:
@@ -99,7 +100,8 @@ def testModel(model, X, y, testName, testSize=0.2, randomState=None):
 
     model.fit(X_train, y_train)
     predictions = model.predict(X_test)
-    precision, recall, f1_score = precision_recall_fscore_support(y_test, predictions)
+    precision, recall, f1_score, _ = precision_recall_fscore_support(y_test, predictions,
+                                                                     average='micro')
     # probabilities = model.predict_proba(X)
     print ("{0} train set score: {1:.4g}".format(testName, model.score(X_train, y_train)))
     print ("{0} test set score: {1:.4g}".format(testName, model.score(X_test, y_test)))
