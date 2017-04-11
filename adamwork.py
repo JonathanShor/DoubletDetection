@@ -21,6 +21,7 @@ import utils
 from classifiers import *
 
 FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
+SYN_FNAME = "~/Google Drive/Computational Genomics/synthetic.csv"
 DOUBLETRATE = SYNTHDOUBLETRATE
 
 
@@ -96,11 +97,11 @@ def GMManalysis(counts, doublet_labels):
     print(np.min([GMM_error1, GMM_error2]))
     
     # Attempting to do it within each phenograph cluster
-    pca = PCA(n_components=50)
-    reduced_counts = pca.fit_transform(counts)
-    communities, graph, Q = phenograph.cluster(reduced_counts)
+    #pca = PCA(n_components=50)
+    #reduced_counts = pca.fit_transform(counts)
+    #communities, graph, Q = phenograph.cluster(reduced_counts)
     
-    labels = np.append(doublet_labels[:,np.newaxis], communities[:,np.newaxis], axis=1)    
+    #labels = np.append(doublet_labels[:,np.newaxis], communities[:,np.newaxis], axis=1)    
     
 
 if __name__ == '__main__':
@@ -108,7 +109,7 @@ if __name__ == '__main__':
 
     # Import counts
     # Normalize = False returns DataFrame
-    raw_counts, _ = utils.dataAcquisition(FNAME, normalize=False)
+    raw_counts = utils.dataAcquisition(FNAME, normalize=False)
     
     probabilistic = False
     
@@ -119,14 +120,14 @@ if __name__ == '__main__':
     else: 
         
         #Simple synthetic data
-        synthetic, doublet_labels = create_simple_synthetic_data(raw_counts, write=False, 0.5, 0.5)
-        #synthetic, labels = dataAcquisition(SYN_FNAME, normalize=True, synthetic=True)
+        #synthetic, doublet_labels = create_simple_synthetic_data(raw_counts, 1, 1)
+        synthetic, doublet_labels = utils.synthAcquisition(SYN_FNAME, normalize=True)
         perm = np.random.permutation(synthetic.shape[0])
     
         counts = synthetic[perm]
         doublet_labels = doublet_labels[perm]
         
         
-    GMManalysisSuite(synthetic, doublet_labels)
+    GMManalysis(counts, doublet_labels)
 
     print("Total run time: {0:.2f} seconds".format(time.time() - start_time))
