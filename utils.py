@@ -32,11 +32,19 @@ def dataAcquisition(FNAME, normalize=False, read_rows=None):
     return counts
 
 
-def synthAcquisition(FNAME, normalize=False):
-    counts = dataAcquisition(FNAME, normalize=normalize)
+def synthAcquisition(FNAME, normalize=True):
+    #Get raw counts in DataFrame format
+    counts = dataAcquisition(FNAME, normalize=False)
+    
+    #Separate labels
     labels = counts['labels']
     del counts['labels']
     doublet_labels = labels.as_matrix()
+    
+    #Normalize counts
+    if normalize:
+        counts = normalize_counts_10x(counts)
+        
     return counts, doublet_labels
 
 
@@ -62,6 +70,10 @@ def normalize_tf_idf(X):
 # Takes PD dataframe
 # Following method in 10x paper
 def normalize_counts_10x(raw_counts, doStandardize=True):
+    
+    # Set 0s to NaN to make calculations work more smoothly
+    raw_counts[raw_counts == 0] = np.nan
+    
     # Sum across cells and divide each cell by sum
     cell_sums = raw_counts.sum(axis=1).as_matrix()
     raw_counts = raw_counts.as_matrix()
