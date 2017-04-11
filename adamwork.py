@@ -120,14 +120,15 @@ if __name__ == '__main__':
     else: 
         
         #Simple synthetic data
-        #synthetic, doublet_labels = create_simple_synthetic_data(raw_counts, 1, 1)
-        synthetic, doublet_labels = utils.synthAcquisition(SYN_FNAME, normalize=True)
+        synthetic, doublet_labels = create_simple_synthetic_data(raw_counts, 0.5, 0.5, normalize=True)
+        #synthetic, doublet_labels = utils.synthAcquisition(SYN_FNAME, normalize=True)
+        #synthetic = synthetic.as_matrix()
         perm = np.random.permutation(synthetic.shape[0])
     
         counts = synthetic[perm]
         doublet_labels = doublet_labels[perm]
         
         
-    GMManalysis(counts, doublet_labels)
+        GMManalysis(counts, doublet_labels)
 
     print("Total run time: {0:.2f} seconds".format(time.time() - start_time))

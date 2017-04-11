@@ -13,6 +13,7 @@ from sklearn.decomposition import PCA
 from sklearn.mixture import GaussianMixture
 from sklearn.naive_bayes import BernoulliNB
 from utils import testModel
+from utils import normalize_counts_10x
 
 CELLTYPESAMPLEMEAN = 0.05   # Mean percent of cell gene expression captured per cell read
 DOUBLETRATE = 0.07
@@ -185,7 +186,7 @@ def checkSyntheticDistance(synthetic, labels):
 # Slow but works
 # Takes a pd DataFrame
 # Returns numpy matrices
-def create_simple_synthetic_data(raw_counts, alpha1, alpha2, write=False):
+def create_simple_synthetic_data(raw_counts, alpha1, alpha2, write=False, normalize=False):
 
     synthetic = pd.DataFrame()
 
@@ -206,10 +207,14 @@ def create_simple_synthetic_data(raw_counts, alpha1, alpha2, write=False):
         synthetic = synthetic.append(new_row, ignore_index=True)
 
     synthetic = raw_counts.append(synthetic)
-
+    
     if write:
         synthetic['labels'] = labels
         synthetic.to_csv("~/Google Drive/Computational Genomics/synthetic.csv")
+        
+    if normalize:
+        synthetic = normalize_counts_10x(synthetic)
+        return synthetic, labels
 
     return synthetic.as_matrix(), labels
 
