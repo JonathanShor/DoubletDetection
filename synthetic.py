@@ -121,9 +121,9 @@ def getCellTypes(counts=None, PCA_components=30, shrink=0.01):
         # Basic doublet removal: each cluster pruned by shrink% most-distant-from-centroid cells
         # TODO: Better doublet removal techniques?
         reduced_counts = PCA(n_components=PCA_components).fit_transform(npcounts)
-        blockPrint()
+        #blockPrint()
         communities, graph, Q = phenograph.cluster(reduced_counts)
-        enablePrint()
+        #enablePrint()
         print("Found these communities: {0}, with sizes: {1}".format(np.unique(communities),
               [np.count_nonzero(communities == i) for i in np.unique(communities)]))
 
@@ -253,9 +253,9 @@ def syntheticTesting(X_geneCounts, y_doubletLabels, useTruncSVD=False):
         X_reduced_counts = pca.fit_transform(X_geneCounts)
 
     # Run Phenograph
-    blockPrint()
+    #blockPrint()
     communities, graph, Q = phenograph.cluster(X_reduced_counts)
-    enablePrint()
+    #enablePrint()
     print("Found these communities: {0}, with sizes: {1}".format(np.unique(communities),
           [np.count_nonzero(communities == i) for i in np.unique(communities)]))
 

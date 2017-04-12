@@ -77,12 +77,22 @@ def basic_analysis(counts, doublet_label, usePCA=True):
     far = distances[0][:,9]
 
 
-def GMManalysis(counts, doublet_labels):
+def GMManalysis(counts, doublet_labels, includePCA=False):
     # Gaussian Mixture Model
     library_size = counts.sum(axis=1)[:,np.newaxis]
     num_genes = np.count_nonzero(counts, axis=1)[:,np.newaxis]
-    features = np.concatenate((library_size, num_genes), axis=1)
-    predictionsGM, probabilitiesGM = gaussian_mixture(features)
+    
+    if includePCA:
+        pca = PCA(n_components=10)
+        reduced_counts = pca.fit_transform(counts)
+        features = np.concatenate((library_size, num_genes, reduced_counts), axis=1)
+    else:   
+        features = np.concatenate((library_size, num_genes), axis=1)
+    
+    # Changing weights based on method possible
+    predictionsGM, probabilitiesGM = gaussian_mixture(features, weights=[0.93,0.07])
+    
+    # Error rates
     GMM_error1 = (len(doublet_labels) - np.sum(doublet_labels==predictionsGM))/len(doublet_labels)
     GMM_error2 = (len(doublet_labels) - np.sum(doublet_labels==(1-predictionsGM)))/len(doublet_labels)
     
@@ -116,7 +126,8 @@ if __name__ == '__main__':
     if probabilistic:
         
         # Probabilistic synthetic data
-        synthetic, doublet_labels = create_synthetic_data(getCellTypes(raw_counts))
+        counts, doublet_labels = create_synthetic_data(getCellTypes(raw_counts, PCA_components=50, shrink=0))
+
     else: 
         
         #Simple synthetic data
@@ -129,6 +140,6 @@ if __name__ == '__main__':
         doublet_labels = doublet_labels[perm]
         
         
-        GMManalysis(counts, doublet_labels)
+    GMManalysis(counts, doublet_labels, includePCA=True)
 
     print("Total run time: {0:.2f} seconds".format(time.time() - start_time))
