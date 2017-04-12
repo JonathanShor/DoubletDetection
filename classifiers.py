@@ -43,9 +43,11 @@ def naive_bayes_multinomial(counts, labels):
     return predictions, probabilities
 
 
-def gaussian_mixture(counts):
 
-    clf = GaussianMixture(n_components=2, weights_init = [0.87, 0.13])
+def gaussian_mixture(counts, weights=[0.93,0.07]):
+
+
+    clf = GaussianMixture(n_components=2, weights_init = weights)
     clf.fit(counts)
     predictions = clf.predict(counts)
     probabilities = clf.predict_proba(counts)
