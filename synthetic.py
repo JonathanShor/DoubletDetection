@@ -138,8 +138,9 @@ def getCellTypes(counts=None, PCA_components=30, shrink=0.01):
         # Shrink each community by shrink, ranked by l_2 distance from cluster centroid
         centroids = getCentroids(npcounts, communities)
         distances = np.zeros(npcounts.shape[0])
+        to_shrink = []
         for i, centroid in enumerate(centroids):
-            members = np.nonzero(communities == i)[0]
+            members = np.nonzero(communities == i)[0]   # Current cluster's indexes in npcount
 
             # set each cell's distance from its centroid
             for member in members:
@@ -147,15 +148,21 @@ def getCellTypes(counts=None, PCA_components=30, shrink=0.01):
 
             # Delete the smallest shrink%
             for _ in range(int(preshrink_cellcounts[i] * shrink)):
-                smallest = np.argsort(distances[members])[0]
-                npcounts = np.delete(npcounts, smallest, axis=0)
-                communities = np.delete(communities, smallest, axis=0)
-                distances = np.delete(distances, smallest, axis=0)
+                smallest_member = np.argsort(distances[members])[0]
+                to_shrink.append(members[smallest_member])  # Translate to index in full npcounts
+                distances[to_shrink[-1]] = np.inf
+
+        assert len(to_shrink) == len(np.unique(to_shrink)), (
+            "repeats in to_shrink: {}".format(to_shrink))
+        shrunk = np.setdiff1d(np.arange(len(npcounts)), to_shrink)
+        npcounts = npcounts[shrunk]
+        communities = communities[shrunk]
 
         cellcounts = np.array([np.count_nonzero(communities == i) for i in np.unique(communities)])
         assert sum(preshrink_cellcounts) * (1 - shrink) <= sum(cellcounts), "bad shrink"
+        assert sum(cellcounts) == npcounts.shape[0], "cellcounts does not match npcounts.shape[0]"
+        assert sum(cellcounts) == len(communities), "cellcounts does not match len(communities)"
 
-        # genecounts = np.zeros((max(communities), npcounts.shape[1]))
         genecounts = np.array([np.sum(npcounts[communities == i], axis=0)
                                for i in np.unique(communities)])
         assert ~(any(np.max(genecounts, axis=1) == 0)), "zero vector celltype"
