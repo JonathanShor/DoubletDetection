@@ -140,6 +140,7 @@ if __name__ == '__main__':
         doublet_labels = doublet_labels[perm]
         
         
-    GMManalysis(counts, doublet_labels, includePCA=True)
+
+        GMManalysis(counts, doublet_labels)
 
     print("Total run time: {0:.2f} seconds".format(time.time() - start_time))
