@@ -181,14 +181,18 @@ def getCellTypes(counts=None, PCA_components=30, shrink=0.01):
 
 # Print l_2 distance from each synthetic cell to closest non-synth.
 # Average distance from non-synth to closest other non-synth printed for comparison
-def checkSyntheticDistance(synthetic, labels):
-    # synthetic = synthetic.as_matrix()
+def checkSyntheticDistance(synth, labels):
+    try:
+        synthetic = synth.as_matrix()
+    except AttributeError:
+        synthetic = synth
     raw_counts = synthetic[labels == 0]
     print("Mean minimum l_2 distance between cells: {0:.4f}".format(
           np.array([np.min(np.linalg.norm(raw_counts[np.arange(len(raw_counts)) != i] - x, ord=2,
                                           axis=1)) for i, x in enumerate(raw_counts)]).mean()))
     min_synth_sim = np.array([np.min(np.linalg.norm(synthetic[labels == 0] - i, ord=2, axis=1))
                               for i in synthetic[labels == 1]])
+    print("Min distance from each doublet to non-doublet:\n")
     print(np.round(min_synth_sim, 4).reshape(-1, 1))
 
 
