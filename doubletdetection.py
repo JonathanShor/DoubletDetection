@@ -20,8 +20,6 @@ from synthetic import getCellTypes
 import utils
 from classifiers import *
 
-FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
-SYN_FNAME = "~/Google Drive/Computational Genomics/synthetic.csv"
 PCA_COMPONENTS = 30
 
 def classify(FNAME, probabilistic = False):
@@ -29,7 +27,8 @@ def classify(FNAME, probabilistic = False):
     Classifier for doublets in single-cell RNA-seq data
     :param FNAME: path to csv file containing data
     :param probabilistic: option to use sampled doublets vs linear doublets
-    :return score: doublet score for each row in test
+    :return raw_counts: raw_counts in numpy ndarray format
+    :return scores: doublet score for each row in test
     """
     
     # Import counts
@@ -72,9 +71,9 @@ def classify(FNAME, probabilistic = False):
     score = score[order]
     # Only keep scores for real points
     score = score[:raw_counts.shape[0],:]
-    test = score[np.where(score>0.35)[0]]
     
-    return score
+    
+    return raw_counts, scores
     
     
     
