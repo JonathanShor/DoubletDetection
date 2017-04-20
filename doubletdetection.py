@@ -58,17 +58,17 @@ def classify(FNAME, probabilistic = False):
     phenolabels = np.append(communities[:,np.newaxis], doublet_labels[:,np.newaxis], axis=1)
     
     synth_doub_count = {}
-    score = np.zeros((len(communities), 1))
+    scores = np.zeros((len(communities), 1))
     for c in np.unique(communities):
         c_indices = np.where(phenolabels[:,0] == c)[0]
         synth_doub_count[c] = np.sum(phenolabels[c_indices,1])/float(c_count[c])
-        score[c_indices] = synth_doub_count[c]
+        scores[c_indices] = synth_doub_count[c]
         
     # Reordering the scores to back out the original permutation
     order = np.argsort(perm) 
-    score = score[order]
+    scores = scores[order]
     # Only keep scores for real points
-    score = score[:raw_counts.shape[0],:]
+    scores = scores[:raw_counts.shape[0],:]
     
     
     return raw_counts, scores
