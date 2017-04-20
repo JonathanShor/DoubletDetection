@@ -28,7 +28,7 @@ for s in range(20, 80, 2):
     test = scores[np.where(scores>cutoff)[0]]
     print(cutoff, len(test))
     
-print(np.sum(true_doublet_labels[np.where(scores>0.33)[0]])/float(len(scores[np.where(scores>0.33)[0]])))
+print(np.sum(true_doublet_labels[np.where(scores>0.63)[0]])/float(len(scores[np.where(scores>0.63)[0]])))
     
 # Visualize tSNE clustering
 # Different color for each cluster and a different mark for identified doublet 

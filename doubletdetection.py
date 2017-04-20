@@ -21,7 +21,7 @@ import utils
 from classifiers import *
 
 PCA_COMPONENTS = 30
-DOUBLET_RATE = 0.15
+DOUBLET_RATE = 0.20
 
 def classify(raw_counts, probabilistic = False):
     """
