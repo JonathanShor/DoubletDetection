@@ -23,10 +23,10 @@ from classifiers import *
 PCA_COMPONENTS = 30
 DOUBLET_RATE = 0.15
 
-def classify(FNAME, probabilistic = False):
+def classify(raw_counts, probabilistic = False):
     """
     Classifier for doublets in single-cell RNA-seq data
-    :param FNAME: path to csv file containing data
+    :param raw_counts: count table in pandas DF format
     :param probabilistic: option to use sampled doublets vs linear doublets
     :return raw_counts: raw_counts in numpy ndarray format
     :return scores: doublet score for each row in test
@@ -34,7 +34,6 @@ def classify(FNAME, probabilistic = False):
     
     # Import counts
     # Normalize = False returns DataFrame
-    raw_counts = utils.dataAcquisition(FNAME, normalize=False)
     
     if probabilistic == True:
         #Probabilistc doublets
@@ -50,7 +49,8 @@ def classify(FNAME, probabilistic = False):
         doublet_labels = np.zeros((int(raw_counts.shape[0]*(1+DOUBLET_RATE)),))
         doublet_labels[raw_counts.shape[0]:] = 1
     else: 
-        #Simple synthetic data
+        # Simple synthetic data
+        # Requires pd DataFrame
         synthetic, doublet_labels = create_simple_synthetic_data(raw_counts, 0.7, 0.7, normalize=True, doublet_rate=DOUBLET_RATE)
     
     # Shuffle data
@@ -85,17 +85,14 @@ def classify(FNAME, probabilistic = False):
 
 
 
-def validate(FNAME):
+def validate(raw_counts):
     """
     Validate methodology using only probabilistic synthetic data
-    :param FNAME: path to csv file containing data
+    :param raw_counts: count table in pandas DF format    
     :return raw_counts: raw_counts in numpy ndarray format
     :return scores: doublet score for each row in test
     """
-    
-    # Import counts
-    # Normalize = False returns DataFrame
-    raw_counts = utils.dataAcquisition(FNAME, normalize=False)
+
     
     # Probabilistic synthetic data
     print("Getting cell types...")
