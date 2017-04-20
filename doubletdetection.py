@@ -141,4 +141,4 @@ def validate(FNAME):
     scores = scores[:raw_counts.shape[0],:]
     
     
-    return raw_counts.as_matrix().astype(np.float64), scores, communities[:raw_counts.shape[0]]
+    return raw_counts.as_matrix().astype(np.float64), scores, communities[:raw_counts.shape[0]], true_doublet_labels

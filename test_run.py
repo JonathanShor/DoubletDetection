@@ -15,8 +15,8 @@ FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
 SYN_FNAME = "~/Google Drive/Computational Genomics/synthetic.csv"
 
 # Get scores
-raw_counts, scores, communities = doubletdetection.classify(FNAME, probabilistic=True)
-
+#raw_counts, scores, communities = doubletdetection.classify(FNAME, probabilistic=True)
+raw_counts, scores, communities, true_doublet_labels = doubletdetection.validate(FNAME)
 
 for s in range(20, 80, 2):
     cutoff = s/float(100)
@@ -26,7 +26,7 @@ for s in range(20, 80, 2):
 # Visualize tSNE clustering
 # Different color for each cluster and a different mark for identified doublet 
 # Only visualize raw counts
-counts = doubletdetection.utils.normalize_counts_10x(raw_counts)
+#counts = doubletdetection.utils.normalize_counts_10x(raw_counts)
 
 #tsne_counts = TSNE.fit_transform(counts)
 
