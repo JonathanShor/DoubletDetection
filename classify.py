@@ -74,6 +74,8 @@ def classify(FNAME, probabilistic = False):
     score = score[:raw_counts.shape[0],:]
     test = score[np.where(score>0.35)[0]]
     
+    return score
+    
     
     
 #classify(FNAME)
