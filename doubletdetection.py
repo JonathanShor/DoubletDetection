@@ -15,12 +15,13 @@ from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 from synthetic import create_synthetic_data
 from synthetic import create_simple_synthetic_data
-from synthetic import DOUBLETRATE as SYNTHDOUBLETRATE
 from synthetic import getCellTypes
+from synthetic import doubletFromCelltype
 import utils
 from classifiers import *
 
 PCA_COMPONENTS = 30
+DOUBLET_RATE = 0.15
 
 def classify(FNAME, probabilistic = False):
     """
@@ -35,18 +36,27 @@ def classify(FNAME, probabilistic = False):
     # Normalize = False returns DataFrame
     raw_counts = utils.dataAcquisition(FNAME, normalize=False)
     
-    if probabilistic:
+    if probabilistic == True:
+        #Probabilistc doublets
+        cell_types = getCellTypes(raw_counts, PCA_components=PCA_COMPONENTS, shrink=0.01)
+        doublets = np.zeros((int(DOUBLET_RATE*raw_counts.shape[0]), raw_counts.shape[1]))
+        for i in range(int(DOUBLET_RATE*raw_counts.shape[0])):
+            doublets[i] = doubletFromCelltype(cell_types)  
         
-        # Probabilistic synthetic data
-        counts, doublet_labels = create_synthetic_data(getCellTypes(raw_counts, PCA_components=50, shrink=0))
+        counts = raw_counts.as_matrix()
+        synthetic = np.append(counts, doublets, axis=0)
+        synthetic = utils.normalize_counts_10x(synthetic)
 
+        doublet_labels = np.zeros((int(raw_counts.shape[0]*(1+DOUBLET_RATE)),))
+        doublet_labels[raw_counts.shape[0]:] = 1
     else: 
-        
         #Simple synthetic data
-        synthetic, doublet_labels = create_simple_synthetic_data(raw_counts, 0.7, 0.7, normalize=True, doublet_rate=0.15)
-        perm = np.random.permutation(synthetic.shape[0])    
-        counts = synthetic[perm]
-        doublet_labels = doublet_labels[perm]
+        synthetic, doublet_labels = create_simple_synthetic_data(raw_counts, 0.7, 0.7, normalize=True, doublet_rate=DOUBLET_RATE)
+    
+    # Shuffle data
+    perm = np.random.permutation(synthetic.shape[0])    
+    counts = synthetic[perm]
+    doublet_labels = doublet_labels[perm]
         
     # Get phenograph results  
     pca = PCA(n_components=PCA_COMPONENTS)
@@ -54,7 +64,7 @@ def classify(FNAME, probabilistic = False):
     communities, graph, Q = phenograph.cluster(reduced_counts)
     c_count = collections.Counter(communities)
 
-
+    # Count number of fake doublets in each community and assign score
     phenolabels = np.append(communities[:,np.newaxis], doublet_labels[:,np.newaxis], axis=1)
     
     synth_doub_count = {}
@@ -71,4 +81,64 @@ def classify(FNAME, probabilistic = False):
     scores = scores[:raw_counts.shape[0],:]
     
     
-    return raw_counts, scores
+    return raw_counts.as_matrix().astype(np.float64), scores, communities[:raw_counts.shape[0]]
+
+
+
+def validate(FNAME):
+    """
+    Validate methodology using only probabilistic synthetic data
+    :param FNAME: path to csv file containing data
+    :return raw_counts: raw_counts in numpy ndarray format
+    :return scores: doublet score for each row in test
+    """
+    
+    # Import counts
+    # Normalize = False returns DataFrame
+    raw_counts = utils.dataAcquisition(FNAME, normalize=False)
+    
+    # Probabilistic synthetic data
+    print("Getting cell types...")
+    cell_types = getCellTypes(raw_counts, PCA_components=PCA_COMPONENTS, shrink=0.01)
+    counts, true_doublet_labels = create_synthetic_data(cell_types)
+        
+    print("Creating new doublets")
+    doublets = np.zeros((int(DOUBLET_RATE*raw_counts.shape[0]), raw_counts.shape[1]))
+    doublet_labels = np.zeros((int(raw_counts.shape[0]*(1+DOUBLET_RATE)),))
+    doublet_labels[raw_counts.shape[0]:] = 1
+        
+    for i in range(int(DOUBLET_RATE*raw_counts.shape[0])):
+        doublets[i] = doubletFromCelltype(cell_types)
+            
+    synthetic = np.append(counts, doublets, axis=0)
+    synthetic = utils.normalize_counts_10x(synthetic)
+    
+    # Shuffle data
+    perm = np.random.permutation(synthetic.shape[0])    
+    counts = synthetic[perm]
+    doublet_labels = doublet_labels[perm]
+        
+    # Get phenograph results  
+    pca = PCA(n_components=PCA_COMPONENTS)
+    reduced_counts = pca.fit_transform(counts)
+    communities, graph, Q = phenograph.cluster(reduced_counts)
+    c_count = collections.Counter(communities)
+
+    # Count number of fake doublets in each community and assign score
+    phenolabels = np.append(communities[:,np.newaxis], doublet_labels[:,np.newaxis], axis=1)
+    
+    synth_doub_count = {}
+    scores = np.zeros((len(communities), 1))
+    for c in np.unique(communities):
+        c_indices = np.where(phenolabels[:,0] == c)[0]
+        synth_doub_count[c] = np.sum(phenolabels[c_indices,1])/float(c_count[c])
+        scores[c_indices] = synth_doub_count[c]
+        
+    # Reordering the scores to back out the original permutation
+    order = np.argsort(perm) 
+    scores = scores[order]
+    # Only keep scores for real points
+    scores = scores[:raw_counts.shape[0],:]
+    
+    
+    return raw_counts.as_matrix().astype(np.float64), scores, communities[:raw_counts.shape[0]]

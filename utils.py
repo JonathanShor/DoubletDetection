@@ -66,16 +66,21 @@ def normalize_tf_idf(X):
     return tfidf.transform(X)
 
 
-# Takes PD dataframe
+# Takes np array
 # Following method in 10x paper
 def normalize_counts_10x(raw_counts):
+    """
+    Normalizes count array using method in 10x pipeline  
+    :param raw_counts: numpy array of count data
+    :return normed: normalized data
+    """
     
     # Sum across cells and divide each cell by sum
-    cell_sums = raw_counts.sum(axis=1).as_matrix()
+    cell_sums = np.sum(raw_counts, axis=1)
     
     # Set 0s to NaN to make calculations work more smoothly
     raw_counts[raw_counts == 0] = np.nan
-    raw_counts = raw_counts.as_matrix()
+
 
     # Mutiply by median and divide by cell sum
     median = np.median(cell_sums)

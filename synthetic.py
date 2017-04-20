@@ -13,6 +13,7 @@ from sklearn.decomposition import PCA
 from sklearn.mixture import GaussianMixture
 from sklearn.naive_bayes import BernoulliNB
 from utils import normalize_counts_10x
+from contextlib import contextmanager
 
 CELLTYPESAMPLEMEAN = 0.05   # Mean percent of cell gene expression captured per cell read
 DOUBLETRATE = 0.07
@@ -155,7 +156,7 @@ def getCellTypes(counts=None, PCA_components=30, shrink=0.01):
         # assert all(np.arange(max(communities) + 1) == np.unique(communities)), (
         #     "gap in communities IDs")
         # Shrink each community by shrink, ranked by l_2 distance from cluster centroid
-        centroids = getCentroids(npcounts, communities)
+        centroids = getCentroids(reduced_counts, communities)
         distances = np.zeros(npcounts.shape[0])
         to_shrink = []
         for i, centroid in enumerate(centroids):
@@ -163,7 +164,7 @@ def getCellTypes(counts=None, PCA_components=30, shrink=0.01):
 
             # set each cell's distance from its centroid
             for member in members:
-                distances[member] = np.linalg.norm(npcounts[member] - centroid, ord=2, axis=0)
+                distances[member] = np.linalg.norm(reduced_counts[member] - centroid, ord=2, axis=0)
 
             # Delete the smallest shrink%
             for _ in range(int(preshrink_cellcounts[i] * shrink)):
@@ -219,13 +220,14 @@ def create_simple_synthetic_data(raw_counts, alpha1, alpha2, write=False, normal
     :param alpha1: weighting of row1 in sum
     :param alpha2: weighting of row2 in sum
     :param normalize: normalize data before returning
-    :return synthetic: synthetic data in numpy ndarray
-    :return labels: 0 for original data, 1 for fake doublet as ndarray
+    :return synthetic: synthetic data in numpy array
+    :return labels: 0 for original data, 1 for fake doublet as np array - 1d arrray
     """
     
     synthetic = pd.DataFrame()
 
     cell_count = raw_counts.shape[0]
+    # So that doublets make up doublet rate of total
     doublets = int(doublet_rate * cell_count / (1 - doublet_rate))
 
     # Add labels column to know which ones are doublets
@@ -241,6 +243,7 @@ def create_simple_synthetic_data(raw_counts, alpha1, alpha2, write=False, normal
         synthetic = synthetic.append(new_row, ignore_index=True)
 
     synthetic = raw_counts.append(synthetic)
+    synthetic = synthetic.as_matrix()
 
     if write:
         synthetic['labels'] = labels
@@ -248,6 +251,5 @@ def create_simple_synthetic_data(raw_counts, alpha1, alpha2, write=False, normal
 
     if normalize:
         synthetic = normalize_counts_10x(synthetic)
-        return synthetic, labels
 
-    return synthetic.as_matrix(), labels
+    return synthetic, labels
