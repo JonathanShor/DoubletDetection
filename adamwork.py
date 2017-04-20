@@ -131,7 +131,7 @@ if __name__ == '__main__':
     else: 
         
         #Simple synthetic data
-        synthetic, doublet_labels = create_simple_synthetic_data(raw_counts, 0.5, 0.5, normalize=True)
+        synthetic, doublet_labels = create_simple_synthetic_data(raw_counts, 0.7, 0.7, normalize=True, doublet_rate=0.4)
         #synthetic, doublet_labels = utils.synthAcquisition(SYN_FNAME, normalize=True)
         #synthetic = synthetic.as_matrix()
         perm = np.random.permutation(synthetic.shape[0])

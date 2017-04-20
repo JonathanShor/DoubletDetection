@@ -216,12 +216,12 @@ def checkSyntheticDistance(synth, labels):
 # Slow but works
 # Takes a pd DataFrame
 # Returns numpy matrices
-def create_simple_synthetic_data(raw_counts, alpha1, alpha2, write=False, normalize=False):
+def create_simple_synthetic_data(raw_counts, alpha1, alpha2, write=False, normalize=False, doublet_rate=DOUBLETRATE):
 
     synthetic = pd.DataFrame()
 
     cell_count = raw_counts.shape[0]
-    doublet_rate = DOUBLETRATE
+    #doublet_rate = DOUBLETRATE
     doublets = int(doublet_rate * cell_count / (1 - doublet_rate))
 
     # Add labels column to know which ones are doublets
