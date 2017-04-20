@@ -35,8 +35,6 @@ def classify(FNAME, probabilistic = False):
     # Normalize = False returns DataFrame
     raw_counts = utils.dataAcquisition(FNAME, normalize=False)
     
-    probabilistic = False
-    
     if probabilistic:
         
         # Probabilistic synthetic data
@@ -74,7 +72,3 @@ def classify(FNAME, probabilistic = False):
     
     
     return raw_counts, scores
-    
-    
-    
-#classify(FNAME)

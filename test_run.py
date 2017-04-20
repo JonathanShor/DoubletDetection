@@ -22,3 +22,4 @@ for s in range(0.2, 0.8, 0.5):
 # Visualize tSNE clustering
 # Different color for each cluster and a different mark for identified doublet 
 # Only visualize raw counts
+counts = doubletdetection.utils.normalize_counts_10x(raw_counts)
