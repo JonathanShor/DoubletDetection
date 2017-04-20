@@ -37,6 +37,31 @@ def enablePrint():
 # TODO: Remove these print blocking funcs
 
 
+def sampleCellRead(mean_reads, gene_probs, num_cells=1):
+    num_genes = len(gene_probs)
+    # draws = np.random.multinomial([mean_reads] * num_genes,
+    #                               gene_probs,
+    #                               size=num_cells)
+    draws = np.random.binomial([mean_reads] * num_genes,
+                               gene_probs,
+                               size=(num_cells, num_genes))
+    return draws
+
+
+# Given n celltypes, and type_freqs indicating relative frequency of each celltype,
+# Return one doublet: two celltypes (selected prop. to type_freqs) combined with
+def doubletFromCelltype(celltypes, doublet_weight=1):
+    genecounts = np.array(celltypes['genecounts'])
+    cellcounts = np.array(celltypes['cellcounts'])
+    mean_reads = np.array(np.sum(genecounts, axis=1) * CELLTYPESAMPLEMEAN, dtype=int)
+    celltypesProb = genecounts / np.sum(genecounts, axis=1).reshape(-1, 1)
+    [type1, type2] = np.random.choice(range(len(cellcounts)), p=cellcounts / sum(cellcounts),
+                                      size=2)
+    cell1 = sampleCellRead(mean_reads[type1], celltypesProb[type1]) * doublet_weight
+    cell2 = sampleCellRead(mean_reads[type2], celltypesProb[type2])
+    return cell1 + cell2
+
+
 # Generate 2D synthetic data from celltypes
 # Celltypes expected to be a dict with members 'genecounts':2d(celltypes x genes)
 #  and 'frequences': 1d(number of cells to generate for each type)
@@ -44,22 +69,14 @@ def create_synthetic_data(celltypes=None, doublet_weight=1):
     if celltypes is None:
         celltypes = getCellTypes()
 
-    def sampleCellRead(mean_reads, gene_probs, num_cells=1):
-        num_genes = len(gene_probs)
-        # draws = np.random.multinomial([mean_reads] * num_genes,
-        #                               gene_probs,
-        #                               size=num_cells)
-        draws = np.random.binomial([mean_reads] * num_genes,
-                                   gene_probs,
-                                   size=(num_cells, num_genes))
-        return draws
-
     genecounts = np.array(celltypes['genecounts'])
     cellcounts = np.array(celltypes['cellcounts'])
 
     num_genes = genecounts.shape[1]
     synthetic = np.empty((0, num_genes))
 
+    # TODO: make mean_reads, celltypesProb, etc. members of celltypes, not stand-alone vars
+    # TODO: likely want a type struct/class to gather all this
     # Mean number of transcript reads for one cell
     mean_reads = np.array(np.sum(genecounts, axis=1) * CELLTYPESAMPLEMEAN, dtype=int)
 
@@ -181,14 +198,18 @@ def getCellTypes(counts=None, PCA_components=30, shrink=0.01):
 
 # Print l_2 distance from each synthetic cell to closest non-synth.
 # Average distance from non-synth to closest other non-synth printed for comparison
-def checkSyntheticDistance(synthetic, labels):
-    # synthetic = synthetic.as_matrix()
+def checkSyntheticDistance(synth, labels):
+    try:
+        synthetic = synth.as_matrix()
+    except AttributeError:
+        synthetic = synth
     raw_counts = synthetic[labels == 0]
     print("Mean minimum l_2 distance between cells: {0:.4f}".format(
           np.array([np.min(np.linalg.norm(raw_counts[np.arange(len(raw_counts)) != i] - x, ord=2,
                                           axis=1)) for i, x in enumerate(raw_counts)]).mean()))
     min_synth_sim = np.array([np.min(np.linalg.norm(synthetic[labels == 0] - i, ord=2, axis=1))
                               for i in synthetic[labels == 1]])
+    print("Min distance from each doublet to non-doublet:\n")
     print(np.round(min_synth_sim, 4).reshape(-1, 1))
 
 
