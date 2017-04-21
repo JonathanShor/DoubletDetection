@@ -34,7 +34,10 @@ def classify(raw_counts, probabilistic = False):
     
     if probabilistic == True:
         #Probabilistc doublets
+        print("Gathering info about cell types...\n")
         cell_types = getCellTypes(raw_counts, PCA_components=PCA_COMPONENTS, shrink=0.01)
+        
+        print("\nAdding fake doublets to data set...\n")
         doublets = np.zeros((int(DOUBLET_RATE*raw_counts.shape[0]), raw_counts.shape[1]))
         for i in range(int(DOUBLET_RATE*raw_counts.shape[0])):
             doublets[i] = doubletFromCelltype(cell_types)  
@@ -54,12 +57,14 @@ def classify(raw_counts, probabilistic = False):
     perm = np.random.permutation(synthetic.shape[0])    
     counts = synthetic[perm]
     doublet_labels = doublet_labels[perm]
-        
+    
+    print("\nClustering mixed data set with Phenograph...\n")
     # Get phenograph results  
     pca = PCA(n_components=PCA_COMPONENTS)
     reduced_counts = pca.fit_transform(counts)
     communities, graph, Q = phenograph.cluster(reduced_counts)
     c_count = collections.Counter(communities)
+    print('\n')
 
     # Count number of fake doublets in each community and assign score
     phenolabels = np.append(communities[:,np.newaxis], doublet_labels[:,np.newaxis], axis=1)
@@ -131,6 +136,8 @@ def validate(raw_counts):
     scores = scores[order]
     # Only keep scores for real points
     scores = scores[:raw_counts.shape[0],:]
+    communities = communities[order]
+    communities = communities[:raw_counts.shape[0]]
     
     
-    return raw_counts.as_matrix().astype(np.float64), scores, communities[:raw_counts.shape[0]], true_doublet_labels
+    return raw_counts.as_matrix().astype(np.float64), scores, communities, true_doublet_labels

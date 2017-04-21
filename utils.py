@@ -81,7 +81,6 @@ def normalize_counts_10x(raw_counts):
     # Set 0s to NaN to make calculations work more smoothly
     raw_counts[raw_counts == 0] = np.nan
 
-
     # Mutiply by median and divide by cell sum
     median = np.median(cell_sums)
     raw_counts = raw_counts * median / cell_sums[:, np.newaxis]

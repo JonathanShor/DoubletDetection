@@ -241,7 +241,8 @@ def create_simple_synthetic_data(raw_counts, alpha1, alpha2, write=False, normal
         new_row = alpha1 * raw_counts.iloc[row1] + alpha2 * raw_counts.iloc[row2]
 
         synthetic = synthetic.append(new_row, ignore_index=True)
-
+    
+    # Shouldn't change original raw_counts
     synthetic = raw_counts.append(synthetic)
     synthetic = synthetic.as_matrix()
 

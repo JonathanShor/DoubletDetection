@@ -1,4 +1,4 @@
-import matplotlib.pylot as plt
+import matplotlib.pyplot as plt
 
 # Create histograms from passed feature vector and doublet labels
 def featureHist(feature, doublet_labels, axis_label='Library Size', file_name_prefix='library_size'):
@@ -22,3 +22,9 @@ def featureHist(feature, doublet_labels, axis_label='Library Size', file_name_pr
 	file_name_2 = file_name_prefix + '_separate.png'
 	plt.savefig(file_name_2)
 	plt.close(plot2)
+
+def tsne_scatter(tsne_counts, doublet_labels, communities):
+    
+    x = tsne_counts[:,0]
+    y = tsne_counts[:,1]
+    plt.scatter(x,y, cmap=communities)
