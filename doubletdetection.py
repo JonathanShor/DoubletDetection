@@ -32,9 +32,6 @@ def classify(raw_counts, probabilistic = False):
     :return scores: doublet score for each row in test
     """
     
-    # Import counts
-    # Normalize = False returns DataFrame
-    
     if probabilistic == True:
         #Probabilistc doublets
         cell_types = getCellTypes(raw_counts, PCA_components=PCA_COMPONENTS, shrink=0.01)
@@ -84,7 +81,6 @@ def classify(raw_counts, probabilistic = False):
     return raw_counts.as_matrix().astype(np.float64), scores, communities[:raw_counts.shape[0]]
 
 
-
 def validate(raw_counts):
     """
     Validate methodology using only probabilistic synthetic data
@@ -93,7 +89,6 @@ def validate(raw_counts):
     :return scores: doublet score for each row in test
     """
 
-    
     # Probabilistic synthetic data
     print("Getting cell types...")
     cell_types = getCellTypes(raw_counts, PCA_components=PCA_COMPONENTS, shrink=0.01)

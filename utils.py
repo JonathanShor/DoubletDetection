@@ -99,7 +99,6 @@ def normalize_counts_10x(raw_counts):
     std[np.where(std == 0)[0]] = 1
     
     normed = (raw_counts - np.mean(raw_counts, axis=0)) / std
-    # TODO: Use standardize() if we need to inverse or repeat stardardization
 
     return normed
 
