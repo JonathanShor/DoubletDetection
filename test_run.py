@@ -14,6 +14,7 @@ import utils
 import pandas as pd
 import matplotlib.pyplot as plt
 import visualize
+import phenograph
 
 FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
 SYN_FNAME = "~/Google Drive/Computational Genomics/synthetic.csv"
@@ -22,7 +23,7 @@ SYN_FNAME = "~/Google Drive/Computational Genomics/synthetic.csv"
 raw_counts = utils.dataAcquisition(FNAME, normalize=False)
 
 # Get scores
-np_raw_counts, scores, communities = doubletdetection.classify(raw_counts, probabilistic=True)
+np_raw_counts, scores, communities_w_doublets = doubletdetection.classify(raw_counts, probabilistic=True)
 validate = False
 
 if validate:
@@ -45,13 +46,18 @@ counts = doubletdetection.utils.normalize_counts_10x(np_raw_counts)
 # If you run without reducing counts it kills your memory
 pca = PCA(n_components=30)
 reduced_counts = pca.fit_transform(counts)
+
+communities, graph, Q = phenograph.cluster(reduced_counts)
+
 tsne = TSNE()
 tsne_counts = tsne.fit_transform(reduced_counts)
-
 
 cutoff = 0.37
 doublet_labels = np.zeros((reduced_counts.shape[0],))
 doublet_labels[np.where(scores>0.37)[0]] = 1
 
-tnse_scatter(tsne_counts, communities, doublet_labels)
+# Viz with phenograph results with combined data
+visualize.tsne_scatter(tsne_counts, communities_w_doublets, doublet_labels)
+# Viz with phenograph results with raw normed data, doublets are black
+visualize.tsne_scatter(tsne_counts, communities, doublet_labels)
 

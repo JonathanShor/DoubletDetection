@@ -1,4 +1,6 @@
 import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.colors import LinearSegmentedColormap
 
 # Create histograms from passed feature vector and doublet labels
 def featureHist(feature, doublet_labels, axis_label='Library Size', file_name_prefix='library_size'):
@@ -25,6 +27,16 @@ def featureHist(feature, doublet_labels, axis_label='Library Size', file_name_pr
 
 def tsne_scatter(tsne_counts, doublet_labels, communities):
     
+    #unique_communities = np.unique(communities)
+    #colors = np.zeros((communities.shape[0],1))
+    #for c in unique_communities:
+        #colors[np.where(communities == c)[0]] = c/float(np.max(communities))
+        
+    set1i = LinearSegmentedColormap.from_list('set1i', plt.cm.Set1.colors, N=100)
+    
+    colors = communities
     x = tsne_counts[:,0]
     y = tsne_counts[:,1]
-    plt.scatter(x,y, cmap=communities)
+    plt.scatter(x,y, c=colors, s=10, cmap=set1i)
+    doublets = np.where(doublet_labels==1)[0]
+    plt.scatter(x[doublets], y[doublets], s=10, color='black')

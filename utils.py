@@ -68,7 +68,7 @@ def normalize_tf_idf(X):
 
 # Takes np array
 # Following method in 10x paper
-def normalize_counts_10x(raw_counts):
+def normalize_counts_10x(raw_counts, doStandardize = False):
     """
     Normalizes count array using method in 10x pipeline  
     :param raw_counts: numpy array of count data
@@ -79,25 +79,28 @@ def normalize_counts_10x(raw_counts):
     cell_sums = np.sum(raw_counts, axis=1)
     
     # Set 0s to NaN to make calculations work more smoothly
-    raw_counts[raw_counts == 0] = np.nan
+    #raw_counts[raw_counts == 0] = np.nan
 
     # Mutiply by median and divide by cell sum
     median = np.median(cell_sums)
     raw_counts = raw_counts * median / cell_sums[:, np.newaxis]
 
     # Take log and normalize to have mean 0 and std 1 in each gene across all cells
-    raw_counts = np.log(raw_counts)
+    raw_counts = np.log(raw_counts+0.1)
         
     # Replace NaN with 0
-    raw_counts = np.nan_to_num(raw_counts)
+    #raw_counts = np.nan_to_num(raw_counts)
 
-    # Normalize to have genes with mean 0 and std 1
-    std = np.std(raw_counts, axis=0)[np.newaxis, :]
+    if doStandardize:
+        # Normalize to have genes with mean 0 and std 1
+        std = np.std(raw_counts, axis=0)[np.newaxis, :]
     
-    #Fix potential divide by zero
-    std[np.where(std == 0)[0]] = 1
+        #Fix potential divide by zero
+        std[np.where(std == 0)[0]] = 1
     
-    normed = (raw_counts - np.mean(raw_counts, axis=0)) / std
+        normed = (raw_counts - np.mean(raw_counts, axis=0)) / std
+    else:
+        normed = raw_counts
 
     return normed
 
