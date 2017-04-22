@@ -97,6 +97,8 @@ def validate(raw_counts):
     counts, true_doublet_labels = create_synthetic_data(cell_types)
         
     print("Creating new doublets")
+    # Recreating cell types to reflect the new data set
+    cell_types = getCellTypes(counts, PCA_components=PCA_COMPONENTS, shrink=0.01, knn=KNN)
     doublets = np.zeros((int(DOUBLET_RATE*counts.shape[0]), counts.shape[1]))
     doublet_labels = np.zeros((int(counts.shape[0]*(1+DOUBLET_RATE)),))
     doublet_labels[counts.shape[0]:] = 1
