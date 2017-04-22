@@ -85,7 +85,6 @@ def normalize_counts_10x(raw_counts, doStandardize = False):
     median = np.median(cell_sums)
     raw_counts = raw_counts * median / cell_sums[:, np.newaxis]
 
-    # Take log and normalize to have mean 0 and std 1 in each gene across all cells
     raw_counts = np.log(raw_counts+0.1)
         
     # Replace NaN with 0

@@ -127,7 +127,7 @@ def getCentroids(data, clusters):
 
 # Cell type generation for synthetic data generation
 # Return dictionary of genecounts for each type (2d), and relative cellcounts (1d)
-def getCellTypes(counts=None, PCA_components=30, shrink=0.01):
+def getCellTypes(counts=None, PCA_components=30, shrink=0.01, knn=30):
     if counts is None:
         # TODO: Implement randomly generated celltypes?
         raise Exception("Random celltype generation not implemented.")
@@ -141,7 +141,7 @@ def getCellTypes(counts=None, PCA_components=30, shrink=0.01):
         # TODO: Better doublet removal techniques?
         reduced_counts = PCA(n_components=PCA_components).fit_transform(npcounts)
         blockPrint()
-        communities, graph, Q = phenograph.cluster(reduced_counts)
+        communities, graph, Q = phenograph.cluster(reduced_counts, k=knn)
         enablePrint()
         print("Found these communities: {0}, with sizes: {1}".format(np.unique(communities),
               [np.count_nonzero(communities == i) for i in np.unique(communities)]))
