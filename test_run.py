@@ -32,7 +32,7 @@ if validate:
         cutoff = s/float(100)
         test = true_scores[np.where(true_scores>cutoff)[0]]
         print(cutoff, len(test))
-    print(np.sum(true_doublet_labels[np.where(scores>0.63)[0]])/float(len(true_scores[np.where(scores>0.63)[0]])))
+    print(np.sum(true_doublet_labels[np.where(true_scores>0.63)[0]])/float(len(true_scores[np.where(true_scores>0.63)[0]])))
 
 else:
     # Get scores
