@@ -23,14 +23,14 @@ SYN_FNAME = "~/Google Drive/Computational Genomics/synthetic.csv"
 raw_counts = utils.dataAcquisition(FNAME, normalize=False)
 
 
-validate = False
+validate = True
 
 if validate:
     counts, scores, communities, true_doublet_labels, fake_doublet_labels = doubletdetection.validate(raw_counts)
     true_scores = scores[:len(true_doublet_labels),:]
     for s in range(20, 80, 2):
         cutoff = s/float(100)
-        test = true_scores[np.where(scores>cutoff)[0]]
+        test = true_scores[np.where(true_scores>cutoff)[0]]
         print(cutoff, len(test))
     print(np.sum(true_doublet_labels[np.where(scores>0.63)[0]])/float(len(true_scores[np.where(scores>0.63)[0]])))
 

@@ -97,11 +97,11 @@ def validate(raw_counts):
     counts, true_doublet_labels = create_synthetic_data(cell_types)
         
     print("Creating new doublets")
-    doublets = np.zeros((int(DOUBLET_RATE*raw_counts.shape[0]), raw_counts.shape[1]))
-    doublet_labels = np.zeros((int(raw_counts.shape[0]*(1+DOUBLET_RATE)),))
-    doublet_labels[raw_counts.shape[0]:] = 1
+    doublets = np.zeros((int(DOUBLET_RATE*counts.shape[0]), counts.shape[1]))
+    doublet_labels = np.zeros((int(counts.shape[0]*(1+DOUBLET_RATE)),))
+    doublet_labels[counts.shape[0]:] = 1
         
-    for i in range(int(DOUBLET_RATE*raw_counts.shape[0])):
+    for i in range(int(DOUBLET_RATE*counts.shape[0])):
         doublets[i] = doubletFromCelltype(cell_types)
             
     synthetic = np.append(counts, doublets, axis=0)
@@ -110,7 +110,7 @@ def validate(raw_counts):
         
     # Get phenograph results  
     pca = PCA(n_components=PCA_COMPONENTS)
-    reduced_counts = pca.fit_transform(counts)
+    reduced_counts = pca.fit_transform(synthetic)
     communities, graph, Q = phenograph.cluster(reduced_counts, k=KNN)
     c_count = collections.Counter(communities)
 
