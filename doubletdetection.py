@@ -30,7 +30,9 @@ def classify(raw_counts, probabilistic = False):
     :param raw_counts: count table in pandas DF format
     :param probabilistic: option to use sampled doublets vs linear doublets
     :return counts: mixed counts (real and fake) in numpy ndarray format NORMALIZED
-    :return scores: doublet score for each row in test
+    :return scores: doublet score for each row in counts
+    :return communities: Phenograph community for each row in counts
+    :return doublet_labels: indicator for each row in counts whether it is a fake doublet (doublets appended to end)
     """
     
     if probabilistic == True:
@@ -89,6 +91,8 @@ def validate(raw_counts):
     :param raw_counts: count table in pandas DF format    
     :return synthetic: synthetic normalized counts
     :return scores: doublet score for each row in test
+    :return true_doublet_labels: validation "true doublets"
+    :return fake_doublet_labels: appended fake doublets
     """
 
     # Probabilistic synthetic data
