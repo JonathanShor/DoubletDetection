@@ -27,33 +27,32 @@ def main(validate):
     raw_counts = utils.dataAcquisition(FNAME, normalize=False)
 
     if validate:
-        counts, scores, communities, true_doublet_labels, fake_doublet_labels = (
-            doubletdetection.validate(raw_counts))
-        true_scores = scores[:len(true_doublet_labels), :]
+        counts, scores, communities, true_doublet_labels, fake_doublet_labels = doubletdetection.validate(raw_counts)
+        true_scores = scores[:len(true_doublet_labels),:]
         for s in range(20, 80, 2):
-            cutoff = s / float(100)
-            test = true_scores[np.where(true_scores > cutoff)[0]]
+            cutoff = s/float(100)
+            test = true_scores[np.where(true_scores>cutoff)[0]]
             print(cutoff, len(test))
-        print(np.sum(true_doublet_labels[np.where(true_scores > 0.63)[0]]) /
-              float(len(true_scores[np.where(true_scores > 0.63)[0]])))
+        print(np.sum(true_doublet_labels[np.where(true_scores>0.63)[0]])/float(len(true_scores[np.where(true_scores>0.63)[0]])))
 
     else:
         # Get scores
-        counts_w_doublets, scores_w_doublets, communities_w_doublets, doublet_labels = (
-            doubletdetection.classify(raw_counts, probabilistic=True))
+        counts_w_doublets, scores_w_doublets, communities_w_doublets, doublet_labels = doubletdetection.classify(raw_counts, probabilistic=True)
+        true_scores = scores_w_doublets[:raw_counts.shape[0],:]
         for s in range(20, 80, 2):
-            cutoff = s / float(100)
-            test = scores_w_doublets[np.where(scores_w_doublets > cutoff)[0]]
+            cutoff = s/float(100)
+            test = true_scores[np.where(true_scores>cutoff)[0]]
             print(cutoff, len(test))
 
     # Visualize tSNE clustering
-    # Different color for each cluster and black doublet
+    # Different color for each cluster and black doublet 
     # Only visualize raw counts
 
     #counts = doubletdetection.utils.normalize_counts_10x(counts_w_doublets)
 
     # Default tsne num_componenets is 2
     # If you run without reducing counts it kills your memory
+    # This works with validation off
     pca = PCA(n_components=30)
     reduced_counts = pca.fit_transform(counts_w_doublets)
 
@@ -70,11 +69,11 @@ def main(validate):
     # data viz
     set1i = LinearSegmentedColormap.from_list('set1i', plt.cm.Set1.colors, N=100)
 
-    colors = communities
-    x = tsne_counts[:, 0]
-    y = tsne_counts[:, 1]
-    plt.scatter(x, y, c=colors, s=10, cmap=set1i)
-    doublets = np.where(doublet_labels == 1)[0]
+    colors = communities_w_doublets
+    x = tsne_counts[:,0]
+    y = tsne_counts[:,1]
+    plt.scatter(x,y, c=colors, s=10, cmap=set1i)
+    doublets = np.where(doublet_labels==1)[0]
     plt.scatter(x[doublets], y[doublets], s=10, color='black')
 
 
@@ -92,3 +91,4 @@ if __name__ == '__main__':
         print("Validation run starting.")
 
     main(options.validate)
+
