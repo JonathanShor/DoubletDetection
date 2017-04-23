@@ -77,9 +77,6 @@ def normalize_counts_10x(raw_counts, doStandardize = False):
     
     # Sum across cells and divide each cell by sum
     cell_sums = np.sum(raw_counts, axis=1)
-    
-    # Set 0s to NaN to make calculations work more smoothly
-    #raw_counts[raw_counts == 0] = np.nan
 
     # Mutiply by median and divide by cell sum
     median = np.median(cell_sums)
@@ -87,9 +84,6 @@ def normalize_counts_10x(raw_counts, doStandardize = False):
 
     raw_counts = np.log(raw_counts+0.1)
         
-    # Replace NaN with 0
-    #raw_counts = np.nan_to_num(raw_counts)
-
     if doStandardize:
         # Normalize to have genes with mean 0 and std 1
         std = np.std(raw_counts, axis=0)[np.newaxis, :]

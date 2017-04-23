@@ -23,7 +23,7 @@ SYN_FNAME = "~/Google Drive/Computational Genomics/synthetic.csv"
 raw_counts = utils.dataAcquisition(FNAME, normalize=False)
 
 
-validate = True
+validate = False
 
 if validate:
     counts, scores, communities, true_doublet_labels, fake_doublet_labels = doubletdetection.validate(raw_counts)
@@ -37,9 +37,10 @@ if validate:
 else:
     # Get scores
     counts_w_doublets, scores_w_doublets, communities_w_doublets, doublet_labels = doubletdetection.classify(raw_counts, probabilistic=True)
+    true_scores = scores_w_doublets[:raw_counts.shape[0],:]
     for s in range(20, 80, 2):
         cutoff = s/float(100)
-        test = scores_w_doublets[np.where(scores_w_doublets>cutoff)[0]]
+        test = true_scores[np.where(true_scores>cutoff)[0]]
         print(cutoff, len(test))
 
 # Visualize tSNE clustering
@@ -50,6 +51,7 @@ else:
 
 # Default tsne num_componenets is 2
 # If you run without reducing counts it kills your memory
+# This works with validation off
 pca = PCA(n_components=30)
 reduced_counts = pca.fit_transform(counts_w_doublets)
 
@@ -66,7 +68,7 @@ tsne_counts = tsne.fit_transform(reduced_counts)
 # data viz
 set1i = LinearSegmentedColormap.from_list('set1i', plt.cm.Set1.colors, N=100)
     
-colors = communities
+colors = communities_w_doublets
 x = tsne_counts[:,0]
 y = tsne_counts[:,1]
 plt.scatter(x,y, c=colors, s=10, cmap=set1i)
