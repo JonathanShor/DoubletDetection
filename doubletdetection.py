@@ -45,7 +45,7 @@ def classify(raw_counts, probabilistic = False):
         for i in range(int(DOUBLET_RATE*raw_counts.shape[0])):
             doublets[i] = doubletFromCelltype(cell_types)  
         
-        synthetic = np.append(counts, doublets, axis=0)
+        synthetic = np.append(raw_counts, doublets, axis=0)
         synthetic = utils.normalize_counts_10x(synthetic)
 
         doublet_labels = np.zeros((int(raw_counts.shape[0]*(1+DOUBLET_RATE)),))
