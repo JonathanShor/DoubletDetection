@@ -6,17 +6,17 @@ Created on Apr 3, 2017
 @author: adamgayoso, JonathanShor, ryanbrand
 """
 
-import pandas as pd
 import numpy as np
 from sklearn.feature_extraction.text import TfidfTransformer
-from sklearn.metrics import precision_recall_fscore_support
 from sklearn.preprocessing import StandardScaler
+from os.path import expanduser
 
 
 # To read only the first X rows, set read_rows=X
 def dataAcquisition(FNAME, normalize=False, read_rows=None):
     # Import counts
-    counts = pd.read_csv(FNAME, index_col=0, nrows=read_rows)
+    counts = np.loadtxt(expanduser(FNAME), delimiter=",", skiprows=1)
+    counts = counts[:read_rows, 1:]  # Peel off pandas index labels column
 
     # Normalize
     if normalize:
@@ -32,19 +32,18 @@ def dataAcquisition(FNAME, normalize=False, read_rows=None):
 
 
 def synthAcquisition(FNAME, normalize=True):
-    #Get raw counts in DataFrame format
+    # Get raw counts in DataFrame format
     counts = dataAcquisition(FNAME, normalize=False)
-    
-    #Separate labels
-    labels = counts['labels']
-    del counts['labels']
-    doublet_labels = labels.as_matrix()
-    
-    #Normalize counts
+
+    # Separate labels
+    labels = counts[:, -1]
+    counts = counts[:, :-1]
+
+    # Normalize counts
     if normalize:
         counts = normalize_counts_10x(counts)
-        
-    return counts, doublet_labels
+
+    return counts, labels
 
 
 # Standardize columns of matrix X: (X - X.mean) / X.std
@@ -58,9 +57,6 @@ def standardize(X):
 # tf-idf normalizing: cells as documents, genes as words
 # from sklearn.feature_extraction.text import TfidfTransformer
 def normalize_tf_idf(X):
-    if isinstance(X, pd.dataframe):
-        X = X.as_matrix()
-
     tfidf = TfidfTransformer(norm=None, smooth_idf=True, sublinear_tf=False)
     tfidf.fit(X)
     return tfidf.transform(X)
@@ -68,13 +64,13 @@ def normalize_tf_idf(X):
 
 # Takes np array
 # Following method in 10x paper
-def normalize_counts_10x(raw_counts, doStandardize = False):
+def normalize_counts_10x(raw_counts, doStandardize=False):
     """
-    Normalizes count array using method in 10x pipeline  
+    Normalizes count array using method in 10x pipeline
     :param raw_counts: numpy array of count data
     :return normed: normalized data
     """
-    
+
     # Sum across cells and divide each cell by sum
     cell_sums = np.sum(raw_counts, axis=1)
 
@@ -82,19 +78,17 @@ def normalize_counts_10x(raw_counts, doStandardize = False):
     median = np.median(cell_sums)
     raw_counts = raw_counts * median / cell_sums[:, np.newaxis]
 
-    raw_counts = np.log(raw_counts+0.1)
-        
+    raw_counts = np.log(raw_counts + 0.1)
+
     if doStandardize:
         # Normalize to have genes with mean 0 and std 1
         std = np.std(raw_counts, axis=0)[np.newaxis, :]
-    
-        #Fix potential divide by zero
+
+        # Fix potential divide by zero
         std[np.where(std == 0)[0]] = 1
-    
+
         normed = (raw_counts - np.mean(raw_counts, axis=0)) / std
     else:
         normed = raw_counts
 
     return normed
-
-

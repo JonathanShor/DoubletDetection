@@ -5,8 +5,6 @@ Created on Apr 3, 2017
 
 @author: adamgayoso, JonathanShor, ryanbrand
 """
-
-import pandas as pd
 import numpy as np
 import phenograph
 from sklearn.decomposition import PCA
@@ -107,12 +105,6 @@ def create_synthetic_data(celltypes=None, doublet_weight=1):
     labels = np.zeros(num_cells)
     labels[doublets] = 1
 
-    try:    # return pandas if we got pandas
-        synthetic = pd.DataFrame(synthetic, columns=celltypes['genecounts'].columns)
-        labels = pd.Series(labels)
-    except AttributeError:
-        pass
-
     return synthetic, labels
 
 
@@ -132,14 +124,9 @@ def getCellTypes(counts=None, PCA_components=30, shrink=0.01, knn=30):
         # TODO: Implement randomly generated celltypes?
         raise Exception("Random celltype generation not implemented.")
     else:
-        try:
-            npcounts = counts.as_matrix()
-        except AttributeError:
-            npcounts = counts
-
         # Basic doublet removal: each cluster pruned by shrink% most-distant-from-centroid cells
         # TODO: Better doublet removal techniques?
-        reduced_counts = PCA(n_components=PCA_components).fit_transform(npcounts)
+        reduced_counts = PCA(n_components=PCA_components).fit_transform(counts)
         blockPrint()
         communities, graph, Q = phenograph.cluster(reduced_counts, k=knn)
         enablePrint()
@@ -147,7 +134,7 @@ def getCellTypes(counts=None, PCA_components=30, shrink=0.01, knn=30):
               [np.count_nonzero(communities == i) for i in np.unique(communities)]))
 
         # Throw out outlier cluster (ID = -1)
-        npcounts = npcounts[communities >= 0]
+        counts = counts[communities >= 0]
         communities = communities[communities >= 0]
 
         preshrink_cellcounts = np.array([np.count_nonzero(communities == i) for i in
@@ -157,7 +144,7 @@ def getCellTypes(counts=None, PCA_components=30, shrink=0.01, knn=30):
         #     "gap in communities IDs")
         # Shrink each community by shrink, ranked by l_2 distance from cluster centroid
         centroids = getCentroids(reduced_counts, communities)
-        distances = np.zeros(npcounts.shape[0])
+        distances = np.zeros(counts.shape[0])
         to_shrink = []
         for i, centroid in enumerate(centroids):
             members = np.nonzero(communities == i)[0]   # Current cluster's indexes in npcount
@@ -169,40 +156,31 @@ def getCellTypes(counts=None, PCA_components=30, shrink=0.01, knn=30):
             # Delete the smallest shrink%
             for _ in range(int(preshrink_cellcounts[i] * shrink)):
                 smallest_member = np.argsort(distances[members])[0]
-                to_shrink.append(members[smallest_member])  # Translate to index in full npcounts
+                to_shrink.append(members[smallest_member])  # Translate to index in full counts
                 distances[to_shrink[-1]] = np.inf
 
         assert len(to_shrink) == len(np.unique(to_shrink)), (
             "repeats in to_shrink: {}".format(to_shrink))
-        shrunk = np.setdiff1d(np.arange(len(npcounts)), to_shrink)
-        npcounts = npcounts[shrunk]
+        shrunk = np.setdiff1d(np.arange(len(counts)), to_shrink)
+        counts = counts[shrunk]
         communities = communities[shrunk]
 
         cellcounts = np.array([np.count_nonzero(communities == i) for i in np.unique(communities)])
         assert sum(preshrink_cellcounts) * (1 - shrink) <= sum(cellcounts), "bad shrink"
-        assert sum(cellcounts) == npcounts.shape[0], "cellcounts does not match npcounts.shape[0]"
+        assert sum(cellcounts) == counts.shape[0], "cellcounts does not match counts.shape[0]"
         assert sum(cellcounts) == len(communities), "cellcounts does not match len(communities)"
 
-        genecounts = np.array([np.sum(npcounts[communities == i], axis=0)
+        genecounts = np.array([np.sum(counts[communities == i], axis=0)
                                for i in np.unique(communities)])
         assert ~(any(np.max(genecounts, axis=1) == 0)), "zero vector celltype"
         genecounts = genecounts / (CELLTYPESAMPLEMEAN * cellcounts.reshape(-1, 1))
-
-    try:    # return pandas if we got pandas
-        genecounts = pd.DataFrame(genecounts, columns=counts.columns)
-    except AttributeError:
-        pass
 
     return {'genecounts': genecounts, 'cellcounts': cellcounts}
 
 
 # Print l_2 distance from each synthetic cell to closest non-synth.
 # Average distance from non-synth to closest other non-synth printed for comparison
-def checkSyntheticDistance(synth, labels):
-    try:
-        synthetic = synth.as_matrix()
-    except AttributeError:
-        synthetic = synth
+def checkSyntheticDistance(synthetic, labels):
     raw_counts = synthetic[labels == 0]
     print("Mean minimum l_2 distance between cells: {0:.4f}".format(
           np.array([np.min(np.linalg.norm(raw_counts[np.arange(len(raw_counts)) != i] - x, ord=2,
@@ -215,7 +193,7 @@ def checkSyntheticDistance(synth, labels):
 
 def create_simple_synthetic_data(raw_counts, alpha1, alpha2, write=False, normalize=False, doublet_rate=DOUBLETRATE):
     """
-    Appends doublets to end of data 
+    Appends doublets to end of data
     :param raw_counts: numpy of count data
     :param alpha1: weighting of row1 in sum
     :param alpha2: weighting of row2 in sum
@@ -223,16 +201,16 @@ def create_simple_synthetic_data(raw_counts, alpha1, alpha2, write=False, normal
     :return synthetic: synthetic data in numpy array
     :return labels: 0 for original data, 1 for fake doublet as np array - 1d arrray
     """
-    
+
     # Get shape
     cell_count = raw_counts.shape[0]
     gene_count = raw_counts.shape[1]
-    
+
     # Number of doublets to add
-    doublets = int(doublet_rate*cell_count)
-    
+    doublets = int(doublet_rate * cell_count)
+
     synthetic = np.zeros((doublets, gene_count))
-    
+
     # Add labels column to know which ones are doublets
     labels = np.zeros(cell_count + doublets)
     labels[cell_count:] = 1
@@ -244,13 +222,13 @@ def create_simple_synthetic_data(raw_counts, alpha1, alpha2, write=False, normal
         new_row = alpha1 * raw_counts[row1] + alpha2 * raw_counts[row2]
 
         synthetic[i] = new_row
-    
-    # Shouldn't change original raw_counts
-    synthetic = np.append(raw_counts, synthetic, axis = 0)
 
-    if write:
-        synthetic['labels'] = labels
-        synthetic.to_csv("~/Google Drive/Computational Genomics/synthetic.csv")
+    # Shouldn't change original raw_counts
+    synthetic = np.append(raw_counts, synthetic, axis=0)
+
+    # if write:
+    #     synthetic['labels'] = labels
+    #     synthetic.to_csv("~/Google Drive/Computational Genomics/synthetic.csv")
 
     if normalize:
         synthetic = normalize_counts_10x(synthetic)
