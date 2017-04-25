@@ -9,13 +9,14 @@ Created on Apr 3, 2017
 import numpy as np
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.preprocessing import StandardScaler
+from os.path import expanduser
 
 
 # To read only the first X rows, set read_rows=X
 def dataAcquisition(FNAME, normalize=False, read_rows=None):
     # Import counts
-    counts = np.genfromtxt(FNAME, delimiter=",", skip_header=1)
-    counts = counts[:, 1:]  # Peel off pandas index labels column
+    counts = np.loadtxt(expanduser(FNAME), delimiter=",", skiprows=1)
+    counts = counts[:read_rows, 1:]  # Peel off pandas index labels column
 
     # Normalize
     if normalize:
