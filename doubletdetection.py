@@ -97,39 +97,6 @@ def validate(raw_counts):
     cell_types = getCellTypes(raw_counts, PCA_components=PCA_COMPONENTS, shrink=0.01, knn=KNN)
     counts, true_doublet_labels = create_synthetic_data(cell_types)
 
-    print("Creating new doublets")
-    # Recreating cell types to reflect the new data set
-    cell_types = getCellTypes(counts, PCA_components=PCA_COMPONENTS, shrink=0.01, knn=KNN)
-    doublets = np.zeros((int(DOUBLET_RATE * counts.shape[0]), counts.shape[1]))
-    doublet_labels = np.zeros((int(counts.shape[0] * (1 + DOUBLET_RATE)),))
-    doublet_labels[counts.shape[0]:] = 1
-
-    for i in range(int(DOUBLET_RATE * counts.shape[0])):
-        doublets[i] = doubletFromCelltype(cell_types)
-
-    synthetic = np.append(counts, doublets, axis=0)
-    synthetic = utils.normalize_counts(synthetic)
-
-    # Get phenograph results
-    pca = PCA(n_components=PCA_COMPONENTS)
-    reduced_counts = pca.fit_transform(synthetic)
-    communities, graph, Q = phenograph.cluster(reduced_counts, k=KNN)
-    c_count = collections.Counter(communities)
-
-    # Count number of fake doublets in each community and assign score
-    phenolabels = np.append(communities[:, np.newaxis], doublet_labels[:, np.newaxis], axis=1)
-
-    synth_doub_count = {}
-    scores = np.zeros((len(communities), 1))
-    for c in np.unique(communities):
-        c_indices = np.where(phenolabels[:, 0] == c)[0]
-        synth_doub_count[c] = np.sum(phenolabels[c_indices, 1]) / float(c_count[c])
-        scores[c_indices] = synth_doub_count[c]
-
-    # Only keep scores for real points
-    #scores = scores[:raw_counts.shape[0],:]
-    #communities = communities[order]
-    #communities = communities[:raw_counts.shape[0]]
-    fake_doublet_labels = doublet_labels
+    counts, scores, communities, fake_doublet_labels = classify(counts)
 
     return synthetic, scores, communities, true_doublet_labels, fake_doublet_labels

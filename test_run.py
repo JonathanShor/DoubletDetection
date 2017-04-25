@@ -71,14 +71,15 @@ def main(validate):
     #doublet_labels[np.where(scores>0.37)[0]] = 1
 
     # data viz
+    fig = plt.figure(dpi=300)
     set1i = LinearSegmentedColormap.from_list('set1i', plt.cm.Set1.colors, N=100)
 
     colors = communities_w_doublets
     x = tsne_counts[:, 0]
     y = tsne_counts[:, 1]
-    plt.scatter(x, y, c=colors, s=4, cmap=set1i)
+    plt.scatter(x, y, c=colors, s=10, cmap=set1i)
     doublets = np.where(doublet_labels == 1)[0]
-    plt.scatter(x[doublets], y[doublets], facecolors='none', edgecolors='black', s=7)
+    plt.scatter(x[doublets], y[doublets], facecolors='none', edgecolors='black', s=2)
     plt.show()
 
     # Bar chart stacked of counts
