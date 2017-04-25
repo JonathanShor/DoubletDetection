@@ -25,7 +25,6 @@ FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
 def main(validate):
     # DataFrame
     raw_counts = utils.dataAcquisition(FNAME, normalize=False)
-    raw_counts = raw_counts.as_matrix()
 
     if validate:
         counts, scores, communities, true_doublet_labels, fake_doublet_labels = (
