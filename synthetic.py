@@ -231,6 +231,6 @@ def create_simple_synthetic_data(raw_counts, alpha1, alpha2, write=False, normal
     #     synthetic.to_csv("~/Google Drive/Computational Genomics/synthetic.csv")
 
     if normalize:
-        synthetic = normalize_counts_10x(synthetic)
+        synthetic = normalize_counts(synthetic)
 
     return synthetic, labels

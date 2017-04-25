@@ -20,13 +20,11 @@ def dataAcquisition(FNAME, normalize=False, read_rows=None):
 
     # Normalize
     if normalize:
-        # Replacing with NaN makes it easier to ignore these values
-        counts[counts == 0] = np.nan
-
+        
         if normalize == "TFIDF":
             counts = normalize_tf_idf(counts)
         else:   # 10x paper normalization
-            counts = normalize_counts_10x(counts)
+            counts = normalize_counts(counts)
 
     return counts
 
@@ -62,9 +60,7 @@ def normalize_tf_idf(X):
     return tfidf.transform(X)
 
 
-# Takes np array
-# Following method in 10x paper
-def normalize_counts_10x(raw_counts, doStandardize=False):
+def normalize_counts(raw_counts, doStandardize=False):
     """
     Normalizes count array using method in 10x pipeline
     :param raw_counts: numpy array of count data

@@ -51,7 +51,7 @@ def main(validate):
     # Different color for each cluster and black doublet
     # Only visualize raw counts
 
-    #counts = doubletdetection.utils.normalize_counts_10x(counts_w_doublets)
+    #counts = doubletdetection.utils.normalize_counts(counts_w_doublets)
 
     # Default tsne num_componenets is 2
     # If you run without reducing counts it kills your memory
