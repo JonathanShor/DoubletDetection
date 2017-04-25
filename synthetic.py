@@ -215,7 +215,7 @@ def checkSyntheticDistance(synth, labels):
 
 def create_simple_synthetic_data(raw_counts, alpha1, alpha2, write=False, normalize=False, doublet_rate=DOUBLETRATE):
     """
-    Appends doublets to end of data 
+    Appends doublets to end of data
     :param raw_counts: numpy of count data
     :param alpha1: weighting of row1 in sum
     :param alpha2: weighting of row2 in sum
@@ -223,16 +223,16 @@ def create_simple_synthetic_data(raw_counts, alpha1, alpha2, write=False, normal
     :return synthetic: synthetic data in numpy array
     :return labels: 0 for original data, 1 for fake doublet as np array - 1d arrray
     """
-    
+
     # Get shape
     cell_count = raw_counts.shape[0]
     gene_count = raw_counts.shape[1]
-    
+
     # Number of doublets to add
-    doublets = int(doublet_rate*cell_count)
-    
+    doublets = int(doublet_rate * cell_count)
+
     synthetic = np.zeros((doublets, gene_count))
-    
+
     # Add labels column to know which ones are doublets
     labels = np.zeros(cell_count + doublets)
     labels[cell_count:] = 1
@@ -244,9 +244,9 @@ def create_simple_synthetic_data(raw_counts, alpha1, alpha2, write=False, normal
         new_row = alpha1 * raw_counts[row1] + alpha2 * raw_counts[row2]
 
         synthetic[i] = new_row
-    
+
     # Shouldn't change original raw_counts
-    synthetic = np.append(raw_counts, synthetic, axis = 0)
+    synthetic = np.append(raw_counts, synthetic, axis=0)
 
     if write:
         synthetic['labels'] = labels
