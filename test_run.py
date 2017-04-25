@@ -75,7 +75,7 @@ def main(validate):
     y = tsne_counts[:,1]
     plt.scatter(x,y, c=colors, s=7, cmap=set1i)
     doublets = np.where(doublet_labels==1)[0]
-    plt.scatter(x[doublets], y[doublets], marker = "x", s=7, color='black')
+    plt.scatter(x[doublets], y[doublets], facecolors='none', edgecolors='black', s=7)
 
 
 if __name__ == '__main__':
