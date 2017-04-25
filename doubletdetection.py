@@ -17,7 +17,6 @@ from synthetic import create_simple_synthetic_data
 from synthetic import getCellTypes
 from synthetic import doubletFromCelltype
 import utils
-from classifiers import *
 
 PCA_COMPONENTS = 30
 DOUBLET_RATE = 0.25
