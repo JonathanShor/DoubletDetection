@@ -10,7 +10,7 @@ import phenograph
 from sklearn.decomposition import PCA
 from sklearn.mixture import GaussianMixture
 from sklearn.naive_bayes import BernoulliNB
-from utils import normalize_counts_10x
+from utils import normalize_counts
 from contextlib import contextmanager
 
 CELLTYPESAMPLEMEAN = 0.05   # Mean percent of cell gene expression captured per cell read

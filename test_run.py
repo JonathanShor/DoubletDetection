@@ -16,6 +16,7 @@ from matplotlib.colors import LinearSegmentedColormap
 import phenograph
 import sys
 from optparse import OptionParser
+import collections
 
 FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
 # SYN_FNAME = "~/Google Drive/Computational Genomics/synthetic.csv"
@@ -23,8 +24,8 @@ FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
 
 
 def main(validate):
-    # DataFrame
-    raw_counts = utils.dataAcquisition(FNAME, normalize=False)
+    # Read in data
+    raw_counts = utils.dataAcquisition(FNAME)
 
     if validate:
         counts, scores, communities, true_doublet_labels, fake_doublet_labels = (
@@ -75,10 +76,46 @@ def main(validate):
     colors = communities_w_doublets
     x = tsne_counts[:, 0]
     y = tsne_counts[:, 1]
-    plt.scatter(x, y, c=colors, s=7, cmap=set1i)
+    plt.scatter(x, y, c=colors, s=4, cmap=set1i)
     doublets = np.where(doublet_labels == 1)[0]
     plt.scatter(x[doublets], y[doublets], facecolors='none', edgecolors='black', s=7)
+    plt.show()
 
+    # Bar chart stacked of counts
+    raw_com_count = collections.Counter(communities_w_doublets[:raw_counts.shape[0]])
+    doublet_com_count = collections.Counter(communities_w_doublets[doublets])
+    
+    # Original
+    labels, values = zip(*raw_com_count.items())
+    indexes = np.arange(len(labels))
+    width = 0.75
+    plt.bar(indexes, values, width)
+    
+    fakes = []
+    for com in labels:
+        fakes.append(doublet_com_count[com])
+
+    plt.bar(indexes, fakes, width, bottom = values)
+    
+    plt.xticks(indexes, labels)
+    plt.show()
+    
+    # Score bar chart 
+    labels, values = zip(*raw_com_count.items())
+    indexes = np.arange(len(labels))
+    width = 0.75
+    
+    scores = []
+    for com in labels:
+        score = np.unique(scores_w_doublets[np.where(communities_w_doublets == com)[0]])
+        scores.append(score[0])
+            
+    plt.bar(indexes, scores, width)
+    plt.xticks(indexes, labels)
+    plt.show()
+    
+    
+    
 
 if __name__ == '__main__':
     argv = sys.argv[1:]
