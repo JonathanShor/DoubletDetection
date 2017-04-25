@@ -6,7 +6,6 @@ Created on Thu Apr 20 11:45:28 2017
 @author: adamgayoso, JonathanShor, ryanbrand
 """
 
-import pandas as pd
 import numpy as np
 import time
 import phenograph
@@ -28,7 +27,7 @@ KNN = 20
 def classify(raw_counts, probabilistic=False):
     """
     Classifier for doublets in single-cell RNA-seq data
-    :param raw_counts: count table in pandas DF format
+    :param raw_counts: count table in numpy.array format
     :param probabilistic: option to use sampled doublets vs linear doublets
     :return counts: mixed counts (real and fake) in numpy ndarray format NORMALIZED
     :return scores: doublet score for each row in counts
@@ -53,7 +52,7 @@ def classify(raw_counts, probabilistic=False):
         doublet_labels[raw_counts.shape[0]:] = 1
     else:
         # Simple synthetic data
-        # Requires pd DataFrame
+        # Requires numpy.array
         synthetic, doublet_labels = create_simple_synthetic_data(raw_counts, 0.7, 0.7, normalize=True, doublet_rate=DOUBLET_RATE)
 
     counts = synthetic
@@ -87,7 +86,7 @@ def classify(raw_counts, probabilistic=False):
 def validate(raw_counts):
     """
     Validate methodology using only probabilistic synthetic data
-    :param raw_counts: count table in pandas DF format
+    :param raw_counts: count table in numpy.array format
     :return synthetic: synthetic normalized counts
     :return scores: doublet score for each row in test
     :return true_doublet_labels: validation "true doublets"

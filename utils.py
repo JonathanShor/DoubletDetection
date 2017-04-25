@@ -6,17 +6,16 @@ Created on Apr 3, 2017
 @author: adamgayoso, JonathanShor, ryanbrand
 """
 
-import pandas as pd
 import numpy as np
 from sklearn.feature_extraction.text import TfidfTransformer
-from sklearn.metrics import precision_recall_fscore_support
 from sklearn.preprocessing import StandardScaler
 
 
 # To read only the first X rows, set read_rows=X
 def dataAcquisition(FNAME, normalize=False, read_rows=None):
     # Import counts
-    counts = pd.read_csv(FNAME, index_col=0, nrows=read_rows)
+    counts = np.genfromtxt(FNAME, delimiter=",", skip_header=1)
+    counts = counts[:, 1:]  # Peel off pandas index labels column
 
     # Normalize
     if normalize:
@@ -34,17 +33,16 @@ def dataAcquisition(FNAME, normalize=False, read_rows=None):
 def synthAcquisition(FNAME, normalize=True):
     # Get raw counts in DataFrame format
     counts = dataAcquisition(FNAME, normalize=False)
-    
-    labels = counts['labels']
-    del counts['labels']
-    doublet_labels = labels.as_matrix()
-    
+
     # Separate labels
+    labels = counts[:, -1]
+    counts = counts[:, :-1]
+
     # Normalize counts
     if normalize:
         counts = normalize_counts_10x(counts)
-    return counts, doublet_labels
 
+    return counts, labels
 
 
 # Standardize columns of matrix X: (X - X.mean) / X.std
@@ -58,9 +56,6 @@ def standardize(X):
 # tf-idf normalizing: cells as documents, genes as words
 # from sklearn.feature_extraction.text import TfidfTransformer
 def normalize_tf_idf(X):
-    if isinstance(X, pd.dataframe):
-        X = X.as_matrix()
-
     tfidf = TfidfTransformer(norm=None, smooth_idf=True, sublinear_tf=False)
     tfidf.fit(X)
     return tfidf.transform(X)
