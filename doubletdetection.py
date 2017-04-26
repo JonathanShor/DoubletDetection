@@ -117,8 +117,8 @@ def validate(raw_counts):
     # Probabilistic synthetic data
     print("Getting cell types...")
     cell_types = getCellTypes(raw_counts, PCA_components=PCA_COMPONENTS, shrink=0.01, knn=KNN)
-    synthetic, true_doublet_labels = create_synthetic_data(cell_types)
+    counts, true_doublet_labels = create_synthetic_data(cell_types)
 
     counts, scores, communities, fake_doublet_labels = classify(counts)
 
-    return synthetic, scores, communities, true_doublet_labels, fake_doublet_labels
+    return counts, scores, communities, true_doublet_labels, fake_doublet_labels
