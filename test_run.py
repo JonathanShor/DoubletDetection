@@ -26,7 +26,7 @@ FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
 def main(validate):
     # Read in data
     print("Loading data...\n")
-    raw_counts = utils.dataAcquisition(FNAME)
+    raw_counts = utils.load_data(FNAME)
 
     if validate:
         counts, scores, communities, true_doublet_labels, fake_doublet_labels = (
@@ -91,36 +91,36 @@ def main(validate):
     # Bar chart stacked of counts
     raw_com_count = collections.Counter(communities_w_doublets[:raw_counts.shape[0]])
     doublet_com_count = collections.Counter(communities_w_doublets[doublets])
-    
+
     # Original
     labels, values = zip(*raw_com_count.items())
     indexes = np.arange(len(labels))
     width = 0.75
     plt.bar(indexes, values, width)
-    
+
     fakes = []
     for com in labels:
         fakes.append(doublet_com_count[com])
 
     plt.bar(indexes, fakes, width, bottom = values)
-    
+
     plt.xticks(indexes, labels)
     plt.show()
-    
-    # Score bar chart 
+
+    # Score bar chart
     labels, values = zip(*raw_com_count.items())
     indexes = np.arange(len(labels))
     width = 0.75
-    
+
     scores = []
     for com in labels:
         score = np.unique(scores_w_doublets[np.where(communities_w_doublets == com)[0]])
         scores.append(score[0])
-            
+
     plt.bar(indexes, scores, width)
     plt.xticks(indexes, labels)
     plt.show()
-    
+
 if __name__ == '__main__':
     argv = sys.argv[1:]
     parser = OptionParser()

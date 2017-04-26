@@ -5,22 +5,20 @@ Created on Apr 3, 2017
 
 @author: adamgayoso, JonathanShor, ryanbrand
 """
-
 import numpy as np
+import pandas as pd
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.preprocessing import StandardScaler
-from os.path import expanduser
 
 
 # To read only the first X rows, set read_rows=X
-def dataAcquisition(FNAME, normalize=False, read_rows=None):
+def load_data(FNAME, normalize=False, read_rows=None):
     # Import counts
-    counts = np.loadtxt(expanduser(FNAME), delimiter=",", skiprows=1)
-    counts = counts[:read_rows, 1:]  # Peel off pandas index labels column
+    counts = pd.read_csv(FNAME, index_col=0, nrows=read_rows).as_matrix()
 
     # Normalize
     if normalize:
-        
+
         if normalize == "TFIDF":
             counts = normalize_tf_idf(counts)
         else:   # 10x paper normalization
@@ -31,7 +29,7 @@ def dataAcquisition(FNAME, normalize=False, read_rows=None):
 
 def synthAcquisition(FNAME, normalize=True):
     # Get raw counts in DataFrame format
-    counts = dataAcquisition(FNAME, normalize=False)
+    counts = load_data(FNAME, normalize=False)
 
     # Separate labels
     labels = counts[:, -1]
@@ -39,7 +37,7 @@ def synthAcquisition(FNAME, normalize=True):
 
     # Normalize counts
     if normalize:
-        counts = normalize_counts_10x(counts)
+        counts = normalize_counts(counts)
 
     return counts, labels
 
