@@ -45,7 +45,7 @@ def classify(raw_counts, probabilistic=False):
             doublets[i] = doubletFromCelltype(cell_types)
 
         synthetic = np.append(raw_counts, doublets, axis=0)
-        synthetic = utils.normalize_counts_10x(synthetic)
+        synthetic = utils.normalize_counts(synthetic)
 
         doublet_labels = np.zeros((int(raw_counts.shape[0] * (1 + DOUBLET_RATE)),))
         doublet_labels[raw_counts.shape[0]:] = 1
@@ -108,7 +108,7 @@ def validate(raw_counts):
         doublets[i] = doubletFromCelltype(cell_types)
 
     synthetic = np.append(counts, doublets, axis=0)
-    synthetic = utils.normalize_counts_10x(synthetic)
+    synthetic = utils.normalize_counts(synthetic)
 
     # Get phenograph results
     pca = PCA(n_components=PCA_COMPONENTS)
