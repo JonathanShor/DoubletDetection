@@ -63,10 +63,10 @@ def classify(raw_counts, probabilistic=False, mix=False):
 
         p_doublet_labels = np.zeros((int(raw_counts.shape[0] * (1 + DOUBLET_RATE/2)),))
         p_doublet_labels[raw_counts.shape[0]:] = 2
-        
+
         print("\nAdding simple doublets to data set...\n")
         synthetic, doublet_labels = create_simple_synthetic_data(synthetic, 0.7, 0.7, normalize=True, doublet_rate=DOUBLET_RATE/2)
-    
+
         doublet_labels[np.where(p_doublet_labels==2)[0]] = 1
     else:
         # Simple synthetic data
@@ -97,10 +97,10 @@ def classify(raw_counts, probabilistic=False, mix=False):
     #scores = scores[:raw_counts.shape[0],:]
     #communities = communities[order]
     #communities = communities[:raw_counts.shape[0]]
-    
+
     if mix:
         doublet_labels[np.where(p_doublet_labels==2)[0]] = 2
-        
+
     return counts, scores, communities, doublet_labels
 
 
@@ -117,7 +117,7 @@ def validate(raw_counts):
     # Probabilistic synthetic data
     print("Getting cell types...")
     cell_types = getCellTypes(raw_counts, PCA_components=PCA_COMPONENTS, shrink=0.01, knn=KNN)
-    counts, true_doublet_labels = create_synthetic_data(cell_types)
+    synthetic, true_doublet_labels = create_synthetic_data(cell_types)
 
     counts, scores, communities, fake_doublet_labels = classify(counts)
 
