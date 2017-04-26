@@ -25,6 +25,7 @@ FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
 
 def main(validate):
     # Read in data
+    print("Loading data...\n")
     raw_counts = utils.dataAcquisition(FNAME)
 
     if validate:
@@ -40,8 +41,9 @@ def main(validate):
         return
     else:
         # Get scores
+        print("Starting classification...\n")
         counts_w_doublets, scores_w_doublets, communities_w_doublets, doublet_labels = (
-            doubletdetection.classify(raw_counts, probabilistic=False))
+            doubletdetection.classify(raw_counts, probabilistic=False, mix=True))
         true_scores = scores_w_doublets[:raw_counts.shape[0], :]
         for s in range(20, 80, 2):
             cutoff = s / float(100)
@@ -71,14 +73,19 @@ def main(validate):
     #doublet_labels[np.where(scores>0.37)[0]] = 1
 
     # data viz
+    fig = plt.figure(figsize=(8, 8), dpi=300)
     set1i = LinearSegmentedColormap.from_list('set1i', plt.cm.Set1.colors, N=100)
 
     colors = communities_w_doublets
     x = tsne_counts[:, 0]
     y = tsne_counts[:, 1]
-    plt.scatter(x, y, c=colors, s=4, cmap=set1i)
+    plt.scatter(x, y, c=colors, s=10, cmap=set1i)
     doublets = np.where(doublet_labels == 1)[0]
-    plt.scatter(x[doublets], y[doublets], facecolors='none', edgecolors='black', s=7)
+    plt.scatter(x[doublets], y[doublets], facecolors='none', edgecolors='black', s=2)
+    # If the data was from a mixed classification
+    if len(np.unique(doublet_labels)) == 3:
+        doublets = np.where(doublet_labels == 2)[0]
+        plt.scatter(x[doublets], y[doublets], facecolors='none', edgecolors='red', s=2)
     plt.show()
 
     # Bar chart stacked of counts
@@ -114,9 +121,6 @@ def main(validate):
     plt.xticks(indexes, labels)
     plt.show()
     
-    
-    
-
 if __name__ == '__main__':
     argv = sys.argv[1:]
     parser = OptionParser()
