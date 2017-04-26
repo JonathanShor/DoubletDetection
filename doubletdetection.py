@@ -40,9 +40,11 @@ def classify(raw_counts, probabilistic=False, mix=False):
         cell_types = getCellTypes(raw_counts, PCA_components=PCA_COMPONENTS, shrink=0.01, knn=KNN)
 
         print("\nAdding fake doublets to data set...\n")
+        parents = []
         doublets = np.zeros((int(DOUBLET_RATE * raw_counts.shape[0]), raw_counts.shape[1]))
         for i in range(int(DOUBLET_RATE * raw_counts.shape[0])):
-            doublets[i] = doubletFromCelltype(cell_types)
+            doublets[i], parent_pair = doubletFromCelltype(cell_types)
+            parents.append(parent_pair)
 
         synthetic = np.append(raw_counts, doublets, axis=0)
         synthetic = utils.normalize_counts(synthetic)
@@ -57,7 +59,7 @@ def classify(raw_counts, probabilistic=False, mix=False):
         print("\nAdding probabilistic doublets to data set...\n")
         doublets = np.zeros((int(DOUBLET_RATE/2 * raw_counts.shape[0]), raw_counts.shape[1]))
         for i in range(int(DOUBLET_RATE/2 * raw_counts.shape[0])):
-            doublets[i] = doubletFromCelltype(cell_types)
+            doublets[i], _ = doubletFromCelltype(cell_types)
 
         synthetic = np.append(raw_counts, doublets, axis=0)
 
