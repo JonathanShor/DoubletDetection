@@ -43,7 +43,7 @@ def main(validate):
         # Get scores
         print("Starting classification...\n")
         counts_w_doublets, scores_w_doublets, communities_w_doublets, doublet_labels = (
-            doubletdetection.classify(raw_counts, probabilistic=False, mix=True))
+            doubletdetection.classify(raw_counts, probabilistic=True, mix=False))
         true_scores = scores_w_doublets[:raw_counts.shape[0], :]
         for s in range(20, 80, 2):
             cutoff = s / float(100)
@@ -51,14 +51,8 @@ def main(validate):
             print(cutoff, len(test))
 
     # Visualize tSNE clustering
-    # Different color for each cluster and black doublet
-    # Only visualize raw counts
-
-    #counts = doubletdetection.utils.normalize_counts(counts_w_doublets)
-
     # Default tsne num_componenets is 2
-    # If you run without reducing counts it kills your memory
-    # This works with validation off
+
     pca = PCA(n_components=30)
     reduced_counts = pca.fit_transform(counts_w_doublets)
 
@@ -73,19 +67,35 @@ def main(validate):
     #doublet_labels[np.where(scores>0.37)[0]] = 1
 
     # data viz
-    fig = plt.figure(figsize=(8, 8), dpi=300)
+    #fig = plt.figure(figsize=(8, 8), dpi=300)
     set1i = LinearSegmentedColormap.from_list('set1i', plt.cm.Set1.colors, N=100)
-
+    f, (ax1, ax2, ax3) = plt.subplots(1,3,sharey=True,figsize=(20, 8), dpi=300)
+    # Sampled doublet tsne
     colors = communities_w_doublets
     x = tsne_counts[:, 0]
     y = tsne_counts[:, 1]
-    plt.scatter(x, y, c=colors, s=10, cmap=set1i)
+    ax1.scatter(x, y, c=colors, s=10, cmap=set1i)
     doublets = np.where(doublet_labels == 1)[0]
-    plt.scatter(x[doublets], y[doublets], facecolors='none', edgecolors='black', s=2)
+    ax1.scatter(x[doublets], y[doublets], facecolors='none', edgecolors='black', s=2)
     # If the data was from a mixed classification
     if len(np.unique(doublet_labels)) == 3:
         doublets = np.where(doublet_labels == 2)[0]
-        plt.scatter(x[doublets], y[doublets], facecolors='none', edgecolors='red', s=2)
+        ax1.scatter(x[doublets], y[doublets], facecolors='none', edgecolors='red', s=2)
+    ax1.set_title("Fake and Real Data with Black Fake Doublets")
+    
+    # Original Data
+    #fig = plt.figure(figsize=(8, 8), dpi=300)
+    colors = communities_w_doublets[:raw_counts.shape[0]]
+    ax2.scatter(x[:raw_counts.shape[0]], y[:raw_counts.shape[0]], c=colors, s=10, cmap=set1i)
+    ax2.set_title("Original Data")
+    
+    # Original marked doublets
+    #fig = plt.figure(figsize=(8, 8), dpi=300)
+    ax3.scatter(x[:raw_counts.shape[0]], y[:raw_counts.shape[0]], c=colors, s=10, cmap=set1i)
+    cutoff = 0.5
+    doublets = np.where(scores_w_doublets[:raw_counts.shape[0]]>cutoff)[0]
+    ax3.scatter(x[doublets], y[doublets], facecolors='none', edgecolors='black', s=2)
+    ax3.set_title("Identified doublets with Score>" + str(cutoff))
     plt.show()
 
     # Bar chart stacked of counts

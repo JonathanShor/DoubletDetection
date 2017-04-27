@@ -23,7 +23,7 @@ DOUBLET_RATE = 0.25
 KNN = 20
 
 
-def classify(raw_counts, probabilistic=False, mix=False):
+def classify(raw_counts, probabilistic=False, mix=False, doublet_rate=DOUBLET_RATE):
     """
     Classifier for doublets in single-cell RNA-seq data
     :param raw_counts: count table in numpy.array format
@@ -40,15 +40,15 @@ def classify(raw_counts, probabilistic=False, mix=False):
         cell_types = getCellTypes(raw_counts, PCA_components=PCA_COMPONENTS, shrink=0.01, knn=KNN)
 
         print("\nAdding fake doublets to data set...\n")
-        parents = np.zeros((int(DOUBLET_RATE * raw_counts.shape[0]), 2))
-        doublets = np.zeros((int(DOUBLET_RATE * raw_counts.shape[0]), raw_counts.shape[1]))
-        for i in range(int(DOUBLET_RATE * raw_counts.shape[0])):
+        parents = np.zeros((int(doublet_rate * raw_counts.shape[0]), 2))
+        doublets = np.zeros((int(doublet_rate * raw_counts.shape[0]), raw_counts.shape[1]))
+        for i in range(int(doublet_rate * raw_counts.shape[0])):
             doublets[i], parents[i] = doubletFromCelltype(cell_types)
 
         synthetic = np.append(raw_counts, doublets, axis=0)
         synthetic = utils.normalize_counts(synthetic)
 
-        doublet_labels = np.zeros((int(raw_counts.shape[0] * (1 + DOUBLET_RATE)),))
+        doublet_labels = np.zeros((int(raw_counts.shape[0] * (1 + doublet_rate)),))
         doublet_labels[raw_counts.shape[0]:] = 1
     elif mix:
          # Probabilistc doublets
@@ -56,23 +56,23 @@ def classify(raw_counts, probabilistic=False, mix=False):
         cell_types = getCellTypes(raw_counts, PCA_components=PCA_COMPONENTS, shrink=0.01, knn=KNN)
 
         print("\nAdding probabilistic doublets to data set...\n")
-        doublets = np.zeros((int(DOUBLET_RATE/2 * raw_counts.shape[0]), raw_counts.shape[1]))
-        for i in range(int(DOUBLET_RATE/2 * raw_counts.shape[0])):
+        doublets = np.zeros((int(doublet_rate/2 * raw_counts.shape[0]), raw_counts.shape[1]))
+        for i in range(int(doublet_rate/2 * raw_counts.shape[0])):
             doublets[i], _ = doubletFromCelltype(cell_types)
 
         synthetic = np.append(raw_counts, doublets, axis=0)
 
-        p_doublet_labels = np.zeros((int(raw_counts.shape[0] * (1 + DOUBLET_RATE/2)),))
+        p_doublet_labels = np.zeros((int(raw_counts.shape[0] * (1 + doublet_rate/2)),))
         p_doublet_labels[raw_counts.shape[0]:] = 2
 
         print("\nAdding simple doublets to data set...\n")
-        synthetic, doublet_labels = create_simple_synthetic_data(synthetic, 0.7, 0.7, normalize=True, doublet_rate=DOUBLET_RATE/2)
+        synthetic, doublet_labels = create_simple_synthetic_data(synthetic, 0.7, 0.7, normalize=True, doublet_rate=doublet_rate/2)
 
         doublet_labels[np.where(p_doublet_labels==2)[0]] = 1
     else:
         # Simple synthetic data
         # Requires numpy.array
-        synthetic, doublet_labels = create_simple_synthetic_data(raw_counts, 0.7, 0.7, normalize=True, doublet_rate=DOUBLET_RATE)
+        synthetic, doublet_labels = create_simple_synthetic_data(raw_counts, 0.7, 0.7, normalize=True, doublet_rate=doublet_rate)
 
     counts = synthetic
 
