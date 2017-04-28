@@ -7,18 +7,12 @@ Created on Thu Apr 20 11:45:28 2017
 """
 
 import numpy as np
-import time
 import phenograph
 import collections
 from sklearn.decomposition import PCA
-import matplotlib.pyplot as plt
-from synthetic import create_synthetic_data
 from synthetic import create_simple_synthetic_data
-from synthetic import getCellTypes
-from synthetic import doubletFromCelltype
 from synthetic import downsampledDoublets
 from synthetic import sameDownsampledDoublets
-import utils
 
 PCA_COMPONENTS = 30
 DOUBLET_RATE = 0.25

@@ -17,11 +17,7 @@ def load_data(FNAME, normalize=False, read_rows=None):
 
     # Normalize
     if normalize:
-
-        if normalize == "TFIDF":
-            counts = normalize_tf_idf(counts)
-        else:   # 10x paper normalization
-            counts = normalize_counts(counts)
+        counts = normalize_counts(counts)
 
     return counts
 

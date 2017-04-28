@@ -18,8 +18,8 @@ import sys
 from optparse import OptionParser
 import collections
 
-FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
-#FNAME = "~/Google Drive/Computational Genomics/5050.csv"
+#FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
+FNAME = "~/Google Drive/Computational Genomics/5050.csv"
 # SYN_FNAME = "~/Google Drive/Computational Genomics/synthetic.csv"
 # VALIDATE = True
 

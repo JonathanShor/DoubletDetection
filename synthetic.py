@@ -6,12 +6,7 @@ Created on Apr 3, 2017
 @author: adamgayoso, JonathanShor, ryanbrand
 """
 import numpy as np
-import phenograph
-from sklearn.decomposition import PCA
-from sklearn.mixture import GaussianMixture
-from sklearn.naive_bayes import BernoulliNB
 from utils import normalize_counts
-from contextlib import contextmanager
 
 CELLTYPESAMPLEMEAN = 0.05   # Mean percent of cell gene expression captured per cell read
 DOUBLETRATE = 0.07
