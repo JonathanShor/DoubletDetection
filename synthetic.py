@@ -48,16 +48,23 @@ def sampleCellRead(mean_reads, gene_probs, num_cells=1):
 
 # Given n celltypes, and type_freqs indicating relative frequency of each celltype,
 # Return one doublet: two celltypes (selected prop. to type_freqs) combined with
-def doubletFromCelltype(celltypes, doublet_weight=1, allow_same_parent=True):
+def doubletFromCelltype(celltypes, doublet_weight=0.5, allow_same_parent=True):
+    try:
+        w1 = doublet_weight[0]
+        w2 = doublet_weight[1]
+    except TypeError:   # assume scalar, use for both weights
+        w1 = doublet_weight
+        w2 = doublet_weight
     genecounts = np.array(celltypes['genecounts'])
     cellcounts = np.array(celltypes['cellcounts'])
     mean_reads = np.array(np.sum(genecounts, axis=1) * CELLTYPESAMPLEMEAN, dtype=int)
     celltypesProb = genecounts / np.sum(genecounts, axis=1).reshape(-1, 1)
     parents = np.random.choice(range(len(cellcounts)), p=cellcounts / sum(cellcounts), size=2,
                                replace=allow_same_parent)
-    cell1 = sampleCellRead(mean_reads[parents[0]], celltypesProb[parents[0]]) * doublet_weight
+    cell1 = sampleCellRead(mean_reads[parents[0]], celltypesProb[parents[0]])
     cell2 = sampleCellRead(mean_reads[parents[1]], celltypesProb[parents[1]])
-    return cell1 + cell2, parents
+    doublet = np.array(np.around(cell1 * w1 + cell2 * w2), dtype=cell1.dtype)
+    return doublet, parents
 
 
 # Generate 2D synthetic data from celltypes
@@ -219,7 +226,8 @@ def create_simple_synthetic_data(raw_counts, alpha1, alpha2, write=False, normal
         row1 = int(np.random.rand() * cell_count)
         row2 = int(np.random.rand() * cell_count)
 
-        new_row = alpha1 * raw_counts[row1] + alpha2 * raw_counts[row2]
+        new_row = np.array(np.around(alpha1 * raw_counts[row1] + alpha2 * raw_counts[row2]),
+                           dtype=raw_counts.dtype)
 
         synthetic[i] = new_row
 
