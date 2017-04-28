@@ -88,15 +88,17 @@ def main():
     labels, values = zip(*raw_com_count.items())
     indexes = np.arange(len(labels))
     width = 0.75
-    plt.bar(indexes, values, width)
+    plt.title("Number of Downsampled Doublets and Real Cells in each Phenograph Community")
+    plt.bar(indexes, values, width, label="Real Cells")
 
     fakes = []
     for com in labels:
         fakes.append(doublet_com_count[com])
 
-    plt.bar(indexes, fakes, width, bottom = values)
+    plt.bar(indexes, fakes, width, bottom = values, label="Downsampled Doublets")
 
     plt.xticks(indexes, labels)
+    plt.legend()
     plt.show()
 
     # Score bar chart
@@ -108,7 +110,7 @@ def main():
     for com in labels:
         score = np.unique(scores_w_doublets[np.where(communities_w_doublets == com)[0]])
         scores.append(score[0])
-
+    plt.title("Score of each Phenograph Community")
     plt.bar(indexes, scores, width)
     plt.xticks(indexes, labels)
     plt.show()
