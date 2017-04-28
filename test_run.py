@@ -19,6 +19,7 @@ from optparse import OptionParser
 import collections
 
 FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
+#FNAME = "~/Google Drive/Computational Genomics/5050.csv"
 # SYN_FNAME = "~/Google Drive/Computational Genomics/synthetic.csv"
 # VALIDATE = True
 
@@ -43,9 +44,9 @@ def main(validate):
         # Get scores
         print("Starting classification...\n")
         counts_w_doublets, scores_w_doublets, communities_w_doublets, doublet_labels = (
-            doubletdetection.classify(raw_counts, probabilistic=True, mix=False))
+            doubletdetection.classify(raw_counts, probabilistic=False, mix=False, doublet_rate=0.25))
         true_scores = scores_w_doublets[:raw_counts.shape[0], :]
-        for s in range(20, 80, 2):
+        for s in range(0, 80, 2):
             cutoff = s / float(100)
             test = true_scores[np.where(true_scores > cutoff)[0]]
             print(cutoff, len(test))
@@ -56,7 +57,7 @@ def main(validate):
     pca = PCA(n_components=30)
     reduced_counts = pca.fit_transform(counts_w_doublets)
 
-    communities, graph, Q = phenograph.cluster(reduced_counts)
+    #communities, graph, Q = phenograph.cluster(reduced_counts)
 
     print('\nCreating tSNE reduced counts\n')
     tsne = TSNE()
@@ -81,7 +82,7 @@ def main(validate):
     if len(np.unique(doublet_labels)) == 3:
         doublets = np.where(doublet_labels == 2)[0]
         ax1.scatter(x[doublets], y[doublets], facecolors='none', edgecolors='red', s=2)
-    ax1.set_title("Fake and Real Data with Black Fake Doublets")
+    ax1.set_title("Fake and Real Data with Fake Doublets (Black)")
     
     # Original Data
     #fig = plt.figure(figsize=(8, 8), dpi=300)
@@ -92,7 +93,7 @@ def main(validate):
     # Original marked doublets
     #fig = plt.figure(figsize=(8, 8), dpi=300)
     ax3.scatter(x[:raw_counts.shape[0]], y[:raw_counts.shape[0]], c=colors, s=10, cmap=set1i)
-    cutoff = 0.5
+    cutoff = 0.76
     doublets = np.where(scores_w_doublets[:raw_counts.shape[0]]>cutoff)[0]
     ax3.scatter(x[doublets], y[doublets], facecolors='none', edgecolors='black', s=2)
     ax3.set_title("Identified doublets with Score>" + str(cutoff))
@@ -145,3 +146,17 @@ if __name__ == '__main__':
         print("Validation run starting.")
 
     main(options.validate)
+    
+    
+#==============================================================================
+# cutoff = 0.2
+# doublets = np.where(scores_w_doublets[:raw_counts.shape[0]]>cutoff)[0]
+# identified_doublets = raw_counts[doublets]
+# XIST = np.where(identified_doublets[:,13750]>0)
+# CD3D = np.where(identified_doublets[:,19801]>0)
+# np.intersect1d(XIST,CD3D)
+# XandC = np.intersect1d(XIST,CD3D)
+removed_clusters = np.unique(communities_w_doublets[doublets])
+for clus in np.unique(communities_w_doublets):
+    print(clus, np.mean(np.sum(raw_counts[np.where(communities_w_doublets[:raw_counts.shape[0]] == clus)[0]], axis=1)))
+#==============================================================================

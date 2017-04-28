@@ -63,7 +63,7 @@ def normalize_counts(raw_counts, doStandardize=False):
     Normalizes count array using method in 10x pipeline
     :param raw_counts: numpy array of count data
     :return normed: normalized data
-    """
+    """ 
 
     # Sum across cells and divide each cell by sum
     cell_sums = np.sum(raw_counts, axis=1)
@@ -86,3 +86,27 @@ def normalize_counts(raw_counts, doStandardize=False):
         normed = raw_counts
 
     return normed
+
+# Reads in data from 10x website
+def read_from_mtx(folder):
+    from seqc.sequence.encodings import DNA3Bit
+    import scipy.io
+    from scipy.io import mmread
+    bcl=[]
+    with open(folder+"/barcodes.tsv") as f1:
+        for line in f1:
+            arr=line.split("-")
+            bcl.append(DNA3Bit.encode(arr[0]))
+    f1.close()
+    gl=[]
+    with open(folder+"/genes.tsv") as f2:
+        for line in f2:
+            arr=line.split("\t")
+            gl.append(arr[1].rstrip().upper())
+    f2.close()
+    gcm=np.transpose(mmread(folder+"/matrix.mtx").toarray())
+    gcm=pd.DataFrame(gcm,index=bcl,columns=gl)
+    return gcm
+
+folder = "/Users/adamgayoso/Google Drive/Computational Genomics/filtered_matrices_mex/5050"
+crm5050=read_from_mtx(folder)

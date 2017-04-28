@@ -16,6 +16,7 @@ from synthetic import create_synthetic_data
 from synthetic import create_simple_synthetic_data
 from synthetic import getCellTypes
 from synthetic import doubletFromCelltype
+from synthetic import downsampledDoublets
 import utils
 
 PCA_COMPONENTS = 30
@@ -66,13 +67,16 @@ def classify(raw_counts, probabilistic=False, mix=False, doublet_rate=DOUBLET_RA
         p_doublet_labels[raw_counts.shape[0]:] = 2
 
         print("\nAdding simple doublets to data set...\n")
-        synthetic, doublet_labels = create_simple_synthetic_data(synthetic, 0.7, 0.7, normalize=True, doublet_rate=doublet_rate/2)
+        D = doublet_rate
+        synthetic, doublet_labels = create_simple_synthetic_data(synthetic, 0.6, 0.6, normalize=True, doublet_rate=D/2)
 
         doublet_labels[np.where(p_doublet_labels==2)[0]] = 1
     else:
         # Simple synthetic data
         # Requires numpy.array
-        synthetic, doublet_labels = create_simple_synthetic_data(raw_counts, 0.7, 0.7, normalize=True, doublet_rate=doublet_rate)
+        D = doublet_rate
+        synthetic, doublet_labels = create_simple_synthetic_data(raw_counts, 0.6, 0.6, normalize=True, doublet_rate=D)
+        #synthetic, doublet_labels = downsampledDoublets(raw_counts, normalize=True, doublet_rate=D)
 
     counts = synthetic
 

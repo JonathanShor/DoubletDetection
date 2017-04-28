@@ -51,9 +51,9 @@ def main(validate):
                 test = true_scores[np.where(true_scores > cutoff)[0]]
                 cutoffs[int(s/2),i] = len(test)
             i+=1
-        x = []
+        x = np.zeros((50))
         for s in range(0,100,2):
-            x.append(int(s))
+            x[int(s/2)] = (int(s))
             
     # Plotting CDF for different cutoffs
     fig, ax = plt.subplots(figsize=(8, 8), dpi=300)

@@ -234,3 +234,55 @@ def create_simple_synthetic_data(raw_counts, alpha1, alpha2, write=False, normal
         synthetic = normalize_counts(synthetic)
 
     return synthetic, labels
+
+def downsampledDoublets(raw_counts, normalize=False, doublet_rate=DOUBLETRATE):  
+    """
+    Appends doublets to end of data
+    :param raw_counts: numpy of count data
+    :param alpha1: weighting of row1 in sum
+    :param alpha2: weighting of row2 in sum
+    :param normalize: normalize data before returning
+    :return synthetic: synthetic data in numpy array
+    :return labels: 0 for original data, 1 for fake doublet as np array - 1d arrray
+    """
+
+    # Get shape
+    cell_count = raw_counts.shape[0]
+    gene_count = raw_counts.shape[1]
+
+    # Number of doublets to add
+    doublets = int(doublet_rate * cell_count)
+
+    synthetic = np.zeros((doublets, gene_count))
+
+    # Add labels column to know which ones are doublets
+    labels = np.zeros(cell_count + doublets)
+    labels[cell_count:] = 1
+    
+    lib_size = np.mean(np.sum(raw_counts, axis=1))
+    std = np.std(np.sum(raw_counts, axis=1))
+
+    for i in range(doublets):
+        row1 = int(np.random.rand() * cell_count)
+        row2 = int(np.random.rand() * cell_count)
+
+        new_cell = raw_counts[row1] + raw_counts[row2]
+        
+        new_lib_size = int(np.random.normal(loc=lib_size, scale = std))
+        lib1 = np.sum(row1)
+        lib2 = np.sum(row2)
+        mol_ind = np.random.permutation(lib1+lib2)[:new_lib_size]
+        bins = np.append(np.zeros((1)),np.cumsum(new_cell)+1)
+        new_cell = np.histogram(mol_ind, bins)[0]
+        
+        synthetic[i] = new_cell
+
+    # Shouldn't change original raw_counts
+    synthetic = np.append(raw_counts, synthetic, axis=0)
+
+    if normalize:
+        synthetic = normalize_counts(synthetic)
+
+    return synthetic, labels
+    
+    
