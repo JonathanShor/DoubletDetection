@@ -24,7 +24,7 @@ FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
 # VALIDATE = True
 
 
-def main(validate):
+def main():
     # Read in data
     print("Loading data...\n")
     raw_counts = utils.load_data(FNAME)
