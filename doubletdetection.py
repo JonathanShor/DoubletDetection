@@ -17,7 +17,7 @@ from synthetic import create_simple_synthetic_data
 from synthetic import getCellTypes
 from synthetic import doubletFromCelltype
 from synthetic import downsampledDoublets
-from synthetic import downsampledDoublets2
+from synthetic import sameDownsampledDoublets
 import utils
 
 PCA_COMPONENTS = 30
@@ -25,7 +25,7 @@ DOUBLET_RATE = 0.25
 KNN = 20
 
 
-def classify(raw_counts, probabilistic=False, mix=False, downsample = False, doublet_rate=DOUBLET_RATE):
+def classify(raw_counts, downsample = True, doublet_rate=DOUBLET_RATE):
     """
     Classifier for doublets in single-cell RNA-seq data
     :param raw_counts: count table in numpy.array format
@@ -36,54 +36,17 @@ def classify(raw_counts, probabilistic=False, mix=False, downsample = False, dou
     :return doublet_labels: indicator for each row in counts whether it is a fake doublet (doublets appended to end)
     """
     parents = None
-    if probabilistic:
-        # Probabilistc doublets
-        print("Gathering info about cell types...\n")
-        cell_types = getCellTypes(raw_counts, PCA_components=PCA_COMPONENTS, shrink=0.01, knn=KNN)
-
-        print("\nAdding fake doublets to data set...\n")
-        parents = np.zeros((int(doublet_rate * raw_counts.shape[0]), 2))
-        doublets = np.zeros((int(doublet_rate * raw_counts.shape[0]), raw_counts.shape[1]))
-        for i in range(int(doublet_rate * raw_counts.shape[0])):
-            doublets[i], parents[i] = doubletFromCelltype(cell_types)
-
-        synthetic = np.append(raw_counts, doublets, axis=0)
-        synthetic = utils.normalize_counts(synthetic)
-
-        doublet_labels = np.zeros((int(raw_counts.shape[0] * (1 + doublet_rate)),))
-        doublet_labels[raw_counts.shape[0]:] = 1
-    elif mix:
-         # Probabilistc doublets
-        print("Gathering info about cell types...\n")
-        cell_types = getCellTypes(raw_counts, PCA_components=PCA_COMPONENTS, shrink=0.01, knn=KNN)
-
-        print("\nAdding probabilistic doublets to data set...\n")
-        doublets = np.zeros((int(doublet_rate/2 * raw_counts.shape[0]), raw_counts.shape[1]))
-        for i in range(int(doublet_rate/2 * raw_counts.shape[0])):
-            doublets[i], _ = doubletFromCelltype(cell_types)
-
-        synthetic = np.append(raw_counts, doublets, axis=0)
-
-        p_doublet_labels = np.zeros((int(raw_counts.shape[0] * (1 + doublet_rate/2)),))
-        p_doublet_labels[raw_counts.shape[0]:] = 2
-
-        print("\nAdding simple doublets to data set...\n")
-        D = doublet_rate
-        synthetic, doublet_labels = create_simple_synthetic_data(synthetic, 0.6, 0.6, normalize=True, doublet_rate=D/2)
-
-        doublet_labels[np.where(p_doublet_labels==2)[0]] = 1
-    elif downsample == True:
+    if downsample == True:
         D = doublet_rate
         synthetic, doublet_labels = downsampledDoublets(raw_counts, normalize=True, doublet_rate=D)
     elif downsample == "Same":
         D = doublet_rate
-        synthetic, doublet_labels, parents = downsampledDoublets2(raw_counts, normalize=True, doublet_rate=D)
+        synthetic, doublet_labels, parents = sameDownsampledDoublets(raw_counts, normalize=True, doublet_rate=D)
     else:
         # Simple synthetic data
         # Requires numpy.array
         D = doublet_rate
         synthetic, doublet_labels = create_simple_synthetic_data(raw_counts, 0.6, 0.6, normalize=True, doublet_rate=D)
-
 
     counts = synthetic
 
@@ -105,32 +68,5 @@ def classify(raw_counts, probabilistic=False, mix=False, downsample = False, dou
         synth_doub_count[c] = np.sum(phenolabels[c_indices, 1]) / float(c_count[c])
         scores[c_indices] = synth_doub_count[c]
 
-    # Only keep scores for real points
-    #scores = scores[:raw_counts.shape[0],:]
-    #communities = communities[order]
-    #communities = communities[:raw_counts.shape[0]]
-
-    if mix:
-        doublet_labels[np.where(p_doublet_labels==2)[0]] = 2
 
     return counts, scores, communities, doublet_labels, parents
-
-
-def validate(raw_counts):
-    """
-    Validate methodology using only probabilistic synthetic data
-    :param raw_counts: count table in numpy.array format
-    :return synthetic: synthetic normalized counts
-    :return scores: doublet score for each row in test
-    :return true_doublet_labels: validation "true doublets"
-    :return fake_doublet_labels: appended fake doublets
-    """
-
-    # Probabilistic synthetic data
-    print("Getting cell types...")
-    cell_types = getCellTypes(raw_counts, PCA_components=PCA_COMPONENTS, shrink=0.01, knn=KNN)
-    counts, true_doublet_labels = create_synthetic_data(cell_types)
-
-    counts, scores, communities, fake_doublet_labels = classify(counts)
-
-    return counts, scores, communities, true_doublet_labels, fake_doublet_labels

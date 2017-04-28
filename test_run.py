@@ -29,27 +29,15 @@ def main(validate):
     print("Loading data...\n")
     raw_counts = utils.load_data(FNAME)
 
-    if validate:
-        counts, scores, communities, true_doublet_labels, fake_doublet_labels = (
-            doubletdetection.validate(raw_counts))
-        true_scores = scores[:len(true_doublet_labels), :]
-        for s in range(20, 80, 2):
-            cutoff = s / float(100)
-            test = true_scores[np.where(true_scores > cutoff)[0]]
-            print(cutoff, len(test))
-        print(np.sum(true_doublet_labels[np.where(true_scores > 0.63)[0]]) / (
-            float(len(true_scores[np.where(true_scores > 0.63)[0]]))))
-        return
-    else:
-        # Get scores
-        print("Starting classification...\n")
-        counts_w_doublets, scores_w_doublets, communities_w_doublets, doublet_labels, parents = (
-            doubletdetection.classify(raw_counts, probabilistic=False, mix=False, downsample=True, doublet_rate=0.40))
-        true_scores = scores_w_doublets[:raw_counts.shape[0], :]
-        for s in range(0, 90, 2):
-            cutoff = s / float(100)
-            test = true_scores[np.where(true_scores > cutoff)[0]]
-            print(cutoff, len(test))
+    # Get scores
+    print("Starting classification...\n")
+    counts_w_doublets, scores_w_doublets, communities_w_doublets, doublet_labels, parents = (
+        doubletdetection.classify(raw_counts, downsample=True, doublet_rate=0.40))
+    true_scores = scores_w_doublets[:raw_counts.shape[0], :]
+    for s in range(0, 90, 2):
+        cutoff = s / float(100)
+        test = true_scores[np.where(true_scores > cutoff)[0]]
+        print(cutoff, len(test))
 
     # Visualize tSNE clustering
     # Default tsne num_componenets is 2
@@ -138,14 +126,11 @@ if __name__ == '__main__':
     parser.add_option("-f", "--file", dest="file", help='read csv data from FILE', metavar='FILE')
     # parser.add_option("-g", type='string', dest="gcpathname", help='gc5Base file')
     # parser.add_option("-w", type='int', dest="wind", help='window size')
-    parser.add_option("-v", dest="validate", action="store_true", default=False)
     (options, _args) = parser.parse_args()
     if options.file:
         FNAME = options.file
-    if options.validate:
-        print("Validation run starting.")
 
-    main(options.validate)
+    main()
     
     
 #==============================================================================
@@ -156,7 +141,7 @@ if __name__ == '__main__':
 # CD3D = np.where(identified_doublets[:,19801]>0)
 # np.intersect1d(XIST,CD3D)
 # XandC = np.intersect1d(XIST,CD3D)
-removed_clusters = np.unique(communities_w_doublets[doublets])
-for clus in np.unique(communities_w_doublets):
-    print(clus, np.mean(np.sum(raw_counts[np.where(communities_w_doublets[:raw_counts.shape[0]] == clus)[0]], axis=1)))
+#removed_clusters = np.unique(communities_w_doublets[doublets])
+#for clus in np.unique(communities_w_doublets):
+#    print(clus, np.mean(np.sum(raw_counts[np.where(communities_w_doublets[:raw_counts.shape[0]] == clus)[0]], axis=1)))
 #==============================================================================

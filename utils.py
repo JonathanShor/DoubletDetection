@@ -7,8 +7,7 @@ Created on Apr 3, 2017
 """
 import numpy as np
 import pandas as pd
-from sklearn.feature_extraction.text import TfidfTransformer
-from sklearn.preprocessing import StandardScaler
+
 
 
 # To read only the first X rows, set read_rows=X
@@ -25,37 +24,6 @@ def load_data(FNAME, normalize=False, read_rows=None):
             counts = normalize_counts(counts)
 
     return counts
-
-
-def synthAcquisition(FNAME, normalize=True):
-    # Get raw counts in DataFrame format
-    counts = load_data(FNAME, normalize=False)
-
-    # Separate labels
-    labels = counts[:, -1]
-    counts = counts[:, :-1]
-
-    # Normalize counts
-    if normalize:
-        counts = normalize_counts(counts)
-
-    return counts, labels
-
-
-# Standardize columns of matrix X: (X - X.mean) / X.std
-# Also returns StandardScaler object for consistent further (inverse) standardization
-# from sklearn.preprocessing import StandardScaler
-def standardize(X):
-    scaleX = StandardScaler().fit(X)
-    return scaleX.transform(X), scaleX
-
-
-# tf-idf normalizing: cells as documents, genes as words
-# from sklearn.feature_extraction.text import TfidfTransformer
-def normalize_tf_idf(X):
-    tfidf = TfidfTransformer(norm=None, smooth_idf=True, sublinear_tf=False)
-    tfidf.fit(X)
-    return tfidf.transform(X)
 
 
 def normalize_counts(raw_counts, doStandardize=False):
