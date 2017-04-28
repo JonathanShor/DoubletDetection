@@ -41,19 +41,12 @@ def main(validate):
 
     # Visualize tSNE clustering
     # Default tsne num_componenets is 2
-
     pca = PCA(n_components=30)
     reduced_counts = pca.fit_transform(counts_w_doublets)
-
     communities, graph, Q = phenograph.cluster(reduced_counts[:raw_counts.shape[0],:])
-
     print('\nCreating tSNE reduced counts\n')
     tsne = TSNE(random_state=1)
     tsne_counts = tsne.fit_transform(reduced_counts)
-
-    #cutoff = 0.59
-    #doublet_labels = np.zeros((reduced_counts.shape[0],))
-    #doublet_labels[np.where(scores>0.37)[0]] = 1
 
     # data viz
     #fig = plt.figure(figsize=(8, 8), dpi=300)
