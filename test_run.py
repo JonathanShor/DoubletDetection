@@ -20,9 +20,6 @@ import collections
 
 FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
 #FNAME = "~/Google Drive/Computational Genomics/5050.csv"
-# SYN_FNAME = "~/Google Drive/Computational Genomics/synthetic.csv"
-# VALIDATE = True
-
 
 def main():
     # Read in data
@@ -32,7 +29,7 @@ def main():
     # Get scores
     print("Starting classification...\n")
     counts_w_doublets, scores_w_doublets, communities_w_doublets, doublet_labels, parents = (
-        doubletdetection.classify(raw_counts, downsample=True, doublet_rate=0.40))
+        doubletdetection.classify(raw_counts, downsample=True, doublet_rate=0.25))
     true_scores = scores_w_doublets[:raw_counts.shape[0], :]
     for s in range(0, 90, 2):
         cutoff = s / float(100)
@@ -119,8 +116,7 @@ if __name__ == '__main__':
     argv = sys.argv[1:]
     parser = OptionParser()
     parser.add_option("-f", "--file", dest="file", help='read csv data from FILE', metavar='FILE')
-    # parser.add_option("-g", type='string', dest="gcpathname", help='gc5Base file')
-    # parser.add_option("-w", type='int', dest="wind", help='window size')
+
     (options, _args) = parser.parse_args()
     if options.file:
         FNAME = options.file
