@@ -17,6 +17,7 @@ from synthetic import create_simple_synthetic_data
 from synthetic import getCellTypes
 from synthetic import doubletFromCelltype
 from synthetic import downsampledDoublets
+from synthetic import downsampledDoublets2
 import utils
 
 PCA_COMPONENTS = 30
@@ -24,7 +25,7 @@ DOUBLET_RATE = 0.25
 KNN = 20
 
 
-def classify(raw_counts, probabilistic=False, mix=False, doublet_rate=DOUBLET_RATE):
+def classify(raw_counts, probabilistic=False, mix=False, downsample = False, doublet_rate=DOUBLET_RATE):
     """
     Classifier for doublets in single-cell RNA-seq data
     :param raw_counts: count table in numpy.array format
@@ -34,7 +35,7 @@ def classify(raw_counts, probabilistic=False, mix=False, doublet_rate=DOUBLET_RA
     :return communities: Phenograph community for each row in counts
     :return doublet_labels: indicator for each row in counts whether it is a fake doublet (doublets appended to end)
     """
-
+    parents = None
     if probabilistic:
         # Probabilistc doublets
         print("Gathering info about cell types...\n")
@@ -71,12 +72,18 @@ def classify(raw_counts, probabilistic=False, mix=False, doublet_rate=DOUBLET_RA
         synthetic, doublet_labels = create_simple_synthetic_data(synthetic, 0.6, 0.6, normalize=True, doublet_rate=D/2)
 
         doublet_labels[np.where(p_doublet_labels==2)[0]] = 1
+    elif downsample == True:
+        D = doublet_rate
+        synthetic, doublet_labels = downsampledDoublets(raw_counts, normalize=True, doublet_rate=D)
+    elif downsample == "Same":
+        D = doublet_rate
+        synthetic, doublet_labels, parents = downsampledDoublets2(raw_counts, normalize=True, doublet_rate=D)
     else:
         # Simple synthetic data
         # Requires numpy.array
         D = doublet_rate
         synthetic, doublet_labels = create_simple_synthetic_data(raw_counts, 0.6, 0.6, normalize=True, doublet_rate=D)
-        #synthetic, doublet_labels = downsampledDoublets(raw_counts, normalize=True, doublet_rate=D)
+
 
     counts = synthetic
 
@@ -106,7 +113,7 @@ def classify(raw_counts, probabilistic=False, mix=False, doublet_rate=DOUBLET_RA
     if mix:
         doublet_labels[np.where(p_doublet_labels==2)[0]] = 2
 
-    return counts, scores, communities, doublet_labels
+    return counts, scores, communities, doublet_labels, parents
 
 
 def validate(raw_counts):

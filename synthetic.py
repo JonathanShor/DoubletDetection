@@ -48,7 +48,7 @@ def sampleCellRead(mean_reads, gene_probs, num_cells=1):
 
 # Given n celltypes, and type_freqs indicating relative frequency of each celltype,
 # Return one doublet: two celltypes (selected prop. to type_freqs) combined with
-def doubletFromCelltype(celltypes, doublet_weight=1, allow_same_parent=True):
+def doubletFromCelltype(celltypes, doublet_weight=0.6, allow_same_parent=True):
     genecounts = np.array(celltypes['genecounts'])
     cellcounts = np.array(celltypes['cellcounts'])
     mean_reads = np.array(np.sum(genecounts, axis=1) * CELLTYPESAMPLEMEAN, dtype=int)
@@ -63,7 +63,7 @@ def doubletFromCelltype(celltypes, doublet_weight=1, allow_same_parent=True):
 # Generate 2D synthetic data from celltypes
 # Celltypes expected to be a dict with members 'genecounts':2d(celltypes x genes)
 #  and 'frequences': 1d(number of cells to generate for each type)
-def create_synthetic_data(celltypes=None, doublet_weight=1):
+def create_synthetic_data(celltypes=None, doublet_weight=0.6):
     if celltypes is None:
         celltypes = getCellTypes()
 
@@ -237,7 +237,7 @@ def create_simple_synthetic_data(raw_counts, alpha1, alpha2, write=False, normal
 
 def downsampledDoublets(raw_counts, normalize=False, doublet_rate=DOUBLETRATE):  
     """
-    Appends doublets to end of data
+    Appends downsampled doublets to end of data
     :param raw_counts: numpy of count data
     :param alpha1: weighting of row1 in sum
     :param alpha2: weighting of row2 in sum
@@ -268,11 +268,12 @@ def downsampledDoublets(raw_counts, normalize=False, doublet_rate=DOUBLETRATE):
 
         new_cell = raw_counts[row1] + raw_counts[row2]
         
-        new_lib_size = int(np.random.normal(loc=lib_size, scale = std))
-        lib1 = np.sum(row1)
-        lib2 = np.sum(row2)
-        mol_ind = np.random.permutation(lib1+lib2)[:new_lib_size]
-        bins = np.append(np.zeros((1)),np.cumsum(new_cell)+1)
+        lib1 = np.sum(raw_counts[row1])
+        lib2 = np.sum(raw_counts[row2])
+        #new_lib_size = int(np.random.normal(loc=lib_size, scale = std))
+        new_lib_size = int(max(lib1, lib2))
+        mol_ind = np.random.permutation(int(lib1+lib2))[:new_lib_size]
+        bins = np.append(np.zeros((1)),np.cumsum(new_cell))
         new_cell = np.histogram(mol_ind, bins)[0]
         
         synthetic[i] = new_cell
@@ -284,5 +285,58 @@ def downsampledDoublets(raw_counts, normalize=False, doublet_rate=DOUBLETRATE):
         synthetic = normalize_counts(synthetic)
 
     return synthetic, labels
+
+def downsampledDoublets2(raw_counts, normalize=False, doublet_rate=DOUBLETRATE):  
+    """
+    Appends downsampled doublets to end of data
+    :param raw_counts: numpy of count data
+    :param alpha1: weighting of row1 in sum
+    :param alpha2: weighting of row2 in sum
+    :param normalize: normalize data before returning
+    :return synthetic: synthetic data in numpy array
+    :return labels: 0 for original data, 1 for fake doublet as np array - 1d arrray
+    """
+
+    # Get shape
+    cell_count = raw_counts.shape[0]
+    gene_count = raw_counts.shape[1]
+
+    # Number of doublets to add
+    doublets = int(doublet_rate * cell_count)
+
+    synthetic = np.zeros((doublets, gene_count))
+
+    # Add labels column to know which ones are doublets
+    labels = np.zeros(cell_count + doublets)
+    labels[cell_count:] = 1
+    
+    parents = np.zeros(cell_count + doublets)
+    
+    lib_size = np.mean(np.sum(raw_counts, axis=1))
+    std = np.std(np.sum(raw_counts, axis=1))
+
+    for i in range(doublets):
+        row1 = int(np.random.rand() * cell_count)
+
+
+        new_cell = 2*raw_counts[row1]
+        
+        lib1 = np.sum(raw_counts[row1])
+        #new_lib_size = int(np.random.normal(loc=lib_size, scale = std))
+        new_lib_size = lib1
+        mol_ind = np.random.permutation(2*lib1)[:new_lib_size]
+        bins = np.append(np.zeros((1)),np.cumsum(new_cell))
+        new_cell = np.histogram(mol_ind, bins)[0]
+        
+        synthetic[i] = new_cell
+        parents[i] = row1
+
+    # Shouldn't change original raw_counts
+    synthetic = np.append(raw_counts, synthetic, axis=0)
+
+    if normalize:
+        synthetic = normalize_counts(synthetic)
+
+    return synthetic, labels, parents
     
     

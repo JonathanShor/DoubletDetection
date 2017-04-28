@@ -43,10 +43,10 @@ def main(validate):
     else:
         # Get scores
         print("Starting classification...\n")
-        counts_w_doublets, scores_w_doublets, communities_w_doublets, doublet_labels = (
-            doubletdetection.classify(raw_counts, probabilistic=False, mix=False, doublet_rate=0.25))
+        counts_w_doublets, scores_w_doublets, communities_w_doublets, doublet_labels, parents = (
+            doubletdetection.classify(raw_counts, probabilistic=False, mix=False, downsample=True, doublet_rate=0.40))
         true_scores = scores_w_doublets[:raw_counts.shape[0], :]
-        for s in range(0, 80, 2):
+        for s in range(0, 90, 2):
             cutoff = s / float(100)
             test = true_scores[np.where(true_scores > cutoff)[0]]
             print(cutoff, len(test))
@@ -57,10 +57,10 @@ def main(validate):
     pca = PCA(n_components=30)
     reduced_counts = pca.fit_transform(counts_w_doublets)
 
-    #communities, graph, Q = phenograph.cluster(reduced_counts)
+    communities, graph, Q = phenograph.cluster(reduced_counts[:raw_counts.shape[0],:])
 
     print('\nCreating tSNE reduced counts\n')
-    tsne = TSNE()
+    tsne = TSNE(random_state=1)
     tsne_counts = tsne.fit_transform(reduced_counts)
 
     #cutoff = 0.59
@@ -93,7 +93,7 @@ def main(validate):
     # Original marked doublets
     #fig = plt.figure(figsize=(8, 8), dpi=300)
     ax3.scatter(x[:raw_counts.shape[0]], y[:raw_counts.shape[0]], c=colors, s=10, cmap=set1i)
-    cutoff = 0.76
+    cutoff = 0.56
     doublets = np.where(scores_w_doublets[:raw_counts.shape[0]]>cutoff)[0]
     ax3.scatter(x[doublets], y[doublets], facecolors='none', edgecolors='black', s=2)
     ax3.set_title("Identified doublets with Score>" + str(cutoff))

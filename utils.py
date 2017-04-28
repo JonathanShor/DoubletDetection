@@ -110,3 +110,4 @@ def read_from_mtx(folder):
 
 folder = "/Users/adamgayoso/Google Drive/Computational Genomics/filtered_matrices_mex/5050"
 crm5050=read_from_mtx(folder)
+raw_counts = crm5050.as_matrix()

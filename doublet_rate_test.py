@@ -44,7 +44,7 @@ def main(validate):
         i = 0
         for D in test_rates:
             counts_w_doublets, scores_w_doublets, communities_w_doublets, doublet_labels = (
-                doubletdetection.classify(raw_counts, probabilistic=True, doublet_rate=D))
+                doubletdetection.classify(raw_counts, probabilistic=False, doublet_rate=D))
             true_scores = scores_w_doublets[:raw_counts.shape[0], :]
             for s in range(0, 100, 2):
                 cutoff = s / float(100)
@@ -72,7 +72,7 @@ def main(validate):
         communities, graph, Q = phenograph.cluster(reduced_counts)
     
         print('\nCreating tSNE reduced counts\n')
-        tsne = TSNE()
+        tsne = TSNE(random_state=1)
         tsne_counts = tsne.fit_transform(reduced_counts)
     
         #cutoff = 0.59
