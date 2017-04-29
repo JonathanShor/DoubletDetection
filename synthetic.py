@@ -272,6 +272,7 @@ def downsampledDoublets(raw_counts, normalize=True, doublet_rate=DOUBLETRATE):
         #new_lib_size = int(np.random.normal(loc=lib_size, scale = std))
         new_lib_size = int(max(lib1, lib2))
         mol_ind = np.random.permutation(int(lib1+lib2))[:new_lib_size]
+        mol_ind += 1
         bins = np.append(np.zeros((1)),np.cumsum(new_cell))
         new_cell = np.histogram(mol_ind, bins)[0]
         
@@ -322,8 +323,9 @@ def sameDownsampledDoublets(raw_counts, normalize=True, doublet_rate=DOUBLETRATE
         
         lib1 = np.sum(raw_counts[row1])
         #new_lib_size = int(np.random.normal(loc=lib_size, scale = std))
-        new_lib_size = lib1
-        mol_ind = np.random.permutation(2*lib1)[:new_lib_size]
+        new_lib_size = int(lib1)
+        mol_ind = np.random.permutation(int(2*lib1))[:new_lib_size]
+        mol_ind += 1
         bins = np.append(np.zeros((1)),np.cumsum(new_cell))
         new_cell = np.histogram(mol_ind, bins)[0]
         
