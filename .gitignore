@@ -1,4 +1,5 @@
 
 *.pyc
 
-jonathanwork.py
+*work.py
+test_*.py
