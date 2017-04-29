@@ -241,7 +241,7 @@ def downsampledDoublets(raw_counts, normalize=True, doublet_rate=DOUBLETRATE):
     # Add labels column to know which ones are doublets
     labels = np.zeros(cell_count + doublets)
     labels[cell_count:] = 1
-    
+
     lib_size = np.mean(np.sum(raw_counts, axis=1))
     std = np.std(np.sum(raw_counts, axis=1))
 
@@ -322,4 +322,5 @@ def sameDownsampledDoublets(raw_counts, normalize=True, doublet_rate=DOUBLETRATE
         synthetic = normalize_counts(synthetic)
 
     return synthetic, labels, parents
+    
     

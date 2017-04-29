@@ -1,10 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Apr 20 11:45:28 2017
-
-@author: adamgayoso, JonathanShor, ryanbrand
-"""
+"""Doublet detection in single-cell RNA-seq data."""
 
 import numpy as np
 import phenograph
@@ -17,30 +11,40 @@ from synthetic import sameDownsampledDoublets
 PCA_COMPONENTS = 30
 DOUBLET_RATE = 0.25
 KNN = 20
+# TODO: pack these globals into classify as param defaults
 
 
-def classify(raw_counts, downsample = True, doublet_rate=DOUBLET_RATE):
-    """
-    Classifier for doublets in single-cell RNA-seq data
-    :param raw_counts: count table in numpy.array format
-    :param probabilistic: option to use sampled doublets vs linear doublets
-    :return counts: mixed counts (real and fake) in numpy ndarray format NORMALIZED
-    :return scores: doublet score for each row in counts
-    :return communities: Phenograph community for each row in counts
-    :return doublet_labels: indicator for each row in counts whether it is a fake doublet (doublets appended to end)
+def classify(raw_counts, downsample=True, doublet_rate=DOUBLET_RATE):
+    """Classifier for doublets in single-cell RNA-seq data.
+
+    Args:
+        raw_counts (ndarray): count table
+        downsample (bool, optional): Downsample doublets.
+        doublet_rate (TYPE, optional): Description
+
+    Returns:
+        ndarray, ndim=2: Normalized mixed counts (real and fake).
+        ndarray: doublet score for each row in counts as column vector.
+        TYPE: Phenograph community for each row in counts
+        ndarray, ndim=1: indicator for each row in counts whether it is a fake
+            doublet (doublets appended to end)
+        ndarray, ndim=1: Parent cell for each row in counts when
+            downsample="Same"
     """
     parents = None
-    if downsample == True:
+    if downsample:
         D = doublet_rate
         synthetic, doublet_labels = downsampledDoublets(raw_counts, normalize=True, doublet_rate=D)
     elif downsample == "Same":
         D = doublet_rate
-        synthetic, doublet_labels, parents = sameDownsampledDoublets(raw_counts, normalize=True, doublet_rate=D)
+        synthetic, doublet_labels, parents = sameDownsampledDoublets(raw_counts, normalize=True,
+                                                                     doublet_rate=D)
     else:
         # Simple synthetic data
         # Requires numpy.array
         D = doublet_rate
-        synthetic, doublet_labels = create_simple_synthetic_data(raw_counts, 0.6, 0.6, normalize=True, doublet_rate=D)
+        synthetic, doublet_labels = create_simple_synthetic_data(raw_counts, 0.6, 0.6,
+                                                                 normalize=True, doublet_rate=D)
 
     counts = synthetic
 
@@ -61,6 +65,5 @@ def classify(raw_counts, downsample = True, doublet_rate=DOUBLET_RATE):
         c_indices = np.where(phenolabels[:, 0] == c)[0]
         synth_doub_count[c] = np.sum(phenolabels[c_indices, 1]) / float(c_count[c])
         scores[c_indices] = synth_doub_count[c]
-
 
     return counts, scores, communities, doublet_labels, parents
