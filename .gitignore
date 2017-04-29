@@ -2,4 +2,4 @@
 *.pyc
 
 *work.py
-test?*.py
+test_*.py
