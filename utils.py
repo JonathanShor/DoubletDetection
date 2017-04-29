@@ -1,6 +1,5 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
+"""General utilities.
+
 Created on Apr 3, 2017
 
 @author: adamgayoso, JonathanShor, ryanbrand
@@ -9,13 +8,20 @@ import numpy as np
 import pandas as pd
 
 
-
-# To read only the first X rows, set read_rows=X
 def load_data(FNAME, normalize=False, read_rows=None):
-    # Import counts
+    """Load a csv table from the filesystem.
+
+    Args:
+        FNAME (string): Pathname of file to load.
+        normalize (bool, optional): Runs normalize_counts on table.
+        read_rows (None or int, optional): If specified, load only first
+            read_rows of FNAME.
+
+    Returns:
+        ndarray: Loaded table.
+    """
     counts = pd.read_csv(FNAME, index_col=0, nrows=read_rows).as_matrix()
 
-    # Normalize
     if normalize:
         counts = normalize_counts(counts)
 
@@ -23,16 +29,21 @@ def load_data(FNAME, normalize=False, read_rows=None):
 
 
 def normalize_counts(raw_counts, doStandardize=False):
-    """
-    Normalizes count array using method in 10x pipeline
-    :param raw_counts: numpy array of count data
-    :return normed: normalized data
-    """ 
+    """Normalize count array using method in 10x pipeline.
 
-    # Sum across cells and divide each cell by sum
+    From http://www.nature.com/articles/ncomms14049.
+
+    Args:
+        raw_counts (ndarray): count data
+        doStandardize (bool, optional): Standardizes each gene column.
+
+    Returns:
+        ndarray: Normalized data.
+    """
+    # Sum across cells
     cell_sums = np.sum(raw_counts, axis=1)
 
-    # Mutiply by median and divide by cell sum
+    # Mutiply by median and divide each cell by cell sum
     median = np.median(cell_sums)
     raw_counts = raw_counts * median / cell_sums[:, np.newaxis]
 
