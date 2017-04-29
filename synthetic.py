@@ -191,7 +191,7 @@ def create_simple_synthetic_data(raw_counts, alpha1, alpha2, normalize=True, dou
 
 
 # TODO: Further detail of downsampling algorithm?
-def downsample(cell1, cell2):
+def downsampleCellPair(cell1, cell2):
     """Downsample the sum of two cell gene expression profiles.
 
     Args:
@@ -290,7 +290,7 @@ def createLinearDoublets(raw_counts, normalize=True, doublet_rate=DOUBLETRATE, d
             row2 = np.random.randint(cell_count)
 
         if downsample:
-            new_row = downsample(raw_counts[row1], raw_counts[row2])
+            new_row = downsampleCellPair(raw_counts[row1], raw_counts[row2])
         else:
             new_row = np.array(np.around(alpha1 * raw_counts[row1] + alpha2 * raw_counts[row2]),
                                dtype=raw_counts.dtype)
