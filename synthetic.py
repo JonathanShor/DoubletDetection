@@ -1,33 +1,9 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Apr 3, 2017
-
-@author: adamgayoso, JonathanShor, ryanbrand
-"""
+"""Synthetic doublet generation."""
 import numpy as np
 from utils import normalize_counts
 
 CELLTYPESAMPLEMEAN = 0.05   # Mean percent of cell gene expression captured per cell read
 DOUBLETRATE = 0.07
-
-
-# TODO: Remove these print blocking funcs
-import sys
-import os
-
-
-# Disable
-def blockPrint():
-    if not any('SPYDER' in name for name in os.environ):
-        sys.stdout = open(os.devnull, 'w')
-
-
-# Restore
-def enablePrint():
-    if not any('SPYDER' in name for name in os.environ):
-        sys.stdout = sys.__stdout__
-# TODO: Remove these print blocking funcs
 
 
 def sampleCellRead(mean_reads, gene_probs, num_cells=1):
@@ -194,16 +170,20 @@ def checkSyntheticDistance(synthetic, labels):
 
 
 def create_simple_synthetic_data(raw_counts, alpha1, alpha2, normalize=True, doublet_rate=DOUBLETRATE):
-    """
-    Appends doublets to end of data
-    :param raw_counts: numpy of count data
-    :param alpha1: weighting of row1 in sum
-    :param alpha2: weighting of row2 in sum
-    :param normalize: normalize data before returning
-    :return synthetic: synthetic data in numpy array
-    :return labels: 0 for original data, 1 for fake doublet as np array - 1d arrray
-    """
+    """Append linear doublets to end of data.
 
+    Args:
+        raw_counts (ndarray, ndim=2): count data
+        alpha1 (float): weighting of row1 in sum
+        alpha2 (float): weighting of row2 in sum
+        normalize (bool, optional): normalize data before returning
+        doublet_rate (float, optional): Proportion of cell_counts to produce as
+            doublets.
+
+    Returns:
+        ndarray, ndims=2: synthetic data
+        ndarray, ndims=1: 0 for original data, 1 for fake doublet
+    """
     # Get shape
     cell_count = raw_counts.shape[0]
     gene_count = raw_counts.shape[1]
@@ -234,17 +214,21 @@ def create_simple_synthetic_data(raw_counts, alpha1, alpha2, normalize=True, dou
 
     return synthetic, labels
 
-def downsampledDoublets(raw_counts, normalize=True, doublet_rate=DOUBLETRATE):  
-    """
-    Appends downsampled doublets to end of data
-    :param raw_counts: numpy of count data
-    :param alpha1: weighting of row1 in sum
-    :param alpha2: weighting of row2 in sum
-    :param normalize: normalize data before returning
-    :return synthetic: synthetic data in numpy array
-    :return labels: 0 for original data, 1 for fake doublet as np array - 1d arrray
-    """
 
+# TODO: Further detail of downsampling algorithm?
+def downsampledDoublets(raw_counts, normalize=True, doublet_rate=DOUBLETRATE):
+    """Append downsampled doublets to end of data.
+
+    Args:
+        raw_counts (ndarray): count data
+        normalize (bool, optional): normalize data before returning
+        doublet_rate (float, optional): Proportion of cell_counts to produce as
+            doublets.
+
+    Returns:
+        ndarray, ndims=2: synthetic data
+        ndarray, ndims=1: 0 for original data, 1 for fake doublet
+    """
     # Get shape
     cell_count = raw_counts.shape[0]
     gene_count = raw_counts.shape[1]
@@ -266,7 +250,7 @@ def downsampledDoublets(raw_counts, normalize=True, doublet_rate=DOUBLETRATE):
         row2 = int(np.random.rand() * cell_count)
 
         new_cell = raw_counts[row1] + raw_counts[row2]
-        
+
         lib1 = np.sum(raw_counts[row1])
         lib2 = np.sum(raw_counts[row2])
         #new_lib_size = int(np.random.normal(loc=lib_size, scale = std))
@@ -274,7 +258,7 @@ def downsampledDoublets(raw_counts, normalize=True, doublet_rate=DOUBLETRATE):
         mol_ind = np.random.permutation(int(lib1+lib2))[:new_lib_size]
         bins = np.append(np.zeros((1)),np.cumsum(new_cell))
         new_cell = np.histogram(mol_ind, bins)[0]
-        
+
         synthetic[i] = new_cell
 
     # Shouldn't change original raw_counts
@@ -285,7 +269,8 @@ def downsampledDoublets(raw_counts, normalize=True, doublet_rate=DOUBLETRATE):
 
     return synthetic, labels
 
-def sameDownsampledDoublets(raw_counts, normalize=True, doublet_rate=DOUBLETRATE):  
+
+def sameDownsampledDoublets(raw_counts, normalize=True, doublet_rate=DOUBLETRATE):
     """
     Appends downsampled doublets to end of data
     :param raw_counts: numpy of count data
@@ -308,9 +293,9 @@ def sameDownsampledDoublets(raw_counts, normalize=True, doublet_rate=DOUBLETRATE
     # Add labels column to know which ones are doublets
     labels = np.zeros(cell_count + doublets)
     labels[cell_count:] = 1
-    
+
     parents = np.zeros(cell_count + doublets)
-    
+
     lib_size = np.mean(np.sum(raw_counts, axis=1))
     std = np.std(np.sum(raw_counts, axis=1))
 
@@ -319,14 +304,14 @@ def sameDownsampledDoublets(raw_counts, normalize=True, doublet_rate=DOUBLETRATE
 
 
         new_cell = 2*raw_counts[row1]
-        
+
         lib1 = np.sum(raw_counts[row1])
         #new_lib_size = int(np.random.normal(loc=lib_size, scale = std))
         new_lib_size = lib1
         mol_ind = np.random.permutation(2*lib1)[:new_lib_size]
         bins = np.append(np.zeros((1)),np.cumsum(new_cell))
         new_cell = np.histogram(mol_ind, bins)[0]
-        
+
         synthetic[i] = new_cell
         parents[i] = row1
 
@@ -337,5 +322,4 @@ def sameDownsampledDoublets(raw_counts, normalize=True, doublet_rate=DOUBLETRATE
         synthetic = normalize_counts(synthetic)
 
     return synthetic, labels, parents
-    
     

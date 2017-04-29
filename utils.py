@@ -1,9 +1,4 @@
-"""General utilities.
-
-Created on Apr 3, 2017
-
-@author: adamgayoso, JonathanShor, ryanbrand
-"""
+"""Data handling utilities."""
 import numpy as np
 import pandas as pd
 
