@@ -216,6 +216,29 @@ def create_simple_synthetic_data(raw_counts, alpha1, alpha2, normalize=True, dou
 
 
 # TODO: Further detail of downsampling algorithm?
+def downsample(cell1, cell2):
+    """Downsample the sum of two cell gene expression profiles.
+
+    Args:
+        cell1 (ndarray, ndim=1): Gene count vector.
+        cell2 (ndarray, ndim=1): Gene count vector.
+
+    Returns:
+        ndarray, ndim=1: Downsampled gene count vector.
+    """
+    new_cell = cell1 + cell2
+
+    lib1 = np.sum(cell1)
+    lib2 = np.sum(cell2)
+    new_lib_size = int(max(lib1, lib2))
+    mol_ind = np.random.permutation(int(lib1 + lib2))[:new_lib_size]
+    mol_ind += 1
+    bins = np.append(np.zeros((1)), np.cumsum(new_cell))
+    new_cell = np.histogram(mol_ind, bins)[0]
+
+    return new_cell
+
+
 def downsampledDoublets(raw_counts, normalize=True, doublet_rate=DOUBLETRATE):
     """Append downsampled doublets to end of data.
 
@@ -242,25 +265,11 @@ def downsampledDoublets(raw_counts, normalize=True, doublet_rate=DOUBLETRATE):
     labels = np.zeros(cell_count + doublets)
     labels[cell_count:] = 1
 
-    lib_size = np.mean(np.sum(raw_counts, axis=1))
-    std = np.std(np.sum(raw_counts, axis=1))
-
     for i in range(doublets):
-        row1 = int(np.random.rand() * cell_count)
-        row2 = int(np.random.rand() * cell_count)
+        row1 = np.random.randint(cell_count)
+        row2 = np.random.randint(cell_count)
 
-        new_cell = raw_counts[row1] + raw_counts[row2]
-
-        lib1 = np.sum(raw_counts[row1])
-        lib2 = np.sum(raw_counts[row2])
-        #new_lib_size = int(np.random.normal(loc=lib_size, scale = std))
-        new_lib_size = int(max(lib1, lib2))
-        mol_ind = np.random.permutation(int(lib1+lib2))[:new_lib_size]
-        mol_ind += 1
-        bins = np.append(np.zeros((1)),np.cumsum(new_cell))
-        new_cell = np.histogram(mol_ind, bins)[0]
-
-        synthetic[i] = new_cell
+        synthetic[i] = downsample(raw_counts[row1], raw_counts[row2])
 
     # Shouldn't change original raw_counts
     synthetic = np.append(raw_counts, synthetic, axis=0)
@@ -297,24 +306,10 @@ def sameDownsampledDoublets(raw_counts, normalize=True, doublet_rate=DOUBLETRATE
 
     parents = np.zeros(cell_count + doublets)
 
-    lib_size = np.mean(np.sum(raw_counts, axis=1))
-    std = np.std(np.sum(raw_counts, axis=1))
-
     for i in range(doublets):
         row1 = int(np.random.rand() * cell_count)
 
-
-        new_cell = 2*raw_counts[row1]
-
-        lib1 = np.sum(raw_counts[row1])
-        #new_lib_size = int(np.random.normal(loc=lib_size, scale = std))
-        new_lib_size = int(lib1)
-        mol_ind = np.random.permutation(int(2*lib1))[:new_lib_size]
-        mol_ind += 1
-        bins = np.append(np.zeros((1)),np.cumsum(new_cell))
-        new_cell = np.histogram(mol_ind, bins)[0]
-
-        synthetic[i] = new_cell
+        synthetic[i] = downsample(raw_counts[row1], raw_counts[row1])
         parents[i] = row1
 
     # Shouldn't change original raw_counts
@@ -324,5 +319,3 @@ def sameDownsampledDoublets(raw_counts, normalize=True, doublet_rate=DOUBLETRATE
         synthetic = normalize_counts(synthetic)
 
     return synthetic, labels, parents
-    
-    
