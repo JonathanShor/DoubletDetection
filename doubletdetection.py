@@ -23,6 +23,7 @@ def classify(raw_counts, downsample=True, doublet_rate=0.25, k=20, n_pca=30):
             doublet (doublets appended to end)
         ndarray, ndim=1: Parent cell for each row in counts when
             downsample="Same"
+        float: Suggested cutoff score to identify doublets
     """
     parents = None
     if downsample:
