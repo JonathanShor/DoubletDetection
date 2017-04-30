@@ -52,8 +52,18 @@ def classify(raw_counts, downsample=True, doublet_rate=0.25, k=20, n_pca=30):
         c_indices = np.where(phenolabels[:, 0] == c)[0]
         synth_doub_count[c] = np.sum(phenolabels[c_indices, 1]) / float(c_count[c])
         scores[c_indices] = synth_doub_count[c]
+        
+    # Find a cutoff score
+    potential_cutoffs = list(synth_doub_count.values())
+    potential_cutoffs.sort(reverse=True)
+    max_dropoff = 0
+    for i in range(len(potential_cutoffs)-1):
+        dropoff = potential_cutoffs[i] - potential_cutoffs[i+1]
+        if dropoff > max_dropoff:
+            max_dropoff = dropoff
+            cutoff = potential_cutoffs[i]
 
-    return counts, scores, communities, doublet_labels, parents
+    return counts, scores, communities, doublet_labels, parents, cutoff
 
 
 # TODO: Further detail of downsampling algorithm?
