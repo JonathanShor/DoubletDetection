@@ -21,27 +21,26 @@ def classify(raw_counts, downsample=True, doublet_rate=0.25, k=20, n_pca=30):
         TYPE: Phenograph community for each row in counts
         ndarray, ndim=1: indicator for each row in counts whether it is a fake
             doublet (doublets appended to end)
-        ndarray, ndim=1: Parent cell for each row in counts when
-            downsample="Same"
+        List of sequences of int: List of parent rows for each returned cell.
+            Original cells are own single parent, given as singleton sequence.
         float: Suggested cutoff score to identify doublets
     """
-    parents = None
     if downsample is True:
-        print("normal downsample happening")
         counts, doublet_labels, parents = createLinearDoublets(raw_counts,
                                                                doublet_rate=doublet_rate,
                                                                downsample=True)
     elif downsample == "Same":
-        print("duplicate downsample happening")
         counts, doublet_labels, parents = createLinearDoublets(raw_counts,
                                                                doublet_rate=doublet_rate,
                                                                downsample=True,
                                                                duplicate_parents=True)
     else:
         # Simple linear combination
-        counts, doublet_labels = createLinearDoublets(raw_counts, doublet_rate=doublet_rate,
-                                                      alpha1=0.6, alpha2=0.6, downsample=False,
-                                                      duplicate_parents=False)
+        counts, doublet_labels, parents = createLinearDoublets(raw_counts,
+                                                               doublet_rate=doublet_rate,
+                                                               alpha1=0.6, alpha2=0.6,
+                                                               downsample=False,
+                                                               duplicate_parents=False)
 
     print("\nClustering mixed data set with Phenograph...\n")
     # Get phenograph results
@@ -49,7 +48,7 @@ def classify(raw_counts, downsample=True, doublet_rate=0.25, k=20, n_pca=30):
     reduced_counts = pca.fit_transform(counts)
     communities, graph, Q = phenograph.cluster(reduced_counts, k=k)
     print("Found these communities: {0}, with sizes: {1}".format(np.unique(communities),
-              [np.count_nonzero(communities == i) for i in np.unique(communities)]))
+          [np.count_nonzero(communities == i) for i in np.unique(communities)]))
     c_count = collections.Counter(communities)
     print('\n')
 
@@ -62,13 +61,13 @@ def classify(raw_counts, downsample=True, doublet_rate=0.25, k=20, n_pca=30):
         c_indices = np.where(phenolabels[:, 0] == c)[0]
         synth_doub_count[c] = np.sum(phenolabels[c_indices, 1]) / float(c_count[c])
         scores[c_indices] = synth_doub_count[c]
-        
+
     # Find a cutoff score
     potential_cutoffs = list(synth_doub_count.values())
     potential_cutoffs.sort(reverse=True)
     max_dropoff = 0
-    for i in range(len(potential_cutoffs)-1):
-        dropoff = potential_cutoffs[i] - potential_cutoffs[i+1]
+    for i in range(len(potential_cutoffs) - 1):
+        dropoff = potential_cutoffs[i] - potential_cutoffs[i + 1]
         if dropoff > max_dropoff:
             max_dropoff = dropoff
             cutoff = potential_cutoffs[i]
@@ -102,10 +101,10 @@ def downsampleCellPair(cell1, cell2):
 
 def createLinearDoublets(raw_counts, normalize=True, doublet_rate=0.25, downsample=True,
                          duplicate_parents=False, alpha1=1.0, alpha2=1.0):
-    """Appends doublets to end of data
+    """Append doublets to end of data.
 
     Args:
-        raw_counts (ndarray): count data
+        raw_counts (ndarray, shape=(cell_count, gene_count)): count data
         normalize (bool, optional): normalize data before returning
         doublet_rate (float, optional): Proportion of cell_counts to produce as
             doublets.
@@ -117,8 +116,8 @@ def createLinearDoublets(raw_counts, normalize=True, doublet_rate=0.25, downsamp
     Returns:
         ndarray, ndims=2: synthetic data
         ndarray, ndims=1: 0 for original data, 1 for fake doublet
-        ndarray, ndim=1: One parent cell for each row in counts when
-            downsample="Same"
+        List of sequences of int: List of parent rows for each returned cell.
+            Original cells are own single parent, given as singleton sequence.
     """
     # Get shape
     cell_count = raw_counts.shape[0]
@@ -133,7 +132,7 @@ def createLinearDoublets(raw_counts, normalize=True, doublet_rate=0.25, downsamp
     labels = np.zeros(cell_count + doublets)
     labels[cell_count:] = 1
 
-    parents = np.zeros(cell_count + doublets)
+    parents = [[i] for i in range(cell_count)]
 
     for i in range(doublets):
         row1 = np.random.randint(cell_count)
@@ -149,13 +148,14 @@ def createLinearDoublets(raw_counts, normalize=True, doublet_rate=0.25, downsamp
                                dtype=raw_counts.dtype)
 
         synthetic[i] = new_row
-        parents[i] = row1
+        parents.append([row1, row2])
 
     synthetic = np.append(raw_counts, synthetic, axis=0)
 
     if normalize:
         synthetic = normalize_counts(synthetic)
 
+    assert len(parents) == synthetic.shape[0]
     return synthetic, labels, parents
 
 
