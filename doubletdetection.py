@@ -226,19 +226,17 @@ def getUniqueGenes(raw_counts, communities):
         ndarray, dtype=int: 1 for each gene unique to that community.
     """
     assert np.issubdtype(raw_counts.dtype, int)
-    binary = np.zeros_like(raw_counts)
-    binary[raw_counts != 0] = 1
 
     # Sum each community's genecounts, and stack up those gene profile vectors
-    profiles = np.concatenate([np.sum(binary[communities == i], axis=0, keepdims=True) for i in
+    profiles = np.concatenate([np.sum(raw_counts[communities == i], axis=0, keepdims=True) for i in
                                np.unique(communities)], axis=0)
-    assert profiles.shape == (raw_counts.shape[0], np.unique(communities).shape[0])
+    assert profiles.shape == (np.unique(communities).shape[0], raw_counts.shape[1])
 
-    # Too late to sort out hyper-pythonic way...
-    uniques = np.zeros_like(profiles)
-    for i in profiles.shape[0]:
-        uniques[i] = profiles[i] - np.sum(profiles[:i], axis=0) - np.sum(profiles[i:], axis=0)
+    binary = np.zeros_like(profiles)
+    binary[profiles != 0] = 1
+
+    uniques = binary - np.sum(binary, axis=0) + binary
     uniques[uniques < 0] = 0
-    assert np.max(np.sum(uniques, axis=0)) == 1
+    assert np.max(np.sum(uniques, axis=0)) in (0, 1)
 
     return uniques
