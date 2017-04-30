@@ -212,3 +212,33 @@ def normalize_counts(raw_counts, standardizeGenes=False):
         normed = raw_counts
 
     return normed
+
+
+def getUniqueGenes(raw_counts, communities):
+    """Identify (any) genes unique to each community.
+
+    Args:
+        raw_counts (ndarray, ndims=2): Cell x genes counts nupmy array.
+        communities (ndarray, shape=(raw_counts.shape[0],)): Community ID for
+            each cell.
+
+    Returns:
+        ndarray, dtype=int: 1 for each gene unique to that community.
+    """
+    assert np.issubdtype(raw_counts.dtype, int)
+    binary = np.zeros_like(raw_counts)
+    binary[raw_counts != 0] = 1
+
+    # Sum each community's genecounts, and stack up those gene profile vectors
+    profiles = np.concatenate([np.sum(binary[communities == i], axis=0, keepdims=True) for i in
+                               np.unique(communities)], axis=0)
+    assert profiles.shape == (raw_counts.shape[0], np.unique(communities).shape[0])
+
+    # Too late to sort out hyper-pythonic way...
+    uniques = np.zeros_like(profiles)
+    for i in profiles.shape[0]:
+        uniques[i] = profiles[i] - np.sum(profiles[:i], axis=0) - np.sum(profiles[i:], axis=0)
+    uniques[uniques < 0] = 0
+    assert np.max(np.sum(uniques, axis=0)) == 1
+
+    return uniques
