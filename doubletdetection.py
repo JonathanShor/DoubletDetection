@@ -5,6 +5,7 @@ import pandas as pd
 import phenograph
 import collections
 from sklearn.decomposition import PCA
+from scipy.stats import binom
 
 
 def classify(raw_counts, downsample=True, doublet_rate=0.25, k=20, n_pca=30):
@@ -212,3 +213,30 @@ def normalize_counts(raw_counts, standardizeGenes=False):
         normed = raw_counts
 
     return normed
+
+
+# TODO: Verify this does not need to incorporate num of doublets added into probs
+def doubletConfidences(orig_community_sizes, doublets_added):
+    """Return significance for doublets assigned to each community.
+
+    Args:
+        orig_community_sizes (ndarray, ndims=1): Number of cells in each
+            original community.
+        doublets_added (ndarray, ndims=1): Number of doublets added to each
+            community.
+
+    Returns:
+        ndarray, ndims=1: z-scores for each community.
+    """
+    N = np.sum(orig_community_sizes)
+    p = orig_community_sizes / N
+    k = doublets_added
+    # d_mult = multinomial(k, p)
+
+    # mu = n * p
+    # variance = np.multiply(mu, 1 - p)
+    # sd = np.sqrt(variance)
+    # z = np.divide(orig_community_sizes - mu, sd)
+
+    sf = binom.sf(k, N, p)
+    return sf
