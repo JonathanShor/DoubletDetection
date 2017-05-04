@@ -48,8 +48,8 @@ def classify(raw_counts, downsample=True, doublet_rate=0.25, k=20, n_pca=30):
     pca = PCA(n_components=n_pca)
     reduced_counts = pca.fit_transform(counts)
     communities, graph, Q = phenograph.cluster(reduced_counts, k=k)
-    print("Found these communities: {0}, with sizes: {1}".format(np.unique(communities),
-          [np.count_nonzero(communities == i) for i in np.unique(communities)]))
+    print("Found communities [{0}, ... {2}], with sizes: {1}".format(min(communities),
+          [np.count_nonzero(communities == i) for i in np.unique(communities)], max(communities)))
     c_count = collections.Counter(communities)
     print('\n')
 
@@ -228,8 +228,9 @@ def doubletConfidences(orig_community_sizes, doublets_added):
     Returns:
         ndarray, ndims=1: z-scores for each community.
     """
-    N = np.sum(orig_community_sizes)
-    p = orig_community_sizes / N
+    # N = np.sum(orig_community_sizes, dtype=np.float_)
+    p = orig_community_sizes / np.sum(orig_community_sizes, dtype=np.float_)
+    N = np.sum(doublets_added)
     k = doublets_added
     # d_mult = multinomial(k, p)
 
