@@ -228,11 +228,8 @@ def normalize_counts(raw_counts, standardizeGenes=False):
     return normed
 
 
-# TODO: Verify this does not need to incorporate num of doublets added into probs
 def doubletConfidences(orig_community_sizes, doublets_added):
     """Return significance for doublets assigned to each community.
-
-
 
     Args:
         orig_community_sizes (ndarray, ndims=1): Number of cells in each
@@ -255,3 +252,28 @@ def doubletConfidences(orig_community_sizes, doublets_added):
     sf = binom.sf(k, N, p)
 
     return sf
+
+  
+def getUniqueGenes(raw_counts, communities):
+    """Identify (any) genes unique to each community.
+
+    Args:
+        raw_counts (ndarray, ndims=2): Cell x genes counts nupmy array.
+        communities (ndarray, shape=(raw_counts.shape[0],)): Community ID for
+            each cell.
+
+    Returns:
+        ndarray, dtype=int: 1 for each gene unique to that community.
+    """
+    # Sum each community's genecounts, and stack up those gene profile vectors
+    profiles = np.concatenate([np.sum(raw_counts[communities == i], axis=0, keepdims=True) for i in
+                               np.unique(communities)], axis=0)
+
+    binary = np.zeros_like(profiles)
+    binary[profiles != 0] = 1
+
+    # Only 1 - sum(everything) + 1 > 0
+    uniques = binary - np.sum(binary, axis=0) + binary
+    uniques[uniques < 0] = 0
+
+    return uniques
