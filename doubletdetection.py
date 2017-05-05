@@ -17,30 +17,37 @@ class BoostClassifier(object):
         boost_rate (float): Proportion of cell_counts to produce as synthetic
             doublets.
         downsample (bool): Use downsampling to generate synthetic doublets.
+        duplicate_parents (bool): Create synthetics using one cell as both
+            parents.
         knn (TYPE): Description
         n_pca (TYPE): Description
         p_val (TYPE): Description
     """
 
     def __init__(self, boost_rate=0.25, downsample=True, knn=20, n_pca=30, p_val=0.025):
+        """Summary
+
+        Args:
+            boost_rate (float, optional): Description
+            downsample (bool, optional): Description
+            knn (int, optional): Description
+            n_pca (int, optional): Description
+            p_val (float, optional): Description
+        """
         self.downsample=downsample
+        self.duplicate_parents = False
         self.boost_rate=boost_rate
         self.knn=knn
         self.n_pca=n_pca
         self.p_val=p_val
-        self.alpha1 = 1.0
-        self.alpha2 = 1.0
+        self.alpha1 = 0.6
+        self.alpha2 = 0.6
 
-    def classify(raw_counts, downsample=True, boost_rate=0.25, k=20, n_pca=30, p_val=None):
+    def fit(self, raw_counts):
         """Classifier for doublets in single-cell RNA-seq data.
 
         Args:
             raw_counts (ndarray): count table
-            downsample (bool, optional): Downsample doublets.
-            boost_rate (TYPE, optional): Description
-            k (TYPE):
-            n_pca (TYPE):
-            p_val (float within [0,1]): Significance level to call doublets.
 
         Returns:
             ndarray, ndim=2: Normalized augmented counts (original data and
@@ -53,28 +60,21 @@ class BoostClassifier(object):
                 Original cells are own single parent, given as singleton sequence.
             float: Suggested cutoff score to identify doublets
         """
-        if downsample is True:
-            aug_counts, synthetic_labels, parents = createLinearDoublets(raw_counts,
-                                                                   boost_rate=boost_rate,
-                                                                   downsample=True)
-        elif downsample == "Same":
-            aug_counts, synthetic_labels, parents = createLinearDoublets(raw_counts,
-                                                                   boost_rate=boost_rate,
-                                                                   downsample=True,
-                                                                   duplicate_parents=True)
+        if self.downsample is True:
+            aug_counts, synthetic_labels, parents = self._createLinearDoublets(raw_counts)
+        elif self.downsample == "Same":
+            self.duplicate_parents = True
+            aug_counts, synthetic_labels, parents = self._createLinearDoublets(raw_counts)
         else:
             # Simple linear combination
-            aug_counts, synthetic_labels, parents = createLinearDoublets(raw_counts,
-                                                                   boost_rate=boost_rate,
-                                                                   alpha1=0.6, alpha2=0.6,
-                                                                   downsample=False,
-                                                                   duplicate_parents=False)
+            self.downsample = False
+            aug_counts, synthetic_labels, parents = self._createLinearDoublets(raw_counts)
 
         print("\nClustering mixed data set with Phenograph...\n")
         # Get phenograph results
-        pca = PCA(n_components=n_pca)
+        pca = PCA(n_components=self.n_pca)
         reduced_counts = pca.fit_transform(aug_counts)
-        communities, graph, Q = phenograph.cluster(reduced_counts, k=k)
+        communities, graph, Q = phenograph.cluster(reduced_counts, k=self.knn)
         print("Found communities [{0}, ... {2}], with sizes: {1}".format(min(communities),
               [np.count_nonzero(communities == i) for i in np.unique(communities)], max(communities)))
         c_count = collections.Counter(communities)
@@ -94,7 +94,7 @@ class BoostClassifier(object):
             synth_doub_count[c] = synthetics_added[c] / float(c_count[c])
             scores[c_indices] = synth_doub_count[c]
 
-        if p_val is None:
+        if self.p_val is None:
             # Find a cutoff score
             potential_cutoffs = list(synth_doub_count.values())
             potential_cutoffs.sort(reverse=True)
@@ -106,14 +106,13 @@ class BoostClassifier(object):
                     cutoff = potential_cutoffs[i]
         else:
             # Find clusters with statistically significant synthetic doublet boosting
-            conf_values = doubletConfidences(orig_community_sizes, synthetics_added)
-            significant = np.where(conf_values <= p_val)[0]
+            conf_values = self._doubletConfidences(orig_community_sizes, synthetics_added)
+            significant = np.where(conf_values <= self.p_val)[0]
             cutoff = significant
 
         return aug_counts, scores, communities, synthetic_labels, parents, cutoff
 
-    # TODO: Further detail of downsampling algorithm?
-    def downsampleCellPair(cell1, cell2):
+    def _downsampleCellPair(self, cell1, cell2):
         """Downsample the sum of two cell gene expression profiles.
 
         Args:
@@ -135,20 +134,12 @@ class BoostClassifier(object):
 
         return new_cell
 
-    def createLinearDoublets(raw_counts, normalize=True, boost_rate=0.25, downsample=True,
-                             duplicate_parents=False, alpha1=1.0, alpha2=1.0):
+    def _createLinearDoublets(self, raw_counts, normalize=True):
         """Append synthetic doublets to end of data.
 
         Args:
             raw_counts (ndarray, shape=(cell_count, gene_count)): count data
             normalize (bool, optional): normalize data before returning
-            boost_rate (float, optional): Proportion of cell_counts to produce as
-                synthetic doublets.
-            downsample (bool, optional): downsample doublets
-            duplicate_parents (bool, optional): Create synthetics using one cell as
-                both parents.
-            alpha1 (float, optional): weighting of row1 in sum
-            alpha2 (float, optional): weighting of row2 in sum
 
         Returns:
             ndarray, ndims=2: augmented data
@@ -161,7 +152,7 @@ class BoostClassifier(object):
         gene_count = raw_counts.shape[1]
 
         # Number of synthetic doublets to add
-        num_synths = int(boost_rate * cell_count)
+        num_synths = int(self.boost_rate * cell_count)
 
         synthetic = np.zeros((num_synths, gene_count))
 
@@ -173,15 +164,15 @@ class BoostClassifier(object):
 
         for i in range(num_synths):
             row1 = np.random.randint(cell_count)
-            if duplicate_parents:
+            if self.duplicate_parents:
                 row2 = row1
             else:
                 row2 = np.random.randint(cell_count)
 
-            if downsample:
-                new_row = downsampleCellPair(raw_counts[row1], raw_counts[row2])
+            if self.downsample:
+                new_row = self._downsampleCellPair(raw_counts[row1], raw_counts[row2])
             else:
-                new_row = np.array(np.around(alpha1 * raw_counts[row1] + alpha2 * raw_counts[row2]),
+                new_row = np.array(np.around(self.alpha1 * raw_counts[row1] + self.alpha2 * raw_counts[row2]),
                                    dtype=raw_counts.dtype)
 
             synthetic[i] = new_row
@@ -195,7 +186,7 @@ class BoostClassifier(object):
         assert len(parents) == synthetic.shape[0]
         return synthetic, labels, parents
 
-    def doubletConfidences(orig_community_sizes, synths_added):
+    def doubletConfidences(self, orig_community_sizes, synths_added):
         """Return significance for synthetic doublets assigned to each community.
 
         Args:
@@ -220,7 +211,7 @@ class BoostClassifier(object):
 
         return sf
 
-    def getUniqueGenes(raw_counts, communities):
+    def getUniqueGenes(self, raw_counts, communities):
         """Identify (any) genes unique to each community.
 
         Args:
