@@ -47,8 +47,8 @@ def classify(raw_counts, downsample=True, doublet_rate=0.25, k=20, n_pca=30):
     pca = PCA(n_components=n_pca)
     reduced_counts = pca.fit_transform(counts)
     communities, graph, Q = phenograph.cluster(reduced_counts, k=k)
-    print("Found these communities: {0}, with sizes: {1}".format(np.unique(communities),
-          [np.count_nonzero(communities == i) for i in np.unique(communities)]))
+    print("Found communities [{0}, ... {2}], with sizes: {1}".format(min(communities),
+          [np.count_nonzero(communities == i) for i in np.unique(communities)], max(communities)))
     c_count = collections.Counter(communities)
     print('\n')
 
@@ -212,3 +212,28 @@ def normalize_counts(raw_counts, standardizeGenes=False):
         normed = raw_counts
 
     return normed
+
+
+def getUniqueGenes(raw_counts, communities):
+    """Identify (any) genes unique to each community.
+
+    Args:
+        raw_counts (ndarray, ndims=2): Cell x genes counts nupmy array.
+        communities (ndarray, shape=(raw_counts.shape[0],)): Community ID for
+            each cell.
+
+    Returns:
+        ndarray, dtype=int: 1 for each gene unique to that community.
+    """
+    # Sum each community's genecounts, and stack up those gene profile vectors
+    profiles = np.concatenate([np.sum(raw_counts[communities == i], axis=0, keepdims=True) for i in
+                               np.unique(communities)], axis=0)
+
+    binary = np.zeros_like(profiles)
+    binary[profiles != 0] = 1
+
+    # Only 1 - sum(everything) + 1 > 0
+    uniques = binary - np.sum(binary, axis=0) + binary
+    uniques[uniques < 0] = 0
+
+    return uniques
