@@ -5,15 +5,19 @@ import pandas as pd
 import phenograph
 import collections
 from sklearn.decomposition import PCA
+from scipy.stats import binom
 
 
-def classify(raw_counts, downsample=True, doublet_rate=0.25, k=20, n_pca=30):
+def classify(raw_counts, downsample=True, doublet_rate=0.25, k=20, n_pca=30, p_val=None):
     """Classifier for doublets in single-cell RNA-seq data.
 
     Args:
         raw_counts (ndarray): count table
         downsample (bool, optional): Downsample doublets.
         doublet_rate (TYPE, optional): Description
+        k (TYPE):
+        n_pca (TYPE):
+        p_val (float within [0,1]): Significance level to call doublets.
 
     Returns:
         ndarray, ndim=2: Normalized mixed counts (real and fake).
@@ -56,21 +60,31 @@ def classify(raw_counts, downsample=True, doublet_rate=0.25, k=20, n_pca=30):
     phenolabels = np.append(communities[:, np.newaxis], doublet_labels[:, np.newaxis], axis=1)
 
     synth_doub_count = {}
+    doublets_added = np.zeros(len(np.unique(communities)))
+    orig_community_sizes = np.zeros_like(doublets_added)
     scores = np.zeros((len(communities), 1))
     for c in np.unique(communities):
         c_indices = np.where(phenolabels[:, 0] == c)[0]
-        synth_doub_count[c] = np.sum(phenolabels[c_indices, 1]) / float(c_count[c])
+        orig_community_sizes[c] = np.count_nonzero(phenolabels[c_indices, 1] == 0)
+        doublets_added[c] = np.sum(phenolabels[c_indices, 1])
+        synth_doub_count[c] = doublets_added[c] / float(c_count[c])
         scores[c_indices] = synth_doub_count[c]
 
-    # Find a cutoff score
-    potential_cutoffs = list(synth_doub_count.values())
-    potential_cutoffs.sort(reverse=True)
-    max_dropoff = 0
-    for i in range(len(potential_cutoffs) - 1):
-        dropoff = potential_cutoffs[i] - potential_cutoffs[i + 1]
-        if dropoff > max_dropoff:
-            max_dropoff = dropoff
-            cutoff = potential_cutoffs[i]
+    if p_val is None:
+        # Find a cutoff score
+        potential_cutoffs = list(synth_doub_count.values())
+        potential_cutoffs.sort(reverse=True)
+        max_dropoff = 0
+        for i in range(len(potential_cutoffs) - 1):
+            dropoff = potential_cutoffs[i] - potential_cutoffs[i + 1]
+            if dropoff > max_dropoff:
+                max_dropoff = dropoff
+                cutoff = potential_cutoffs[i]
+    else:
+        # Find clusters with statistically significant synthetic doublet boosting
+        conf_values = doubletConfidences(orig_community_sizes, doublets_added)
+        significant = np.where(conf_values <= p_val)[0]
+        cutoff = significant
 
     return counts, scores, communities, doublet_labels, parents, cutoff
 
@@ -214,6 +228,32 @@ def normalize_counts(raw_counts, standardizeGenes=False):
     return normed
 
 
+def doubletConfidences(orig_community_sizes, doublets_added):
+    """Return significance for doublets assigned to each community.
+
+    Args:
+        orig_community_sizes (ndarray, ndims=1): Number of cells in each
+            original community.
+        doublets_added (ndarray, ndims=1): Number of doublets added to each
+            community.
+
+    Returns:
+        ndarray, ndims=1: z-scores for each community.
+    """
+    assert orig_community_sizes.shape[0] == doublets_added.shape[0], (
+        "Entry for original and added doublet size required for each cluster: {0} != {1}".format(
+            orig_community_sizes.shape[0], doublets_added.shape[0]))
+    orig_cells = orig_community_sizes.reshape(-1,)
+    doublets = doublets_added.reshape(-1,)
+
+    p = orig_cells / np.sum(orig_cells, dtype=np.float_)
+    N = np.sum(doublets)
+    k = doublets
+    sf = binom.sf(k, N, p)
+
+    return sf
+
+  
 def getUniqueGenes(raw_counts, communities):
     """Identify (any) genes unique to each community.
 
