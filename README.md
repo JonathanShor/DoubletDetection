@@ -13,7 +13,25 @@ To run DoubletDetection you will need the following packages:
 - collections
 - phenograph
 
-To install Phenograph:
+To install PhenoGraph:
 
-`pip3 install git+https://github.com/jacoblevine/phenograph.git`
+```
+pip3 install git+https://github.com/jacoblevine/phenograph.git
+```
+
+To run basic doublet classification:
+
+```
+import DoubletDetection
+raw_counts = DoubletDetection.load_data(FILENAME)
+counts, scores, communities, doublet_labels, cutoff = DoubletDetection.classify(raw_counts) 
+```
+
+The return values contain values for the augmented dataset (original data and synthetic doublets). To identify doublets within the original data you can do the following:
+
+```
+cell_count = raw_counts.shape[0]
+doublets = np.where(scores[:cell_count]>=cutoff)[0]
+```
+`doublets` will contain the indices of the suggested doublets.
 
