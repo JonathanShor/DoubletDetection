@@ -5,7 +5,7 @@
 	Sample usage of the doubletdetection module.
 
     To run from within Doublet-Detection directory:
-    	python3 ./detect.py -f [file_name] -c [cutoff_score] -d -t
+    	python3 ./detect.py -f [file_name] -c [cutoff_score] -t
 
     Note: all command line flags optional other than file name
 """
@@ -28,7 +28,7 @@ PCA_COMPONENTS=30
 BOOST_RATE = 0.25
 KNN=30
 
-def main(cutoff_score, downsample, tsne):
+def main(cutoff_score, tsne):
 
 	############################################
     #
@@ -219,9 +219,8 @@ if __name__ == '__main__':
     parser = OptionParser()
     parser.add_option("-f", "--file", dest="file", help='read csv data from FILE', metavar='FILE')
     parser.add_option("-c", type='float', dest="cutoff_score", default=float('nan'), help='cutoff score')
-    parser.add_option("-d", dest="downsample", action="store_true", default=True)
     parser.add_option("-t", dest="tsne", action="store_true", default=False)
     (options, _args) = parser.parse_args()
     if options.file:
         FNAME = options.file
-    main(options.cutoff_score, options.downsample, options.tsne)
+    main(options.cutoff_score, ooptions.tsne)
