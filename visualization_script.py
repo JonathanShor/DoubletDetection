@@ -49,8 +49,9 @@ def main(cutoff_score, tsne):
 
     # Compute doublet scores for each point
     counts_w_doublets, scores_w_doublets, communities_w_doublets, doublet_labels, cutoff_rec = (
-        DoubletDetection.classify(raw_counts, downsample=True, boost_rate=BOOST_RATE, k=KNN, n_pca=PCA_COMPONENTS))
+        doubletdetection.classify(raw_counts, downsample=True, boost_rate=BOOST_RATE, k=KNN, n_pca=PCA_COMPONENTS))
     true_scores = scores_w_doublets[:raw_counts.shape[0]]
+    print("Cutoff, num cells > cutoff")
     for s in range(0, 100, 2):
         cutoff = s / float(100)
         test = true_scores[np.where(true_scores >= cutoff)[0]]
@@ -223,4 +224,4 @@ if __name__ == '__main__':
     (options, _args) = parser.parse_args()
     if options.file:
         FNAME = options.file
-    main(options.cutoff_score, ooptions.tsne)
+    main(options.cutoff_score, options.tsne)
