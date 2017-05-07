@@ -71,7 +71,6 @@ def classify(raw_counts, downsample=True, boost_rate=0.15, k=30, n_pca=30):
     return counts, scores, communities, doublet_labels, cutoff
 
 
-# TODO: Further detail of downsampling algorithm?
 def downsampleCellPair(cell1, cell2):
     """Downsample the sum of two cell gene expression profiles.
 
