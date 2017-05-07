@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+	Sample usage of the doubletdetection module.
+
+    To run from within Doublet-Detection directory:
+    	python3 ./detect.py -f [file_name] -c [cutoff_score] -v -d -t
+
+    Note: all command line flags optional other than file name
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import doubletdetection
@@ -20,6 +29,7 @@ BOOST_RATE = 0.25
 KNN=30
 
 def main(cutoff_score, validate, downsample, tsne):
+
     # Read in data and perform Phenograph clustering
     print("Loading data...\n")
     raw_counts = doubletdetection.load_data(FNAME)
@@ -106,7 +116,7 @@ def main(cutoff_score, validate, downsample, tsne):
         else:
             plot_counts_synth = reduced_counts_w_doublets
 
-        # Axis 0: original data with synthetic doublets
+        # Axis 0: Original data with synthetic doublets
         ax = plt.subplot(132)
         set1i = LinearSegmentedColormap.from_list('set1i', plt.cm.Set1.colors, N=100)
         colors_synth = communities_w_doublets
@@ -123,7 +133,7 @@ def main(cutoff_score, validate, downsample, tsne):
             ax.set_xlabel("PCA 1")
             ax.set_ylabel("PCA 2")
 
-        # Axis 1: Original Data
+        # Axis 1: Original Data only 
         ax1 = plt.subplot(131)
         colors_1 = colors_synth[:raw_counts.shape[0]]
         x = x_synth[:raw_counts.shape[0]]
@@ -139,11 +149,6 @@ def main(cutoff_score, validate, downsample, tsne):
 
         # Axis 2: Heat map of Doublet Scores
         ax2 = plt.subplot(133)
-
-        # doublet_labels_og = doublet_labels
-        # doublet_labels_og[np.where(scores_w_doublets>=cutoff_score)[0]] = 1
-        # doublets_original = np.where(doublet_labels_og[:raw_counts.shape[0]] == 1)[0]
-        # plt.scatter(x, y, c='black', marker='o')
         colors_2 = scores_w_doublets[:raw_counts.shape[0]]
         plt.scatter(x, y, c=colors_2, cmap='autumn_r', s=5)
         cb = plt.colorbar(aspect=50)
@@ -171,12 +176,10 @@ def main(cutoff_score, validate, downsample, tsne):
         doublet_labels_og[np.where(scores_w_doublets>=cutoff_score)[0]] = 1
         doublets_original = np.where(doublet_labels_og[:raw_counts.shape[0]] == 1)[0]
 
-       	# Axis 0: original data
+       	# Axis 0: Scatter plot of original data with PhenoGraph clustering
         ax = plt.subplot(121)
         x = plot_counts[:, 0]
         y = plot_counts[:, 1]
-        # plt.scatter(x, y, c='b', s=3)
-        # plt.scatter(x[doublets_original], y[doublets_original], c='r', s=6)
         plt.scatter(x, y, c=communities, cmap=set1i, s=4)
         ax.set_title("Original Data")
         if tsne:
@@ -186,40 +189,23 @@ def main(cutoff_score, validate, downsample, tsne):
             ax.set_xlabel("PCA 1")
             ax.set_ylabel("PCA 2")
 
-        # # Axis 1: Heat map of library sizes in original data
-        # ax1 = plt.subplot(132)
-        # colors_1 = np.sum(norm_counts, axis=1)
-        # x = plot_counts[:, 0]
-        # y = plot_counts[:, 1]
-        # plt.scatter(x, y, c=colors_1, cmap='cool', s=5)
-        # cb = plt.colorbar(aspect=50)
-        # ax1.set_title("Library Size")
-        # if tsne:
-        # 	ax1.set_xlabel("tSNE 1")
-        # 	ax1.set_ylabel("tSNE 2")
-       	# else:
-       	# 	ax1.set_xlabel("PCA 1")
-        # 	ax1.set_ylabel("PCA 2")
-
-        # Axis 2: Heat map of doublet scores in original data
-        ax2 = plt.subplot(122)
-        colors_2 = scores_w_doublets[:raw_counts.shape[0]]
-        scatterplot = plt.scatter(x, y, c=colors_2, cmap='autumn_r', s=5)
+        # Axis 1: Heat map of doublet scores in original data
+        a1 = plt.subplot(122)
+        colors_1 = scores_w_doublets[:raw_counts.shape[0]]
+        scatterplot = plt.scatter(x, y, c=colors_1, cmap='autumn_r', s=5)
         cb = plt.colorbar(aspect=50)
-        ax2.set_title("Doublet Scores")
-        # plt.scatter(x, y, c=communities, cmap=set1i, s=4)
-        # plt.scatter(x[doublets_original], y[doublets_original], facecolor='none', edgecolor='k', s=6)
-        # ax2.set_title("Identified Doublets at Cutoff of " + str(np.round(cutoff_score, 3)))
+        ax1.set_title("Doublet Scores")
         if tsne:
-            ax2.set_xlabel("tSNE 1")
-            ax2.set_ylabel("tSNE 2")
+            ax1.set_xlabel("tSNE 1")
+            ax1.set_ylabel("tSNE 2")
             plt.savefig('tsne_original.png', dpi=fig3.dpi)
         else:
-            ax2.set_xlabel("PCA 1")
-            ax2.set_ylabel("PCA 2")
+            ax1.set_xlabel("PCA 1")
+            ax1.set_ylabel("PCA 2")
             plt.savefig('pca_original.png', dpi=fig3.dpi)
        		
 if __name__ == '__main__':
+
     argv = sys.argv[1:]
     parser = OptionParser()
     parser.add_option("-f", "--file", dest="file", help='read csv data from FILE', metavar='FILE')
