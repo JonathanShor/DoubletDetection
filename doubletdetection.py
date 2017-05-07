@@ -14,9 +14,8 @@ def classify(raw_counts, downsample=True, boost_rate=0.15, k=30, n_pca=30):
         raw_counts (ndarray): count table
         downsample (bool, optional): Downsample doublets.
         boost_rate (TYPE, optional): Description
-        k (TYPE):
-        n_pca (TYPE):
-        p_val (float within [0,1]): Significance level to call doublets.
+        k (TYPE): parameter for Phenograph knn 
+        n_pca (TYPE): parameter for number of dims for input to Phenograph
 
     Returns:
         ndarray, ndim=2: Normalized mixed counts (real and fake).
