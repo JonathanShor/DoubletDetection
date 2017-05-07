@@ -12,7 +12,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import DoubletDetection
+import doubletdetection
 import phenograph
 import sys
 import collections
