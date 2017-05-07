@@ -1,12 +1,12 @@
 # DoubletDetection
 
-DoubletDetection is a package to detect doublets (technical errors) in Single-cell RNA-seq count tables. 
+DoubletDetection is a package to detect doublets (technical errors) in Single-cell RNA-seq count tables.
 
 This version is for the final submission for COMS4761 Computational Genomics at Columbia University. For an up-to-date version, please check out this [repository](https://github.com/JonathanShor/Doublet-Detection).
 
-To install DoubletDetection, clone or download this repository.
+To install DoubletDetection, clone or download this repository. This software is designed to run on personal computers, no extra computing resources necessary. This code is written in Python 3.
 
-To run DoubletDetection you will need the following packages:
+To run DoubletDetection you may need to install the following packages:
 - numpy
 - pandas
 - sklearn
