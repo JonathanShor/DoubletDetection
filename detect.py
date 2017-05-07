@@ -61,11 +61,11 @@ def main(cutoff_score, downsample, tsne):
         cutoff_score = cutoff_rec
     reduced_counts_w_doublets = pca.fit_transform(counts_w_doublets)
 
-    ####################################################
+    #############################################################
     #
-    # Histograms of Original Data and Synthetic Doublets
+    # Generate Histograms of Original Data and Synthetic Doublets
     #
-    ####################################################
+    #############################################################
 
     # Stacked histogram of number of original and synthetic data points per community
     fig1 = plt.figure(figsize=(12, 5), dpi=300)
