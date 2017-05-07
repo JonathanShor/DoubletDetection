@@ -2,7 +2,7 @@
 
 DoubletDetection is a package to detect doublets (technical errors) in Single-cell RNA-seq count tables.
 
-This version is for the final submission for COMS4761 Computational Genomics at Columbia University. For an up-to-date version, please check out this [repository](https://github.com/JonathanShor/Doublet-Detection).
+This version is for the final submission for CMBF4761 Computational Genomics at Columbia University. For an up-to-date version, please check out this [repository](https://github.com/JonathanShor/Doublet-Detection).
 
 To install DoubletDetection, clone or download this repository. This software is designed to run on personal computers, no extra computing resources necessary. This code is written in Python 3.
 
@@ -35,6 +35,7 @@ doublets = np.where(scores[:cell_count]>=cutoff)[0]
 ```
 `doublets` will contain the indices of the suggested doublets.
 
+## Testing
 `test_script.py` contains the pipline we used to visualize our results for our presentations. You will also need to install the newest version of `matplotlib`
 
 To run:
@@ -42,3 +43,6 @@ To run:
 python3 ./test_script.py -f [file_name] -c [cutoff_score] -t
 ```
 The option `-f` is mandatory and should contain the path to the dataset. The option `-t` is optional and creates tSNE scatter plots. Running with this option will make the code take longer. The option `-c` is optional and represents a user defined cutoff score to use. 
+
+## Obtaining data 
+Data can be downloaded from the [10x webiste](https://support.10xgenomics.com/single-cell/datasets). To use the same data we did, please see the ReadMe submitted with the report for instructions.
