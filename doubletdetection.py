@@ -112,8 +112,6 @@ def createLinearDoublets(raw_counts, normalize=True, boost_rate=0.25, downsample
     Returns:
         ndarray, ndims=2: synthetic data
         ndarray, ndims=1: 0 for original data, 1 for fake doublet
-        List of sequences of int: List of parent rows for each returned cell.
-            Original cells are own single parent, given as singleton sequence.
     """
     # Get shape
     cell_count = raw_counts.shape[0]
