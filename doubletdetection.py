@@ -5,10 +5,9 @@ import pandas as pd
 import phenograph
 import collections
 from sklearn.decomposition import PCA
-from scipy.stats import binom
 
 
-def classify(raw_counts, downsample=True, doublet_rate=0.25, k=20, n_pca=30, p_val=None):
+def classify(raw_counts, downsample=True, doublet_rate=0.15, k=30, n_pca=30):
     """Classifier for doublets in single-cell RNA-seq data.
 
     Args:
@@ -25,26 +24,18 @@ def classify(raw_counts, downsample=True, doublet_rate=0.25, k=20, n_pca=30, p_v
         TYPE: Phenograph community for each row in counts
         ndarray, ndim=1: indicator for each row in counts whether it is a fake
             doublet (doublets appended to end)
-        List of sequences of int: List of parent rows for each returned cell.
-            Original cells are own single parent, given as singleton sequence.
         float: Suggested cutoff score to identify doublets
     """
     if downsample is True:
-        counts, doublet_labels, parents = createLinearDoublets(raw_counts,
+        counts, doublet_labels = createLinearDoublets(raw_counts,
                                                                doublet_rate=doublet_rate,
                                                                downsample=True)
-    elif downsample == "Same":
-        counts, doublet_labels, parents = createLinearDoublets(raw_counts,
-                                                               doublet_rate=doublet_rate,
-                                                               downsample=True,
-                                                               duplicate_parents=True)
     else:
         # Simple linear combination
-        counts, doublet_labels, parents = createLinearDoublets(raw_counts,
+        counts, doublet_labels = createLinearDoublets(raw_counts,
                                                                doublet_rate=doublet_rate,
                                                                alpha1=0.6, alpha2=0.6,
-                                                               downsample=False,
-                                                               duplicate_parents=False)
+                                                               downsample=False)
 
     print("\nClustering mixed data set with Phenograph...\n")
     # Get phenograph results
@@ -61,32 +52,24 @@ def classify(raw_counts, downsample=True, doublet_rate=0.25, k=20, n_pca=30, p_v
 
     synth_doub_count = {}
     doublets_added = np.zeros(len(np.unique(communities)))
-    orig_community_sizes = np.zeros_like(doublets_added)
     scores = np.zeros((len(communities), 1))
     for c in np.unique(communities):
         c_indices = np.where(phenolabels[:, 0] == c)[0]
-        orig_community_sizes[c] = np.count_nonzero(phenolabels[c_indices, 1] == 0)
         doublets_added[c] = np.sum(phenolabels[c_indices, 1])
         synth_doub_count[c] = doublets_added[c] / float(c_count[c])
         scores[c_indices] = synth_doub_count[c]
 
-    if p_val is None:
-        # Find a cutoff score
-        potential_cutoffs = list(synth_doub_count.values())
-        potential_cutoffs.sort(reverse=True)
-        max_dropoff = 0
-        for i in range(len(potential_cutoffs) - 1):
-            dropoff = potential_cutoffs[i] - potential_cutoffs[i + 1]
-            if dropoff > max_dropoff:
-                max_dropoff = dropoff
-                cutoff = potential_cutoffs[i]
-    else:
-        # Find clusters with statistically significant synthetic doublet boosting
-        conf_values = doubletConfidences(orig_community_sizes, doublets_added)
-        significant = np.where(conf_values <= p_val)[0]
-        cutoff = significant
+    # Find a cutoff score
+    potential_cutoffs = list(synth_doub_count.values())
+    potential_cutoffs.sort(reverse=True)
+    max_dropoff = 0
+    for i in range(len(potential_cutoffs) - 1):
+        dropoff = potential_cutoffs[i] - potential_cutoffs[i + 1]
+        if dropoff > max_dropoff:
+            max_dropoff = dropoff
+            cutoff = potential_cutoffs[i]
 
-    return counts, scores, communities, doublet_labels, parents, cutoff
+    return counts, scores, communities, doublet_labels, cutoff
 
 
 # TODO: Further detail of downsampling algorithm?
@@ -114,7 +97,7 @@ def downsampleCellPair(cell1, cell2):
 
 
 def createLinearDoublets(raw_counts, normalize=True, doublet_rate=0.25, downsample=True,
-                         duplicate_parents=False, alpha1=1.0, alpha2=1.0):
+                         alpha1=1.0, alpha2=1.0):
     """Append doublets to end of data.
 
     Args:
@@ -123,7 +106,6 @@ def createLinearDoublets(raw_counts, normalize=True, doublet_rate=0.25, downsamp
         doublet_rate (float, optional): Proportion of cell_counts to produce as
             doublets.
         downsample (bool, optional): downsample doublets
-        duplicate_parents (bool, optional): Create doublets of same cell.
         alpha1 (float, optional): weighting of row1 in sum
         alpha2 (float, optional): weighting of row2 in sum
 
@@ -146,14 +128,9 @@ def createLinearDoublets(raw_counts, normalize=True, doublet_rate=0.25, downsamp
     labels = np.zeros(cell_count + doublets)
     labels[cell_count:] = 1
 
-    parents = [[i] for i in range(cell_count)]
-
     for i in range(doublets):
         row1 = np.random.randint(cell_count)
-        if duplicate_parents:
-            row2 = row1
-        else:
-            row2 = np.random.randint(cell_count)
+        row2 = np.random.randint(cell_count)
 
         if downsample:
             new_row = downsampleCellPair(raw_counts[row1], raw_counts[row2])
@@ -162,15 +139,13 @@ def createLinearDoublets(raw_counts, normalize=True, doublet_rate=0.25, downsamp
                                dtype=raw_counts.dtype)
 
         synthetic[i] = new_row
-        parents.append([row1, row2])
 
     synthetic = np.append(raw_counts, synthetic, axis=0)
 
     if normalize:
         synthetic = normalize_counts(synthetic)
 
-    assert len(parents) == synthetic.shape[0]
-    return synthetic, labels, parents
+    return synthetic, labels
 
 
 def load_data(FNAME, normalize=False, read_rows=None):
@@ -226,54 +201,3 @@ def normalize_counts(raw_counts, standardizeGenes=False):
         normed = raw_counts
 
     return normed
-
-
-def doubletConfidences(orig_community_sizes, doublets_added):
-    """Return significance for doublets assigned to each community.
-
-    Args:
-        orig_community_sizes (ndarray, ndims=1): Number of cells in each
-            original community.
-        doublets_added (ndarray, ndims=1): Number of doublets added to each
-            community.
-
-    Returns:
-        ndarray, ndims=1: z-scores for each community.
-    """
-    assert orig_community_sizes.shape[0] == doublets_added.shape[0], (
-        "Entry for original and added doublet size required for each cluster: {0} != {1}".format(
-            orig_community_sizes.shape[0], doublets_added.shape[0]))
-    orig_cells = orig_community_sizes.reshape(-1,)
-    doublets = doublets_added.reshape(-1,)
-
-    p = orig_cells / np.sum(orig_cells, dtype=np.float_)
-    N = np.sum(doublets)
-    k = doublets
-    sf = binom.sf(k, N, p)
-
-    return sf
-
-  
-def getUniqueGenes(raw_counts, communities):
-    """Identify (any) genes unique to each community.
-
-    Args:
-        raw_counts (ndarray, ndims=2): Cell x genes counts nupmy array.
-        communities (ndarray, shape=(raw_counts.shape[0],)): Community ID for
-            each cell.
-
-    Returns:
-        ndarray, dtype=int: 1 for each gene unique to that community.
-    """
-    # Sum each community's genecounts, and stack up those gene profile vectors
-    profiles = np.concatenate([np.sum(raw_counts[communities == i], axis=0, keepdims=True) for i in
-                               np.unique(communities)], axis=0)
-
-    binary = np.zeros_like(profiles)
-    binary[profiles != 0] = 1
-
-    # Only 1 - sum(everything) + 1 > 0
-    uniques = binary - np.sum(binary, axis=0) + binary
-    uniques[uniques < 0] = 0
-
-    return uniques
