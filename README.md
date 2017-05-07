@@ -27,7 +27,7 @@ raw_counts = DoubletDetection.load_data(FILENAME)
 counts, scores, communities, doublet_labels, cutoff = DoubletDetection.classify(raw_counts) 
 ```
 
-The return values contain values for the augmented dataset (original data and synthetic doublets). Therefore, `counts, scores, communities, doublet_labels` are of length `N(1+boost_rate)`, where `N` is the number of rows in raw_counts. The default `boost_rate` is 15%. `doublet_labels` is a binary vector with the value 1 representing a synthetic doublet. To identify doublets within the original data you can do the following:
+The return values contain values for the augmented dataset (original data and synthetic doublets). Therefore, `counts, scores, communities, doublet_labels` are of length `N(1+boost_rate)`, where `N` is the number of rows in raw_counts. The default `boost_rate` is 15%. `doublet_labels` is a binary vector with the value 1 representing a synthetic doublet. Synthetic doublets are appended to the end of raw_counts. To identify doublets within the original data you can do the following:
 
 ```
 cell_count = raw_counts.shape[0]
