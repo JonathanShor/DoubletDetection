@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 
 """
-	Sample usage of the doubletdetection module.
+	Sample usage of the DoubletDetection module.
 
-    To run from within Doublet-Detection directory:
-    	python3 ./detect.py -f [file_name] -c [cutoff_score] -t
+    To run from within DoubletDetection directory:
+    	python3 ./test_script.py -f [file_name] -c [cutoff_score] -t
 
     Note: all command line flags optional other than file name
 """
