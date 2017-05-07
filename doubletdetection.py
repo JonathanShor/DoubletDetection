@@ -7,13 +7,13 @@ import collections
 from sklearn.decomposition import PCA
 
 
-def classify(raw_counts, downsample=True, doublet_rate=0.15, k=30, n_pca=30):
+def classify(raw_counts, downsample=True, boost_rate=0.15, k=30, n_pca=30):
     """Classifier for doublets in single-cell RNA-seq data.
 
     Args:
         raw_counts (ndarray): count table
         downsample (bool, optional): Downsample doublets.
-        doublet_rate (TYPE, optional): Description
+        boost_rate (TYPE, optional): Description
         k (TYPE):
         n_pca (TYPE):
         p_val (float within [0,1]): Significance level to call doublets.
@@ -28,12 +28,12 @@ def classify(raw_counts, downsample=True, doublet_rate=0.15, k=30, n_pca=30):
     """
     if downsample is True:
         counts, doublet_labels = createLinearDoublets(raw_counts,
-                                                               doublet_rate=doublet_rate,
+                                                               boost_rate=boost_rate,
                                                                downsample=True)
     else:
         # Simple linear combination
         counts, doublet_labels = createLinearDoublets(raw_counts,
-                                                               doublet_rate=doublet_rate,
+                                                               boost_rate=boost_rate,
                                                                alpha1=0.6, alpha2=0.6,
                                                                downsample=False)
 
@@ -96,14 +96,14 @@ def downsampleCellPair(cell1, cell2):
     return new_cell
 
 
-def createLinearDoublets(raw_counts, normalize=True, doublet_rate=0.25, downsample=True,
+def createLinearDoublets(raw_counts, normalize=True, boost_rate=0.25, downsample=True,
                          alpha1=1.0, alpha2=1.0):
     """Append doublets to end of data.
 
     Args:
         raw_counts (ndarray, shape=(cell_count, gene_count)): count data
         normalize (bool, optional): normalize data before returning
-        doublet_rate (float, optional): Proportion of cell_counts to produce as
+        boost_rate (float, optional): Proportion of cell_counts to produce as
             doublets.
         downsample (bool, optional): downsample doublets
         alpha1 (float, optional): weighting of row1 in sum
@@ -120,7 +120,7 @@ def createLinearDoublets(raw_counts, normalize=True, doublet_rate=0.25, downsamp
     gene_count = raw_counts.shape[1]
 
     # Number of doublets to add
-    doublets = int(doublet_rate * cell_count)
+    doublets = int(boost_rate * cell_count)
 
     synthetic = np.zeros((doublets, gene_count))
 
