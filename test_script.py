@@ -12,7 +12,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import doubletdetection
+import DoubletDetection
 import phenograph
 import sys
 import collections
@@ -49,7 +49,7 @@ def main(cutoff_score, tsne):
 
     # Compute doublet scores for each point
     counts_w_doublets, scores_w_doublets, communities_w_doublets, doublet_labels, cutoff_rec = (
-        doubletdetection.classify(raw_counts, downsample=True, boost_rate=BOOST_RATE, k=KNN, n_pca=PCA_COMPONENTS))
+        DoubletDetection.classify(raw_counts, downsample=True, boost_rate=BOOST_RATE, k=KNN, n_pca=PCA_COMPONENTS))
     true_scores = scores_w_doublets[:raw_counts.shape[0]]
     for s in range(0, 100, 2):
         cutoff = s / float(100)
