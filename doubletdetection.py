@@ -36,7 +36,7 @@ def classify(raw_counts, downsample=True, boost_rate=0.15, k=30, n_pca=30):
                                                                alpha1=0.6, alpha2=0.6,
                                                                downsample=False)
 
-    print("\nClustering mixed data set with Phenograph...\n")
+    print("\nClustering mixed data set with PhenoGraph...\n")
     # Get phenograph results
     pca = PCA(n_components=n_pca)
     reduced_counts = pca.fit_transform(counts)
