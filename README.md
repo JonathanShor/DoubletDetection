@@ -35,3 +35,5 @@ doublets = np.where(scores[:cell_count]>=cutoff)[0]
 ```
 `doublets` will contain the indices of the suggested doublets.
 
+`test_script.py` contains the pipline we used to visualize our results for our presentations. Information to run this script is located within the script. You will also need to install the newest version of `matplotlib`
+
