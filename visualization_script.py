@@ -23,7 +23,7 @@ from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
 from optparse import OptionParser
 
-FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
+#FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
 PCA_COMPONENTS=30
 BOOST_RATE = 0.25
 KNN=30
