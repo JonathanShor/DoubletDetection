@@ -190,7 +190,7 @@ def main(cutoff_score, tsne):
     x = plot_counts[:, 0]
     y = plot_counts[:, 1]
     plt.scatter(x, y, c=communities, cmap=set1i, s=4)
-    ax.set_title("Original Data")
+    ax.set_title("Original Data Clustered with PhenoGraph")
     if tsne:
         ax.set_xlabel("tSNE 1")
         ax.set_ylabel("tSNE 2")
@@ -199,11 +199,12 @@ def main(cutoff_score, tsne):
         ax.set_ylabel("PCA 2")
 
     # Axis 1: Heat map of doublet scores in original data
-    a1 = plt.subplot(122)
+    ax1 = plt.subplot(122)
     colors_1 = scores_w_doublets[:raw_counts.shape[0]]
     scatterplot = plt.scatter(x, y, c=colors_1, cmap='autumn_r', s=5)
     cb = plt.colorbar(aspect=50)
-    scatterplot2 = plt.scatter(x[doublets_original], y[doublets_original], facecolor='none', edgecolor='k',s=7)
+    scatterplot2 = plt.scatter(x[doublets_original], y[doublets_original], facecolor='none', edgecolor='k',s=7, label='Identified Doublets at Cutoff Score of ' + str(np.round(cutoff_score,2)))
+	plt.legend(fontsize='8')
     ax1.set_title("Doublet Scores")
     if tsne:
         ax1.set_xlabel("tSNE 1")
