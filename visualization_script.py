@@ -5,7 +5,7 @@
 	Sample usage of the DoubletDetection module.
 
     To run from within DoubletDetection directory:
-    	python3 ./test_script.py -f [file_name] -c [cutoff_score] -t
+    	python3 ./visualization_script.py -f [file_name] -c [cutoff_score] -t
 
     Note: all command line flags optional other than file name
 """
