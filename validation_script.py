@@ -44,10 +44,7 @@ def main(trials):
         np.intersect1d(XIST,CD3D)
         XandC = np.intersect1d(XIST,CD3D)
         express_both.append(len(XandC))
-        
-        
-                
-            
+         
     # Analyze doublets
     print("On trial number", trials, "...")
     print('Number of doublets =', len(doublets))
