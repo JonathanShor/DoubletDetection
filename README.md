@@ -48,9 +48,9 @@ The option `-f` is mandatory and should contain the path to the dataset. The opt
 
 To run:
 ```
-python3 validation_script.py -f [file_name]
+python3 validation_script.py -f [file_name] -n [trials]
 ```
-The option `-f` is mandatory and should contain the path to the validation dataset.
+The option `-f` is mandatory and should contain the path to the validation dataset. The option `-n` is the number of trials to use in the validation simulation. This simulation runs the classification n times and prints summary statistics.
 
 ## Obtaining data 
 Data can be downloaded from the [10x webiste](https://support.10xgenomics.com/single-cell/datasets). To use the same data we did, please see the ReadMe submitted with the report for instructions.
