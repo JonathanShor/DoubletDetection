@@ -204,7 +204,7 @@ def main(cutoff_score, tsne):
     scatterplot = plt.scatter(x, y, c=colors_1, cmap='autumn_r', s=5)
     cb = plt.colorbar(aspect=50)
     scatterplot2 = plt.scatter(x[doublets_original], y[doublets_original], facecolor='none', edgecolor='k',s=7, label='Identified Doublets at Cutoff Score of ' + str(np.round(cutoff_score,2)))
-	plt.legend(fontsize='8')
+    plt.legend(fontsize='8')
     ax1.set_title("Doublet Scores")
     if tsne:
         ax1.set_xlabel("tSNE 1")
