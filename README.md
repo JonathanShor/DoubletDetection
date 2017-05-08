@@ -40,7 +40,7 @@ doublets = np.where(scores[:cell_count]>=cutoff)[0]
 
 To run:
 ```
-python3 test_script.py -f [file_name] -c [cutoff_score] -t
+python3 visualization_script.py -f [file_name] -c [cutoff_score] -t
 ```
 The option `-f` is mandatory and should contain the path to the dataset. The option `-t` is optional and creates tSNE scatter plots. Running with this option will make the code take longer. The option `-c` is optional and represents a user defined cutoff score to use. 
 
