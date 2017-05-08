@@ -42,8 +42,8 @@ def main(trials):
     print("On trial number", trials, "...")
     print('Number of doublets =', len(doublets))
     identified_doublets = raw_counts[doublets]
-    XIST = np.where(identified_doublets[:,13750]>1)
-    CD3D = np.where(identified_doublets[:,19801]>1)
+    XIST = np.where(identified_doublets[:,13750]>0)
+    CD3D = np.where(identified_doublets[:,19801]>0)
     np.intersect1d(XIST,CD3D)
     XandC = np.intersect1d(XIST,CD3D)
     print("Number of doublets which express both XIST and CD3D =", len(XandC))
