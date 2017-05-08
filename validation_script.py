@@ -17,8 +17,6 @@ from optparse import OptionParser
 import time
 
 
-#FNAME = "~/Google Drive/Computational Genomics/5050.csv"
-
 def main(trials):
         
     # Load data
