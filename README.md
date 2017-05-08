@@ -44,7 +44,7 @@ python3 visualization_script.py -f [file_name] -c [cutoff_score] -t
 ```
 The option `-f` is mandatory and should contain the path to the dataset. The option `-t` is optional and creates tSNE scatter plots. Running with this option will make the code take longer. The option `-c` is optional and represents a user defined cutoff score to use. 
 
-`validation_script.py` is a script that runs DoubletDetection on our validation dataset. 
+`validation_script.py` is a script that runs DoubletDetection on our validation dataset (the 50:50 dataset). Sourced from [10x](https://support.10xgenomics.com/single-cell/datasets/jurkat:293t_50:50)
 
 To run:
 ```
