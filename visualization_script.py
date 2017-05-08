@@ -203,6 +203,7 @@ def main(cutoff_score, tsne):
     colors_1 = scores_w_doublets[:raw_counts.shape[0]]
     scatterplot = plt.scatter(x, y, c=colors_1, cmap='autumn_r', s=5)
     cb = plt.colorbar(aspect=50)
+    scatterplot2 = plt.scatter(x[doublets_original], y[doublets_original], facecolor='none', edgecolor='k',s=7)
     ax1.set_title("Doublet Scores")
     if tsne:
         ax1.set_xlabel("tSNE 1")
