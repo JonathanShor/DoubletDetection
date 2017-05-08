@@ -7,7 +7,7 @@ import collections
 from sklearn.decomposition import PCA
 
 
-def classify(raw_counts, downsample=True, boost_rate=0.15, k=30, n_pca=30):
+def classify(raw_counts, downsample=True, boost_rate=0.25, k=30, n_pca=30):
     """Classifier for doublets in single-cell RNA-seq data.
 
     Args:
