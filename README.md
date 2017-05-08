@@ -42,7 +42,7 @@ To run:
 ```
 python3 validation_script.py -f [file_name] -n [trials]
 ```
-The option `-f` is mandatory and should contain the path to the validation dataset. The option `-n` is the number of trials to use in the validation simulation. This simulation runs the classification n times and prints summary statistics.
+The option `-f` is mandatory and should contain the path to the validation dataset. The option `-n` is the number of trials to use in the validation simulation. This simulation runs the classification n times and prints summary statistics. The default n is 15 and this will take about 6 minutes to run on a personal computer. 
 
 `visualization_script.py` contains the pipline we used to visualize our results for our presentations. You will also need to install the newest version of `matplotlib`
 
