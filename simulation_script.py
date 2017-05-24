@@ -29,9 +29,15 @@ def main(trials):
     idxs = {}
     express_both = []
     num_doublets = []
+    clf = doubletdetection.BoostClassifier(boost_rate=0.25)
     for i in range(trials):
         # Classify
-        counts, scores, communities, doublet_labels, cutoff = doubletdetection.classify(raw_counts, boost_rate=0.25) 
+        clf.fit(raw_counts)
+        counts = clf._norm_counts
+        scores = clf.scores
+        doublet_labels = np.zeros(counts.shape[0])
+        doublet_labels[raw_counts.shape[0]:] = 1
+        cutoff = clf.suggested_cutoff
 
         doublets = np.where(scores[:raw_counts.shape[0]] >= cutoff)[0]
         num_doublets.append(len(doublets))
