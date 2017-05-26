@@ -51,10 +51,10 @@ class BoostClassifier(object):
         Args:
             raw_counts (ndarray): count table
 
-        Returns:
+        Sets:
             ndarray, ndim=2: Normalized augmented counts (original data and
                 synthetic doublets).
-            ndarray: doublet score for each row in aug_counts as column vector.
+            ndarray: doublet score for each row in aug_counts.
             TYPE: Phenograph community for each row in aug_counts
             List of sequences of int: List of parent rows for each returned cell.
                 Original cells are own single parent, given as singleton sequence.
@@ -71,34 +71,35 @@ class BoostClassifier(object):
 
         print("\nClustering mixed data set with Phenograph...\n")
         # Get phenograph results
-        # TODO: logic to avoid PCA & Phenograph if previous calc'd & stored
         pca = PCA(n_components=self.n_pca)
         # self._reduced_counts = pca.fit_transform(self._norm_counts)
         reduced_counts = pca.fit_transform(aug_counts)
         fullcommunities, _, _ = phenograph.cluster(reduced_counts, k=self.knn)
         min_ID = min(fullcommunities)
         if min_ID < 0:
-            #TODO: remove this print?
-            print("Adjusting community IDs up {} to avoid negative.".format(abs(min_ID)))
+            # print("Adjusting community IDs up {} to avoid negative.".format(abs(min_ID)))
             fullcommunities = fullcommunities + abs(min_ID)
         self.communities_ = fullcommunities[:self._num_cells]
         self._synth_communities = fullcommunities[self._num_cells:]
         print("Found communities [{0}, ... {2}], with sizes: {1}".format(min(fullcommunities),
               [np.count_nonzero(fullcommunities == i) for i in np.unique(fullcommunities)],
               max(fullcommunities)))
-# self.communities now only for orig data cells, consistent with _*_counts attributes
-        synth_comm_sizes = collections.Counter(self._synth_communities)
-        comm_sizes = collections.Counter(self.communities_)
         print('\n')
 
         # Count number of fake doublets in each community and assign score
-        community_scores = [float(synth_comm_sizes[i]) / (synth_comm_sizes[i] + comm_sizes[i])
-                            for i in sorted(synth_comm_sizes | comm_sizes)]
+        # Number of cells (synth, orig) in each cluster.
+        synth_cells_per_comm = collections.Counter(self._synth_communities)
+        orig_cells_per_comm = collections.Counter(self.communities_)
+        community_IDs = sorted(synth_cells_per_comm | orig_cells_per_comm)
+        # self.orig_cells_per_comm_ = np.array([orig_cells_per_comm[i] for i in community_IDs])
+        # self.synth_cells_per_comm_ = np.array([synth_cells_per_comm[i] for i in community_IDs])
+        community_scores = [float(synth_cells_per_comm[i]) /
+                            (synth_cells_per_comm[i] + orig_cells_per_comm[i])
+                            for i in community_IDs]
         scores = [community_scores[i] for i in self.communities_]
-# TODO: Should these stay as column vectors?
-        self.scores_ = np.array(scores).reshape(-1, 1)
+        self.scores_ = np.array(scores)
         synth_scores = [community_scores[i] for i in self._synth_communities]
-        self._synth_scores = np.array(synth_scores).reshape(-1, 1)
+        self._synth_scores = np.array(synth_scores)
 
         # if self.p_val is None:
         #     # Find a cutoff score
@@ -113,7 +114,7 @@ class BoostClassifier(object):
         #     self.suggested_cutoff_ = cutoff
         # else:
         #     # Find clusters with statistically significant synthetic doublet boosting
-        #     conf_values = self._doubletConfidences(comm_sizes, synth_comm_sizes)
+        #     conf_values = self._doubletConfidences(orig_cells_per_comm, synth_cells_per_comm)
         #     self.significant = np.where(conf_values <= self.p_val)[0]
 
         # Find a cutoff score
