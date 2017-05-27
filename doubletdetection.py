@@ -43,12 +43,7 @@ class BoostClassifier(object):
             raw_counts (ndarray): count table
 
         Sets:
-            ndarray, ndim=2: Normalized augmented counts (original data and
-                synthetic doublets).
-            ndarray: doublet score for each row in aug_counts.
-            TYPE: Phenograph community for each row in aug_counts
-            List of sequences of int: List of indexes for each synthetic doublet.
-            float: Suggested cutoff score to identify doublets
+            communities_, parents_ , raw_synthetics_, scores_, suggested_cutoff_
 
         Returns:
             labels_ (ndarray, ndims=1):  0 for singlet, 1 for detected doublet
