@@ -5,7 +5,6 @@ import pandas as pd
 import phenograph
 import collections
 from sklearn.decomposition import PCA
-from scipy.stats import binom
 
 
 class BoostClassifier(object):
@@ -27,14 +26,10 @@ class BoostClassifier(object):
         suggested_cutoff_ (float): Recommended cutoff to use (scores_ >= cutoff)
     """
 
-    # def __init__(self, boost_rate=0.25, downsample=True, knn=20, n_pca=30, p_val=0.025):
     def __init__(self, boost_rate=0.25, knn=20, n_pca=30):
-        # self.duplicate_parents = False
         self.boost_rate = boost_rate
         self.knn = knn
         self.n_pca = n_pca
-        # self.p_val=p_val
-        # self.conf_values = None
 
     def fit(self, raw_counts):
         """Classifier for doublets in single-cell RNA-seq data.
@@ -60,7 +55,6 @@ class BoostClassifier(object):
         print("\nClustering mixed data set with Phenograph...\n")
         # Get phenograph results
         pca = PCA(n_components=self.n_pca)
-        # self._reduced_counts = pca.fit_transform(self._norm_counts)
         reduced_counts = pca.fit_transform(aug_counts)
         fullcommunities, _, _ = phenograph.cluster(reduced_counts, k=self.knn)
         min_ID = min(fullcommunities)
@@ -75,7 +69,7 @@ class BoostClassifier(object):
         print('\n')
 
         # Count number of fake doublets in each community and assign score
-        # Number of cells (synth, orig) in each cluster.
+        # Number of synth/orig cells in each cluster.
         synth_cells_per_comm = collections.Counter(self._synth_communities)
         orig_cells_per_comm = collections.Counter(self.communities_)
         community_IDs = sorted(synth_cells_per_comm | orig_cells_per_comm)
@@ -88,22 +82,6 @@ class BoostClassifier(object):
         self.scores_ = np.array(scores)
         synth_scores = [community_scores[i] for i in self._synth_communities]
         self._synth_scores = np.array(synth_scores)
-
-        # if self.p_val is None:
-        #     # Find a cutoff score
-        #     potential_cutoffs = np.unique(community_scores)
-        #     potential_cutoffs.sort(reverse=True)
-        #     max_dropoff = 0
-        #     for i in range(len(potential_cutoffs) - 1):
-        #         dropoff = potential_cutoffs[i] - potential_cutoffs[i + 1]
-        #         if dropoff > max_dropoff:
-        #             max_dropoff = dropoff
-        #             cutoff = potential_cutoffs[i]
-        #     self.suggested_cutoff_ = cutoff
-        # else:
-        #     # Find clusters with statistically significant synthetic doublet boosting
-        #     conf_values = self._doubletConfidences(orig_cells_per_comm, synth_cells_per_comm)
-        #     self.significant = np.where(conf_values <= self.p_val)[0]
 
         # Find a cutoff score
         potential_cutoffs = list(np.unique(community_scores))
@@ -154,9 +132,6 @@ class BoostClassifier(object):
         parents = []
         for i in range(num_synths):
             row1 = np.random.randint(self._num_cells)
-            # if self.duplicate_parents:
-            #     row2 = row1
-            # else:
             row2 = np.random.randint(self._num_cells)
 
             new_row = self._downsampleCellPair(self._raw_counts[row1], self._raw_counts[row2])
@@ -166,31 +141,6 @@ class BoostClassifier(object):
 
         self.raw_synthetics_ = synthetic
         self.parents_ = parents
-
-    # def _doubletConfidences(self, orig_community_sizes, synths_added):
-    #     """Return significance for synthetic doublets assigned to each community.
-    #
-    #     Args:
-    #         orig_community_sizes (ndarray, ndims=1): Number of cells in each
-    #             original community.
-    #         synths_added (ndarray, ndims=1): Number of synthetics added to each
-    #             community.
-    #
-    #     Returns:
-    #         ndarray, ndims=1: z-scores for each community.
-    #     """
-    #     assert orig_community_sizes.shape[0] == synths_added.shape[0], (
-    #         "Original and added doublet sizes required for each cluster: {0} != {1}".format(
-    #             orig_community_sizes.shape[0], synths_added.shape[0]))
-    #     orig_cells = orig_community_sizes.reshape(-1,)
-    #     num_synths = synths_added.reshape(-1,)
-    #
-    #     p = orig_cells / np.sum(orig_cells, dtype=np.float_)
-    #     N = np.sum(num_synths)
-    #     k = num_synths
-    #     sf = binom.sf(k, N, p)
-    #
-    #     return sf
 
 
 def getUniqueGenes(self, raw_counts, communities):
