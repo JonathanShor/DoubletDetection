@@ -2,12 +2,12 @@
 # -*- coding: utf-8 -*-
 
 """
-	Sample usage of the DoubletDetection module.
+Sample usage of the DoubletDetection module.
 
-    To run from within DoubletDetection directory:
-    	python3 ./visualization_script.py -f [file_name] -c [cutoff_score] -t
+To run from within DoubletDetection directory:
+    python3 ./visualization_script.py -f [file_name] -c [cutoff_score] -t
 
-    Note: all command line flags optional other than file name
+Note: all command line flags optional other than file name
 """
 
 import numpy as np
@@ -23,18 +23,18 @@ from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
 from optparse import OptionParser
 
-PCA_COMPONENTS=30
+PCA_COMPONENTS = 30
 BOOST_RATE = 0.25
-KNN=30
+KNN = 30
+
 
 def main(cutoff_score, tsne):
+    """Process Data and Perform Doublet-Detection.
 
-    ############################################
-    #
-    # Process Data and Perform Doublet-Detection
-    #
-    ############################################
-
+    Args:
+        cutoff_score (TYPE): Description
+        tsne (TYPE): Description
+    """
     # Read in data and perform Phenograph clustering
     print("Loading data...\n")
     raw_counts = doubletdetection.load_data(FNAME)
@@ -44,7 +44,8 @@ def main(cutoff_score, tsne):
     pca = PCA(n_components=PCA_COMPONENTS)
     reduced_counts = pca.fit_transform(norm_counts)
     communities, graph, Q = phenograph.cluster(reduced_counts, k=KNN)
-    print("Found these communities: {0}, with sizes: {1}".format(np.unique(communities), [np.count_nonzero(communities == i) for i in np.unique(communities)]))
+    print("Found these communities: {0}, with sizes: {1}".format(np.unique(communities),
+          [np.count_nonzero(communities == i) for i in np.unique(communities)]))
 
     # Compute doublet scores for each point
     counts_w_doublets, scores_w_doublets, communities_w_doublets, doublet_labels, cutoff_rec = (
@@ -82,7 +83,7 @@ def main(cutoff_score, tsne):
     fakes = []
     for com in labels:
         fakes.append(doublet_com_count[com])
-    plt.bar(indexes, fakes, width, bottom = values)
+    plt.bar(indexes, fakes, width, bottom=values)
 
     plt.xticks(indexes, labels)
     ax1.set_title("Original Data and Synthetic Doublets per Phenograph Cluster")
@@ -100,7 +101,8 @@ def main(cutoff_score, tsne):
 
     plt.bar(indexes, scores, width)
     plt.xticks(indexes, labels)
-    plt.axhline(np.floor(100*cutoff_score)/100, color='r', linestyle='dashed', linewidth=2, label='Cutoff Score')
+    plt.axhline(np.floor(100 * cutoff_score) / 100, color='r', linestyle='dashed', linewidth=2,
+                label='Cutoff Score')
     plt.legend()
     ax2.set_title("Doublet Score per Phenograph Cluster")
     plt.savefig('bars.png', dpi=fig1.dpi)
@@ -127,8 +129,9 @@ def main(cutoff_score, tsne):
     doublets_synth = np.where(doublet_labels == 1)[0]
     x_synth = plot_counts_synth[:, 0]
     y_synth = plot_counts_synth[:, 1]
-    plt.scatter(x_synth, y_synth, c=colors_synth, cmap=set1i, s=5) 
-    plt.scatter(x_synth[doublets_synth], y_synth[doublets_synth], facecolors='black', edgecolors='black', marker='d', s=2)
+    plt.scatter(x_synth, y_synth, c=colors_synth, cmap=set1i, s=5)
+    plt.scatter(x_synth[doublets_synth], y_synth[doublets_synth], facecolors='black',
+                edgecolors='black', marker='d', s=2)
     ax.set_title("Original Data with Synthetic Doublets")
     if tsne:
         ax.set_xlabel("tSNE 1")
@@ -137,7 +140,7 @@ def main(cutoff_score, tsne):
         ax.set_xlabel("PCA 1")
         ax.set_ylabel("PCA 2")
 
-    # Axis 1: Original Data only 
+    # Axis 1: Original Data only
     ax1 = plt.subplot(131)
     colors_1 = colors_synth[:raw_counts.shape[0]]
     x = x_synth[:raw_counts.shape[0]]
@@ -172,7 +175,7 @@ def main(cutoff_score, tsne):
         plot_counts = tsne.fit_transform(reduced_counts)
     else:
         plot_counts = reduced_counts
-        
+
     #########################################
     #
     # Generate Scatter Plots of Original Data
@@ -182,10 +185,10 @@ def main(cutoff_score, tsne):
     fig3 = plt.figure(figsize=(12, 5), dpi=300)
 
     doublet_labels_og = doublet_labels
-    doublet_labels_og[np.where(scores_w_doublets>=cutoff_score)[0]] = 1
+    doublet_labels_og[np.where(scores_w_doublets >= cutoff_score)[0]] = 1
     doublets_original = np.where(doublet_labels_og[:raw_counts.shape[0]] == 1)[0]
 
-   	# Axis 0: Scatter plot of original data with PhenoGraph clustering
+    # Axis 0: Scatter plot of original data with PhenoGraph clustering
     ax = plt.subplot(121)
     x = plot_counts[:, 0]
     y = plot_counts[:, 1]
@@ -203,7 +206,9 @@ def main(cutoff_score, tsne):
     colors_1 = scores_w_doublets[:raw_counts.shape[0]]
     scatterplot = plt.scatter(x, y, c=colors_1, cmap='autumn_r', s=5)
     cb = plt.colorbar(aspect=50)
-    scatterplot2 = plt.scatter(x[doublets_original], y[doublets_original], facecolor='none', edgecolor='k',s=7, label='Identified Doublets at Cutoff Score of ' + str(np.round(cutoff_score,2)))
+    splot2_label = 'Identified Doublets at Cutoff Score of ' + str(np.round(cutoff_score, 2))
+    scatterplot2 = plt.scatter(x[doublets_original], y[doublets_original], facecolor='none',
+                               edgecolor='k', s=7, label=splot2_label)
     plt.legend(fontsize='8')
     ax1.set_title("Doublet Scores")
     if tsne:
@@ -214,13 +219,15 @@ def main(cutoff_score, tsne):
         ax1.set_xlabel("PCA 1")
         ax1.set_ylabel("PCA 2")
         plt.savefig('pca_original.png', dpi=fig3.dpi)
-       		
+
+
 if __name__ == '__main__':
 
     argv = sys.argv[1:]
     parser = OptionParser()
     parser.add_option("-f", "--file", dest="file", help='read csv data from FILE', metavar='FILE')
-    parser.add_option("-c", type='float', dest="cutoff_score", default=float('nan'), help='cutoff score')
+    parser.add_option("-c", type='float', dest="cutoff_score", default=float('nan'),
+                      help='cutoff score')
     parser.add_option("-t", dest="tsne", action="store_true", default=False)
     (options, _args) = parser.parse_args()
     if options.file:
