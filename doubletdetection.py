@@ -11,38 +11,29 @@ from scipy.stats import binom
 class BoostClassifier(object):
     """Classifier for doublets in single-cell RNA-seq data.
 
-    More detail?
-
     Parameters:
-        alpha1 (float): weighting of row1 in sum
-        alpha2 (float): weighting of row2 in sum
         boost_rate (float): Proportion of cell population size to produce as
             synthetic doublets.
-        downsample (bool): Use downsampling to generate synthetic doublets.
-        knn (TYPE): Description
-        n_pca (TYPE): Description
+        knn (int): value of k for input to Phenograph clustering
+        n_pca (int): Number of PCA components to use for clustering
 
     Attributes:
         communities_ (sequence of ints): Cluster ID for corresponding
             cell.
-        labels_ (TYPE): Description
-        parents_ (List of sequences of int): List of parent rows for each returned cell.
-            Original cells are own single parent, given as singleton sequence.
-        raw_synthetics_ (TYPE): Description
-        scores_ (ndarray): doublet score for each row in aug_counts as column vector.
-        suggested_cutoff_ (TYPE): Description
+        labels_ (ndarray, ndims=1):  0 for singlet, 1 for detected doublet
+        parents_ (List of sequences of int): Parent indexes for each synthetic doublet.
+        raw_synthetics_ (ndarray, ndims=2): Raw counts for augmented synthetic doublets
+        scores_ (ndarray): Doublet score for each row in aug_counts as column vector.
+        suggested_cutoff_ (float): Recommended cutoff to use (scores_ >= cutoff)
     """
 
     # def __init__(self, boost_rate=0.25, downsample=True, knn=20, n_pca=30, p_val=0.025):
-    def __init__(self, boost_rate=0.25, downsample=True, knn=20, n_pca=30):
-        self.downsample = downsample
+    def __init__(self, boost_rate=0.25, knn=20, n_pca=30):
         # self.duplicate_parents = False
         self.boost_rate = boost_rate
         self.knn = knn
         self.n_pca = n_pca
         # self.p_val=p_val
-        self.alpha1 = 0.6
-        self.alpha2 = 0.6
         # self.conf_values = None
 
     def fit(self, raw_counts):
@@ -56,9 +47,11 @@ class BoostClassifier(object):
                 synthetic doublets).
             ndarray: doublet score for each row in aug_counts.
             TYPE: Phenograph community for each row in aug_counts
-            List of sequences of int: List of parent rows for each returned cell.
-                Original cells are own single parent, given as singleton sequence.
+            List of sequences of int: List of indexes for each synthetic doublet.
             float: Suggested cutoff score to identify doublets
+
+        Returns:
+            labels_ (ndarray, ndims=1):  0 for singlet, 1 for detected doublet
         """
         self._raw_counts = raw_counts
         (self._num_cells, self._num_genes) = self._raw_counts.shape
@@ -154,25 +147,16 @@ class BoostClassifier(object):
         return new_cell
 
     def _createLinearDoublets(self):
-        """Append synthetic doublets to end of data.
+        """Create synthetic doublets.
 
         Sets .raw_synthetics_ and .parents_
 
-        Args:
-            normalize (bool, optional): normalize data before returning
-
-        Returns:
-            ndarray, ndims=2: augmented data
-            ndarray, ndims=1: 0 for original data, 1 for fake doublet
-            List of sequences of int: List of parent rows for each returned cell.
-                Original cells are own single parent, given as singleton sequence.
         """
         # Number of synthetic doublets to add
         num_synths = int(self.boost_rate * self._num_cells)
         synthetic = np.zeros((num_synths, self._num_genes))
 
-        parents = [[i] for i in range(self._num_cells)]
-
+        parents = []
         for i in range(num_synths):
             row1 = np.random.randint(self._num_cells)
             # if self.duplicate_parents:
@@ -180,11 +164,7 @@ class BoostClassifier(object):
             # else:
             row2 = np.random.randint(self._num_cells)
 
-            if self.downsample:
-                new_row = self._downsampleCellPair(self._raw_counts[row1], self._raw_counts[row2])
-            else:
-                new_row = np.array(np.around(self.alpha1 * self._raw_counts[row1] + self.alpha2 *
-                                             self._raw_counts[row2]), dtype=self._raw_counts.dtype)
+            new_row = self._downsampleCellPair(self._raw_counts[row1], self._raw_counts[row2])
 
             synthetic[i] = new_row
             parents.append([row1, row2])
@@ -270,7 +250,7 @@ def normalize_counts(raw_counts, standardizeGenes=False):
 
     Args:
         raw_counts (ndarray): count data
-        doStandardize (bool, optional): Standardizes each gene column.
+        standardizeGenes (bool, optional): Standardizes each gene column.
 
     Returns:
         ndarray: Normalized data.
