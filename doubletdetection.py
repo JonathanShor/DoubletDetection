@@ -11,19 +11,22 @@ class BoostClassifier(object):
     """Classifier for doublets in single-cell RNA-seq data.
 
     Parameters:
-        boost_rate (float): Proportion of cell population size to produce as
-            synthetic doublets.
-        knn (int): value of k for input to Phenograph clustering
-        n_pca (int): Number of PCA components to use for clustering
+        boost_rate (float, optional): Proportion of cell population size to
+            produce as synthetic doublets.
+        knn (int, optional): Number of nearest neighbors used in Phenograph
+            clustering.
+        n_pca (int, optional): Number of PCA components used for clustering.
 
     Attributes:
-        communities_ (sequence of ints): Cluster ID for corresponding
-            cell.
-        labels_ (ndarray, ndims=1):  0 for singlet, 1 for detected doublet
-        parents_ (List of sequences of int): Parent indexes for each synthetic doublet.
-        raw_synthetics_ (ndarray, ndims=2): Raw counts for augmented synthetic doublets
-        scores_ (ndarray): Doublet score for each row in aug_counts as column vector.
-        suggested_cutoff_ (float): Recommended cutoff to use (scores_ >= cutoff)
+        communities_ (sequence of ints): Cluster ID for corresponding cell.
+        labels_ (ndarray, ndims=1): 0 for singlet, 1 for detected doublet.
+        parents_ (list of sequences of int): Parent cells' indexes for each
+            synthetic doublet.
+        raw_synthetics_ (ndarray, ndims=2): Raw counts of synthetic doublets.
+        scores_ (ndarray): Doublet score for each cell.
+        suggested_cutoff_ (float): Recommended cutoff to use (scores_ >= cutoff).
+        synth_communities_ (sequence of ints): Cluster ID for corresponding
+            synthetic doublet.
     """
 
     def __init__(self, boost_rate=0.25, knn=20, n_pca=30):
@@ -32,10 +35,10 @@ class BoostClassifier(object):
         self.n_pca = n_pca
 
     def fit(self, raw_counts):
-        """Classifier for doublets in single-cell RNA-seq data.
+        """Identify doublets in single-cell RNA-seq count table raw_counts.
 
         Args:
-            raw_counts (ndarray): count table
+            raw_counts (ndarray): Count table. Expected cells by genes.
 
         Sets:
             communities_, parents_ , raw_synthetics_, scores_, suggested_cutoff_
@@ -62,7 +65,7 @@ class BoostClassifier(object):
             # print("Adjusting community IDs up {} to avoid negative.".format(abs(min_ID)))
             fullcommunities = fullcommunities + abs(min_ID)
         self.communities_ = fullcommunities[:self._num_cells]
-        self._synth_communities = fullcommunities[self._num_cells:]
+        self.synth_communities_ = fullcommunities[self._num_cells:]
         print("Found communities [{0}, ... {2}], with sizes: {1}".format(min(fullcommunities),
               [np.count_nonzero(fullcommunities == i) for i in np.unique(fullcommunities)],
               max(fullcommunities)))
@@ -70,7 +73,7 @@ class BoostClassifier(object):
 
         # Count number of fake doublets in each community and assign score
         # Number of synth/orig cells in each cluster.
-        synth_cells_per_comm = collections.Counter(self._synth_communities)
+        synth_cells_per_comm = collections.Counter(self.synth_communities_)
         orig_cells_per_comm = collections.Counter(self.communities_)
         community_IDs = sorted(synth_cells_per_comm | orig_cells_per_comm)
         # self.orig_cells_per_comm_ = np.array([orig_cells_per_comm[i] for i in community_IDs])
@@ -80,7 +83,7 @@ class BoostClassifier(object):
                             for i in community_IDs]
         scores = [community_scores[i] for i in self.communities_]
         self.scores_ = np.array(scores)
-        synth_scores = [community_scores[i] for i in self._synth_communities]
+        synth_scores = [community_scores[i] for i in self.synth_communities_]
         self._synth_scores = np.array(synth_scores)
 
         # Find a cutoff score
@@ -98,7 +101,7 @@ class BoostClassifier(object):
         return self.labels_
 
     def _downsampleCellPair(self, cell1, cell2):
-        """Downsample the sum of two cell gene expression profiles.
+        """Downsample the sum of two cells' gene expression profiles.
 
         Args:
             cell1 (ndarray, ndim=1): Gene count vector.
@@ -123,7 +126,6 @@ class BoostClassifier(object):
         """Create synthetic doublets.
 
         Sets .raw_synthetics_ and .parents_
-
         """
         # Number of synthetic doublets to add
         num_synths = int(self.boost_rate * self._num_cells)
@@ -147,7 +149,7 @@ def getUniqueGenes(self, raw_counts, communities):
     """Identify (any) genes unique to each community.
 
     Args:
-        raw_counts (ndarray, ndims=2): Cell x genes counts nupmy array.
+        raw_counts (ndarray, ndims=2): Cell x genes counts numpy array.
         communities (ndarray, shape=(raw_counts.shape[0],)): Community ID for
             each cell.
 
@@ -171,11 +173,14 @@ def getUniqueGenes(self, raw_counts, communities):
 def load_csv(FNAME, normalize=False, read_rows=None):
     """Load a csv table from the filesystem.
 
+    Note that the csv's first row and first column are assumed to be labels and
+    are discarded.
+
     Args:
         FNAME (string): Pathname of file to load.
         normalize (bool, optional): Runs normalize_counts on table.
         read_rows (None or int, optional): If specified, load only first
-            read_rows of FNAME.
+            read_rows of data from FNAME.
 
     Returns:
         ndarray: Loaded table.
