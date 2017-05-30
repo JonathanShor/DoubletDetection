@@ -29,7 +29,7 @@ labels = clf.fit(raw_counts)
 
 Advanced usage:
 
-See our [jupyter notebook](walkthrough.ipynb).
+See our [jupyter notebook](docs/walkthrough.ipynb).
 
 
 ## Obtaining data
