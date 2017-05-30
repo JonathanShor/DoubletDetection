@@ -25,7 +25,7 @@ clf = doubletdetection.BoostClassifier()
 labels = clf.fit(raw_counts)
 ```
 
-`raw_counts` is a scRNA-seq count table. `labels` is a binary vector with the value 1 representing a synthetic doublet. The length of `labels` is equal to the length of `raw_counts`.
+`raw_counts` is a scRNA-seq count table. `labels` is a binary vector with the value 1 representing a detected doublet. The length of `labels` is equal to the length of `raw_counts`.
 
 Advanced usage:
 
