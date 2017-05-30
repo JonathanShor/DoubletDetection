@@ -19,8 +19,9 @@ pip3 install git+https://github.com/jacoblevine/phenograph.git
 To run basic doublet classification:
 
 ```
-from doubletdetection import BoostClassifier
-clf = BoostClassifier(boost_rate=0.5, n_pca=20, knn=20)
+import doubletdetection
+raw_counts = doubletdetection.load_csv('/your/path/filename.csv')
+clf = doubletdetection.BoostClassifier()
 labels = clf.fit(raw_counts)
 ```
 
@@ -28,8 +29,8 @@ labels = clf.fit(raw_counts)
 
 Advanced usage:
 
-See our [jupyter notebook](http://nbviewer.jupyter.org/github/JonathanShor/DoubletDetection/blob/update-scripts/walkthrough.ipynb).
+See our [jupyter notebook](walkthrough.ipynb).
 
 
-## Obtaining data 
+## Obtaining data
 Data can be downloaded from the [10x website](https://support.10xgenomics.com/single-cell/datasets).
