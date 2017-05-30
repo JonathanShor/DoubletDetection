@@ -29,7 +29,7 @@ labels = clf.fit(raw_counts)
 
 Advanced usage:
 
-See our [jupyter notebook](docs/walkthrough.ipynb).
+See our [jupyter notebook](http://nbviewer.jupyter.org/github/JonathanShor/DoubletDetection/blob/master/docs/walkthrough.ipynb).
 
 
 ## Obtaining data
