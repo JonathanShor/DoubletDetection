@@ -145,7 +145,7 @@ class BoostClassifier(object):
         self.parents_ = parents
 
 
-def getUniqueGenes(self, raw_counts, communities):
+def getUniqueGenes(raw_counts, communities):
     """Identify (any) genes unique to each community.
 
     Args:
