@@ -34,3 +34,6 @@ See our [jupyter notebook](http://nbviewer.jupyter.org/github/JonathanShor/Doubl
 
 ## Obtaining data
 Data can be downloaded from the [10x website](https://support.10xgenomics.com/single-cell/datasets).
+
+
+This project is licensed under the terms of the MIT license.
