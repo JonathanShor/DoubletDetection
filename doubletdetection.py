@@ -45,7 +45,6 @@ class BoostClassifier(object):
         assert (self.n_top_var_genes == 0) or (self.n_pca <= self.n_top_var_genes), (
             "n_pca={0} cannot be larger than n_top_var_genes={1}".format(n_pca, n_top_var_genes))
 
-
     def fit(self, raw_counts):
         """Identify doublets in single-cell RNA-seq count table raw_counts.
 
