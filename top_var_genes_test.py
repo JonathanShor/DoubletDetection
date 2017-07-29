@@ -65,7 +65,7 @@ if __name__ == '__main__':
             print(msg)
             f.write(msg + "\n")
             this_time = aggregate_times[i]
-            msg = " Run time | {0:6.1f} | {1:8.1f} | [{3:4.0f},{3:4.0f}]".format(
+            msg = " Run time | {0:6.1f} | {1:8.1f} | [{3:4.1f},{3:4.1f}]\n".format(
                 this_time[1], this_time[2], this_time[3], this_time[4])
             print(msg)
             f.write(msg + "\n")
