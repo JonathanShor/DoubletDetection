@@ -20,6 +20,14 @@ class BoostClassifier(object):
             use; other genes discarded. Will use all genes when non-positive.
         jaccard (bool, optional): If true, uses Jaccard similarity in Phenograph
             if false, uses Gaussian kernel
+        directed (bool, optional): If true, uses a directed graph in community
+            detection in Phenograph
+        replacement (bool, optional): If true, reates boosts by choosing parents
+            with replacement
+        downsample: (string, optional): Method to use in choosing new library size
+            for boosts, options are "average" or "max"
+        n_jobs (int, optional): Number of cores to use, default is -1 (all available)
+
 
     Attributes:
         communities_ (sequence of ints): Cluster ID for corresponding cell.
@@ -33,7 +41,8 @@ class BoostClassifier(object):
             synthetic doublet.
     """
 
-    def __init__(self, boost_rate=0.25, knn=20, n_pca=30, n_top_var_genes=0, jaccard=True, directed=False, replacement=True, n_jobs=-1, downsample="average"):
+    def __init__(self, boost_rate=0.25, knn=20, n_pca=30, n_top_var_genes=0, jaccard=True,
+                 directed=False, replacement=True, downsample="average", n_jobs=-1):
         self.boost_rate = boost_rate
         self.knn = knn
         if n_pca == 30 and n_top_var_genes > 0:
@@ -88,7 +97,8 @@ class BoostClassifier(object):
         pca = PCA(n_components=self.n_pca)
         print("\nClustering augmented data set with Phenograph...\n")
         reduced_counts = pca.fit_transform(aug_counts)
-        fullcommunities, _, _ = phenograph.cluster(reduced_counts, k=self.knn, jaccard=self.jaccard, directed=self.directed, n_jobs=self.n_jobs)
+        fullcommunities, _, _ = phenograph.cluster(
+            reduced_counts, k=self.knn, jaccard=self.jaccard, directed=self.directed, n_jobs=self.n_jobs)
         min_ID = min(fullcommunities)
         if min_ID < 0:
             # print("Adjusting community IDs up {} to avoid negative.".format(abs(min_ID)))
@@ -96,8 +106,9 @@ class BoostClassifier(object):
         self.communities_ = fullcommunities[:self._num_cells]
         self.synth_communities_ = fullcommunities[self._num_cells:]
         print("Found communities [{0}, ... {2}], with sizes: {1}".format(min(fullcommunities),
-              [np.count_nonzero(fullcommunities == i) for i in np.unique(fullcommunities)],
-              max(fullcommunities)))
+                                                                         [np.count_nonzero(fullcommunities == i)
+                                                                          for i in np.unique(fullcommunities)],
+                                                                         max(fullcommunities)))
         print('\n')
 
         # Count number of fake doublets in each community and assign score
