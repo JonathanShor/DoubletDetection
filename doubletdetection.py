@@ -18,6 +18,8 @@ class BoostClassifier(object):
         n_pca (int, optional): Number of PCA components used for clustering.
         n_top_var_genes (int, optional): Number of highest variance genes to
             use; other genes discarded. Will use all genes when non-positive.
+        jaccard (bool, optional): If true, uses Jaccard similarity in Phenograph
+            if false, uses Gaussian kernel
 
     Attributes:
         communities_ (sequence of ints): Cluster ID for corresponding cell.
@@ -31,7 +33,7 @@ class BoostClassifier(object):
             synthetic doublet.
     """
 
-    def __init__(self, boost_rate=0.25, knn=20, n_pca=30, n_top_var_genes=0):
+    def __init__(self, boost_rate=0.25, knn=20, n_pca=30, n_top_var_genes=0, jaccard=True, directed=False, replacement=True, n_jobs=-1, downsample="average"):
         self.boost_rate = boost_rate
         self.knn = knn
         if n_pca == 30 and n_top_var_genes > 0:
@@ -41,6 +43,11 @@ class BoostClassifier(object):
             self.n_pca = n_pca
         # Floor negative n_top_var_genes by 0
         self.n_top_var_genes = max(0, n_top_var_genes)
+        self.jaccard = jaccard
+        self.directed = directed
+        self.replacement = replacement
+        self.n_jobs = n_jobs
+        self.downsample = downsample
 
         assert (self.n_top_var_genes == 0) or (self.n_pca <= self.n_top_var_genes), (
             "n_pca={0} cannot be larger than n_top_var_genes={1}".format(n_pca, n_top_var_genes))
@@ -64,21 +71,24 @@ class BoostClassifier(object):
                 top_var_indexes = top_var_indexes[-self.n_top_var_genes:]
                 raw_counts = raw_counts[:, top_var_indexes]
 
+        print("\nCreating downsampled doublets...\n")
         self._raw_counts = raw_counts
         (self._num_cells, self._num_genes) = self._raw_counts.shape
 
         self._createLinearDoublets()
 
         # Normalize combined augmented set
+        print("\nNormalizing...\n")
         aug_counts = normalize_counts(np.append(self._raw_counts, self.raw_synthetics_, axis=0))
         self._norm_counts = aug_counts[:self._num_cells]
         self._synthetics = aug_counts[self._num_cells:]
 
-        print("\nClustering mixed data set with Phenograph...\n")
+        print("\nRunning PCA...\n")
         # Get phenograph results
         pca = PCA(n_components=self.n_pca)
+        print("\nClustering augmented data set with Phenograph...\n")
         reduced_counts = pca.fit_transform(aug_counts)
-        fullcommunities, _, _ = phenograph.cluster(reduced_counts, k=self.knn)
+        fullcommunities, _, _ = phenograph.cluster(reduced_counts, k=self.knn, jaccard=self.jaccard, directed=self.directed, n_jobs=self.n_jobs)
         min_ID = min(fullcommunities)
         if min_ID < 0:
             # print("Adjusting community IDs up {} to avoid negative.".format(abs(min_ID)))
@@ -133,7 +143,10 @@ class BoostClassifier(object):
 
         lib1 = np.sum(cell1)
         lib2 = np.sum(cell2)
-        new_lib_size = int(max(lib1, lib2))
+        if self.downsample == "max":
+            new_lib_size = int(max(lib1, lib2))
+        else:
+            new_lib_size = int((lib1 + lib2) / 2.0)
         mol_ind = np.random.permutation(int(lib1 + lib2))[:new_lib_size]
         mol_ind += 1
         bins = np.append(np.zeros((1)), np.cumsum(new_cell))
@@ -151,14 +164,25 @@ class BoostClassifier(object):
         synthetic = np.zeros((num_synths, self._num_genes))
 
         parents = []
-        for i in range(num_synths):
-            row1 = np.random.randint(self._num_cells)
-            row2 = np.random.randint(self._num_cells)
+        if self.replacement is True:
+            for i in range(num_synths):
+                row1 = np.random.randint(self._num_cells)
+                row2 = np.random.randint(self._num_cells)
 
-            new_row = self._downsampleCellPair(self._raw_counts[row1], self._raw_counts[row2])
+                new_row = self._downsampleCellPair(self._raw_counts[row1], self._raw_counts[row2])
 
-            synthetic[i] = new_row
-            parents.append([row1, row2])
+                synthetic[i] = new_row
+                parents.append([row1, row2])
+        else:
+            choices = np.random.choice(self._num_cells, size=2 * num_synths)
+            for i in range(0, len(choices), 2):
+                row1 = choices[i]
+                row2 = choices[i + 1]
+
+                new_row = self._downsampleCellPair(self._raw_counts[row1], self._raw_counts[row2])
+
+                synthetic[int(i / 2)] = new_row
+                parents.append([row1, row2])
 
         self.raw_synthetics_ = synthetic
         self.parents_ = parents
