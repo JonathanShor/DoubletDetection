@@ -16,6 +16,16 @@ class BoostClassifier(object):
         knn (int, optional): Number of nearest neighbors used in Phenograph
             clustering.
         n_pca (int, optional): Number of PCA components used for clustering.
+        jaccard (bool, optional): If true, uses Jaccard similarity in Phenograph
+            if false, uses Gaussian kernel
+        directed (bool, optional): If true, uses a directed graph in community
+            detection in Phenograph
+        replacement (bool, optional): If true, reates boosts by choosing parents
+            with replacement
+        downsample: (string, optional): Method to use in choosing new library size
+            for boosts, options are "average" or "max"
+        n_jobs (int, optional): Number of cores to use, default is -1 (all available)
+
 
     Attributes:
         communities_ (sequence of ints): Cluster ID for corresponding cell.
@@ -29,10 +39,17 @@ class BoostClassifier(object):
             synthetic doublet.
     """
 
-    def __init__(self, boost_rate=0.25, knn=20, n_pca=30):
+    def __init__(self, boost_rate=0.25, knn=20, n_pca=30, jaccard=True,
+                 directed=False, replacement=True, downsample="average", n_jobs=-1):
+
         self.boost_rate = boost_rate
         self.knn = knn
         self.n_pca = n_pca
+        self.jaccard = jaccard
+        self.directed = directed
+        self.replacement = replacement
+        self.n_jobs = n_jobs
+        self.downsample = downsample
 
     def fit(self, raw_counts):
         """Identify doublets in single-cell RNA-seq count table raw_counts.
@@ -46,20 +63,24 @@ class BoostClassifier(object):
         Returns:
             labels_ (ndarray, ndims=1):  0 for singlet, 1 for detected doublet
         """
+        print("\nCreating downsampled doublets...\n")
         self._raw_counts = raw_counts
         (self._num_cells, self._num_genes) = self._raw_counts.shape
         self._createLinearDoublets()
 
         # Normalize combined augmented set
+        print("\nNormalizing...\n")
         aug_counts = normalize_counts(np.append(self._raw_counts, self.raw_synthetics_, axis=0))
         self._norm_counts = aug_counts[:self._num_cells]
         self._synthetics = aug_counts[self._num_cells:]
 
-        print("\nClustering mixed data set with Phenograph...\n")
+        print("\nRunning PCA...\n")
         # Get phenograph results
         pca = PCA(n_components=self.n_pca)
+        print("\nClustering augmented data set with Phenograph...\n")
         reduced_counts = pca.fit_transform(aug_counts)
-        fullcommunities, _, _ = phenograph.cluster(reduced_counts, k=self.knn)
+        fullcommunities, _, _ = phenograph.cluster(
+            reduced_counts, k=self.knn, jaccard=self.jaccard, directed=self.directed, n_jobs=self.n_jobs)
         min_ID = min(fullcommunities)
         if min_ID < 0:
             # print("Adjusting community IDs up {} to avoid negative.".format(abs(min_ID)))
@@ -67,8 +88,9 @@ class BoostClassifier(object):
         self.communities_ = fullcommunities[:self._num_cells]
         self.synth_communities_ = fullcommunities[self._num_cells:]
         print("Found communities [{0}, ... {2}], with sizes: {1}".format(min(fullcommunities),
-              [np.count_nonzero(fullcommunities == i) for i in np.unique(fullcommunities)],
-              max(fullcommunities)))
+                                                                         [np.count_nonzero(fullcommunities == i)
+                                                                          for i in np.unique(fullcommunities)],
+                                                                         max(fullcommunities)))
         print('\n')
 
         # Count number of fake doublets in each community and assign score
@@ -114,7 +136,10 @@ class BoostClassifier(object):
 
         lib1 = np.sum(cell1)
         lib2 = np.sum(cell2)
-        new_lib_size = int(max(lib1, lib2))
+        if self.downsample == "max":
+            new_lib_size = int(max(lib1, lib2))
+        else:
+            new_lib_size = int((lib1 + lib2) / 2.0)
         mol_ind = np.random.permutation(int(lib1 + lib2))[:new_lib_size]
         mol_ind += 1
         bins = np.append(np.zeros((1)), np.cumsum(new_cell))
@@ -132,14 +157,25 @@ class BoostClassifier(object):
         synthetic = np.zeros((num_synths, self._num_genes))
 
         parents = []
-        for i in range(num_synths):
-            row1 = np.random.randint(self._num_cells)
-            row2 = np.random.randint(self._num_cells)
+        if self.replacement is True:
+            for i in range(num_synths):
+                row1 = np.random.randint(self._num_cells)
+                row2 = np.random.randint(self._num_cells)
 
-            new_row = self._downsampleCellPair(self._raw_counts[row1], self._raw_counts[row2])
+                new_row = self._downsampleCellPair(self._raw_counts[row1], self._raw_counts[row2])
 
-            synthetic[i] = new_row
-            parents.append([row1, row2])
+                synthetic[i] = new_row
+                parents.append([row1, row2])
+        else:
+            choices = np.random.choice(self._num_cells, size=2 * num_synths)
+            for i in range(0, len(choices), 2):
+                row1 = choices[i]
+                row2 = choices[i + 1]
+
+                new_row = self._downsampleCellPair(self._raw_counts[row1], self._raw_counts[row2])
+
+                synthetic[int(i / 2)] = new_row
+                parents.append([row1, row2])
 
         self.raw_synthetics_ = synthetic
         self.parents_ = parents
