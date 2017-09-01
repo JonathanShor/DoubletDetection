@@ -16,6 +16,8 @@ class BoostClassifier(object):
         knn (int, optional): Number of nearest neighbors used in Phenograph
             clustering.
         n_pca (int, optional): Number of PCA components used for clustering.
+        n_top_var_genes (int, optional): Number of highest variance genes to
+            use; other genes discarded. Will use all genes when non-positive.
 
     Attributes:
         communities_ (sequence of ints): Cluster ID for corresponding cell.
@@ -29,16 +31,25 @@ class BoostClassifier(object):
             synthetic doublet.
     """
 
-    def __init__(self, boost_rate=0.25, knn=20, n_pca=30):
+    def __init__(self, boost_rate=0.25, knn=20, n_pca=30, n_top_var_genes=0):
         self.boost_rate = boost_rate
         self.knn = knn
-        self.n_pca = n_pca
+        if n_pca == 30 and n_top_var_genes > 0:
+            # If user did not change n_pca, silently cap it by n_top_var_genes if needed
+            self.n_pca = min(n_pca, n_top_var_genes)
+        else:
+            self.n_pca = n_pca
+        # Floor negative n_top_var_genes by 0
+        self.n_top_var_genes = max(0, n_top_var_genes)
+
+        assert (self.n_top_var_genes == 0) or (self.n_pca <= self.n_top_var_genes), (
+            "n_pca={0} cannot be larger than n_top_var_genes={1}".format(n_pca, n_top_var_genes))
 
     def fit(self, raw_counts):
         """Identify doublets in single-cell RNA-seq count table raw_counts.
 
         Args:
-            raw_counts (ndarray): Count table. Expected cells by genes.
+            raw_counts (ndarray): Count table, oriented cells by genes.
 
         Sets:
             communities_, parents_ , raw_synthetics_, scores_, suggested_cutoff_
@@ -46,8 +57,16 @@ class BoostClassifier(object):
         Returns:
             labels_ (ndarray, ndims=1):  0 for singlet, 1 for detected doublet
         """
+        if self.n_top_var_genes > 0:
+            if self.n_top_var_genes < raw_counts.shape[1]:
+                gene_variances = np.var(raw_counts, axis=0)
+                top_var_indexes = np.argsort(gene_variances)
+                top_var_indexes = top_var_indexes[-self.n_top_var_genes:]
+                raw_counts = raw_counts[:, top_var_indexes]
+
         self._raw_counts = raw_counts
         (self._num_cells, self._num_genes) = self._raw_counts.shape
+
         self._createLinearDoublets()
 
         # Normalize combined augmented set
