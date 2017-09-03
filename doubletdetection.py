@@ -20,8 +20,9 @@ class BoostClassifier(object):
         n_pca (int, optional): Number of PCA components used for clustering.
         n_top_var_genes (int, optional): Number of highest variance genes to
             use; other genes discarded. Will use all genes when non-positive.
-        downsample: (string, optional): Method to use in choosing new library size
-            for boosts, options are "average" or "max"
+        new_lib_as: (([int, int]) -> int, optional): Method to use in choosing
+            new library size for boosts. Defaults to np.mean. A common
+            alternative is new_lib_as=max.
         replace (bool, optional): If true, creates boosts by choosing parents
             with replacement
         n_jobs (int, optional): Number of cores to use. Default is -1: all
@@ -41,11 +42,11 @@ class BoostClassifier(object):
             synthetic doublet.
     """
 
-    def __init__(self, boost_rate=0.25, knn=20, n_pca=30, n_top_var_genes=0, downsample="average",
+    def __init__(self, boost_rate=0.25, knn=20, n_pca=30, n_top_var_genes=0, new_lib_as=np.mean,
                  replace=True, n_jobs=-1, phenograph_parameters=None):
         logging.debug(locals())
         self.boost_rate = boost_rate
-        self.downsample = downsample
+        self.new_lib_as = new_lib_as
         self.replace = replace
         self.n_jobs = n_jobs
 
@@ -169,10 +170,7 @@ class BoostClassifier(object):
 
         lib1 = np.sum(cell1)
         lib2 = np.sum(cell2)
-        if self.downsample == "max":
-            new_lib_size = int(max(lib1, lib2))
-        else:
-            new_lib_size = int((lib1 + lib2) / 2.0)
+        new_lib_size = int(self.new_lib_as([lib1, lib2]))
         mol_ind = np.random.permutation(int(lib1 + lib2))[:new_lib_size]
         mol_ind += 1
         bins = np.append(np.zeros((1)), np.cumsum(new_cell))
@@ -243,6 +241,7 @@ def load_csv(FNAME, normalize=False, read_rows=None):
     Returns:
         ndarray: Loaded table.
     """
+    logging.info("Loading {}".format(FNAME))
     counts = pd.read_csv(FNAME, index_col=0, nrows=read_rows).as_matrix()
 
     if normalize:
