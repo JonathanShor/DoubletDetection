@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 import phenograph
 import collections
+import warnings
+import logging
 from sklearn.decomposition import PCA
 
 
@@ -14,8 +16,19 @@ class BoostClassifier(object):
         boost_rate (float, optional): Proportion of cell population size to
             produce as synthetic doublets.
         knn (int, optional): Number of nearest neighbors used in Phenograph
-            clustering.
+            clustering. Ignored if 'k' specified in phenograph_parameters.
         n_pca (int, optional): Number of PCA components used for clustering.
+        n_top_var_genes (int, optional): Number of highest variance genes to
+            use; other genes discarded. Will use all genes when non-positive.
+        new_lib_as: (([int, int]) -> int, optional): Method to use in choosing
+            new library size for boosts. Defaults to np.mean. A common
+            alternative is new_lib_as=max.
+        replace (bool, optional): If true, creates boosts by choosing parents
+            with replacement
+        n_jobs (int, optional): Number of cores to use. Default is -1: all
+            available.
+        phenograph_parameters (dict, optional): Phenograph parameters to
+            override and their corresponding requested values.
 
     Attributes:
         communities_ (sequence of ints): Cluster ID for corresponding cell.
@@ -29,16 +42,47 @@ class BoostClassifier(object):
             synthetic doublet.
     """
 
-    def __init__(self, boost_rate=0.25, knn=20, n_pca=30):
+    def __init__(self, boost_rate=0.25, knn=20, n_pca=30, n_top_var_genes=0, new_lib_as=np.mean,
+                 replace=True, n_jobs=-1, phenograph_parameters=None):
+        logging.debug(locals())
         self.boost_rate = boost_rate
-        self.knn = knn
-        self.n_pca = n_pca
+        self.new_lib_as = new_lib_as
+        self.replace = replace
+        self.n_jobs = n_jobs
+
+        if n_pca == 30 and n_top_var_genes > 0:
+            # If user did not change n_pca, silently cap it by n_top_var_genes if needed
+            self.n_pca = min(n_pca, n_top_var_genes)
+        else:
+            self.n_pca = n_pca
+        # Floor negative n_top_var_genes by 0
+        self.n_top_var_genes = max(0, n_top_var_genes)
+
+        if phenograph_parameters:
+            if 'k' not in phenograph_parameters:
+                phenograph_parameters['k'] = knn
+            else:
+                logging.info("Ignoring 'knn' parameter, as 'k' provided in phenograph_parameters.")
+            if 'n_jobs' not in phenograph_parameters:
+                phenograph_parameters['n_jobs'] = n_jobs
+        else:
+            phenograph_parameters = {'k': knn, 'n_jobs': n_jobs}
+        self.phenograph_parameters = phenograph_parameters
+
+        if not self.replace and self.boost_rate > 0.5:
+            warn_msg = ("boost_rate is trimmed to 0.5 when replace=False." +
+                        " Set replace=True to use greater boost rates.")
+            warnings.warn(warn_msg)
+            self.boost_rate = 0.5
+
+        assert (self.n_top_var_genes == 0) or (self.n_pca <= self.n_top_var_genes), (
+            "n_pca={0} cannot be larger than n_top_var_genes={1}".format(n_pca, n_top_var_genes))
 
     def fit(self, raw_counts):
         """Identify doublets in single-cell RNA-seq count table raw_counts.
 
         Args:
-            raw_counts (ndarray): Count table. Expected cells by genes.
+            raw_counts (ndarray): Count table, oriented cells by genes.
 
         Sets:
             communities_, parents_ , raw_synthetics_, scores_, suggested_cutoff_
@@ -46,30 +90,42 @@ class BoostClassifier(object):
         Returns:
             labels_ (ndarray, ndims=1):  0 for singlet, 1 for detected doublet
         """
+        if self.n_top_var_genes > 0:
+            if self.n_top_var_genes < raw_counts.shape[1]:
+                gene_variances = np.var(raw_counts, axis=0)
+                top_var_indexes = np.argsort(gene_variances)
+                top_var_indexes = top_var_indexes[-self.n_top_var_genes:]
+                raw_counts = raw_counts[:, top_var_indexes]
+
+        print("\nCreating downsampled doublets...")
         self._raw_counts = raw_counts
         (self._num_cells, self._num_genes) = self._raw_counts.shape
+
         self._createLinearDoublets()
 
         # Normalize combined augmented set
+        print("Normalizing...")
         aug_counts = normalize_counts(np.append(self._raw_counts, self.raw_synthetics_, axis=0))
         self._norm_counts = aug_counts[:self._num_cells]
         self._synthetics = aug_counts[self._num_cells:]
 
-        print("\nClustering mixed data set with Phenograph...\n")
+        print("Running PCA...")
         # Get phenograph results
         pca = PCA(n_components=self.n_pca)
+        print("Clustering augmented data set with Phenograph...\n")
         reduced_counts = pca.fit_transform(aug_counts)
-        fullcommunities, _, _ = phenograph.cluster(reduced_counts, k=self.knn)
+        fullcommunities, _, _ = phenograph.cluster(reduced_counts, **self.phenograph_parameters)
         min_ID = min(fullcommunities)
         if min_ID < 0:
-            # print("Adjusting community IDs up {} to avoid negative.".format(abs(min_ID)))
+            logging.info("Adjusting community IDs up {} to avoid negative.".format(abs(min_ID)))
             fullcommunities = fullcommunities + abs(min_ID)
         self.communities_ = fullcommunities[:self._num_cells]
         self.synth_communities_ = fullcommunities[self._num_cells:]
-        print("Found communities [{0}, ... {2}], with sizes: {1}".format(min(fullcommunities),
-              [np.count_nonzero(fullcommunities == i) for i in np.unique(fullcommunities)],
-              max(fullcommunities)))
-        print('\n')
+        community_sizes = [np.count_nonzero(fullcommunities == i)
+                           for i in np.unique(fullcommunities)]
+        print("Found communities [{0}, ... {2}], with sizes: {1}\n".format(min(fullcommunities),
+                                                                           community_sizes,
+                                                                           max(fullcommunities)))
 
         # Count number of fake doublets in each community and assign score
         # Number of synth/orig cells in each cluster.
@@ -114,7 +170,7 @@ class BoostClassifier(object):
 
         lib1 = np.sum(cell1)
         lib2 = np.sum(cell2)
-        new_lib_size = int(max(lib1, lib2))
+        new_lib_size = int(self.new_lib_as([lib1, lib2]))
         mol_ind = np.random.permutation(int(lib1 + lib2))[:new_lib_size]
         mol_ind += 1
         bins = np.append(np.zeros((1)), np.cumsum(new_cell))
@@ -130,12 +186,12 @@ class BoostClassifier(object):
         # Number of synthetic doublets to add
         num_synths = int(self.boost_rate * self._num_cells)
         synthetic = np.zeros((num_synths, self._num_genes))
-
         parents = []
-        for i in range(num_synths):
-            row1 = np.random.randint(self._num_cells)
-            row2 = np.random.randint(self._num_cells)
 
+        choices = np.random.choice(self._num_cells, size=(num_synths, 2), replace=self.replace)
+        for i, parent_pair in enumerate(choices):
+            row1 = parent_pair[0]
+            row2 = parent_pair[1]
             new_row = self._downsampleCellPair(self._raw_counts[row1], self._raw_counts[row2])
 
             synthetic[i] = new_row
@@ -185,6 +241,7 @@ def load_csv(FNAME, normalize=False, read_rows=None):
     Returns:
         ndarray: Loaded table.
     """
+    logging.info("Loading {}".format(FNAME))
     counts = pd.read_csv(FNAME, index_col=0, nrows=read_rows).as_matrix()
 
     if normalize:
