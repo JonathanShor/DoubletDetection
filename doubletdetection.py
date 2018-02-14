@@ -43,12 +43,13 @@ class BoostClassifier(object):
     """
 
     def __init__(self, boost_rate=0.25, knn=20, n_pca=30, n_top_var_genes=0, new_lib_as=np.mean,
-                 replace=True, n_jobs=-1, phenograph_parameters=None):
+                 replace=True, n_jobs=-1, phenograph_parameters=None, no_parents=None):
         logging.debug(locals())
         self.boost_rate = boost_rate
         self.new_lib_as = new_lib_as
         self.replace = replace
         self.n_jobs = n_jobs
+        self.no_parents = no_parents
 
         if n_pca == 30 and n_top_var_genes > 0:
             # If user did not change n_pca, silently cap it by n_top_var_genes if needed
@@ -187,8 +188,13 @@ class BoostClassifier(object):
         num_synths = int(self.boost_rate * self._num_cells)
         synthetic = np.zeros((num_synths, self._num_genes))
         parents = []
-
-        choices = np.random.choice(self._num_cells, size=(num_synths, 2), replace=self.replace)
+        probabilities = None
+        if self.no_parents is not None:
+            probabilities = np.ones((self._num_cells,))
+            probabilities[self.no_parents] = 0
+            probabilities /= np.sum(probabilities)
+            print('no_parents is not None')
+        choices = np.random.choice(self._num_cells, size=(num_synths, 2), replace=self.replace, p=probabilities)
         for i, parent_pair in enumerate(choices):
             row1 = parent_pair[0]
             row2 = parent_pair[1]
