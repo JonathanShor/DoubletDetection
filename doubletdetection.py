@@ -78,7 +78,7 @@ class BoostClassifier(object):
         assert (self.n_top_var_genes == 0) or (self.n_pca <= self.n_top_var_genes), (
             "n_pca={0} cannot be larger than n_top_var_genes={1}".format(n_pca, n_top_var_genes))
 
-    def fit(self, raw_counts):
+    def fit(self, raw_counts, cluster_assignments=None):
         """Identify doublets in single-cell RNA-seq count table raw_counts.
 
         Args:
@@ -101,7 +101,7 @@ class BoostClassifier(object):
         self._raw_counts = raw_counts
         (self._num_cells, self._num_genes) = self._raw_counts.shape
 
-        self._createLinearDoublets()
+        self._createLinearDoublets(cluster_assignments=cluster_assignments)
 
         # Normalize combined augmented set
         print("Normalizing...")
@@ -178,17 +178,32 @@ class BoostClassifier(object):
 
         return new_cell
 
-    def _createLinearDoublets(self):
+    def _createLinearDoublets(self, cluster_assignments=None):
         """Create synthetic doublets.
 
         Sets .raw_synthetics_ and .parents_
+
+        Args:
+            cluster_assignments (None, optional): Array of length self._num_cells
+                with an integer cluster assignment for each cell. Possible
+                cluster IDs expected to be range(0,N), for N clusters.
         """
         # Number of synthetic doublets to add
         num_synths = int(self.boost_rate * self._num_cells)
         synthetic = np.zeros((num_synths, self._num_genes))
         parents = []
 
-        choices = np.random.choice(self._num_cells, size=(num_synths, 2), replace=self.replace)
+        if cluster_assignments and self.replace:
+            num_clusters = max(cluster_assignments)
+            cells_per_cluster = {id: np.where(cluster_assignments == id)[0]
+                                 for id in range(num_clusters)}
+            choices = np.empty([num_synths, 2])
+            for i, _ in enumerate(choices):
+                parent_clusters = np.random.choice(num_clusters, size=(2,), replace=False)
+                for j, parent_cluster in enumerate(parent_clusters):
+                    choices[i, j] = np.random.choice(cells_per_cluster[parent_cluster])
+        else:
+            choices = np.random.choice(self._num_cells, size=(num_synths, 2), replace=self.replace)
         for i, parent_pair in enumerate(choices):
             row1 = parent_pair[0]
             row2 = parent_pair[1]
