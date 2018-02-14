@@ -190,14 +190,14 @@ class BoostClassifier(object):
         """
         # Number of synthetic doublets to add
         num_synths = int(self.boost_rate * self._num_cells)
-        synthetic = np.zeros((num_synths, self._num_genes))
+        synthetic = []
         parents = []
 
-        if cluster_assignments and self.replace:
+        if cluster_assignments is not None and self.replace is True:
             num_clusters = max(cluster_assignments)
             cells_per_cluster = {id: np.where(cluster_assignments == id)[0]
                                  for id in range(num_clusters)}
-            choices = np.empty([num_synths, 2])
+            choices = np.empty([num_synths, 2], dtype='int')
             for i, _ in enumerate(choices):
                 parent_clusters = np.random.choice(num_clusters, size=(2,), replace=False)
                 for j, parent_cluster in enumerate(parent_clusters):
@@ -207,12 +207,13 @@ class BoostClassifier(object):
         for i, parent_pair in enumerate(choices):
             row1 = parent_pair[0]
             row2 = parent_pair[1]
-            new_row = self._downsampleCellPair(self._raw_counts[row1], self._raw_counts[row2])
+            if cluster_assignments[row1] != cluster_assignments[row2]:
+                new_row = self._downsampleCellPair(self._raw_counts[row1], self._raw_counts[row2])
 
-            synthetic[i] = new_row
-            parents.append([row1, row2])
+                synthetic.append(new_row)
+                parents.append([row1, row2])
 
-        self.raw_synthetics_ = synthetic
+        self.raw_synthetics_ = np.vstack(synthetic)
         self.parents_ = parents
 
 
