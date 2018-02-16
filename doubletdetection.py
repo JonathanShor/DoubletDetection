@@ -7,6 +7,7 @@ import collections
 import warnings
 import logging
 from sklearn.decomposition import PCA
+from scipy.stats import hypergeom
 
 
 class BoostClassifier(object):
@@ -37,6 +38,7 @@ class BoostClassifier(object):
             synthetic doublet.
         raw_synthetics_ (ndarray, ndims=2): Raw counts of synthetic doublets.
         scores_ (ndarray): Doublet score for each cell.
+        p_values_ (ndarray): Hypergeometric test for each cell
         suggested_cutoff_ (float): Recommended cutoff to use (scores_ >= cutoff).
         synth_communities_ (sequence of ints): Cluster ID for corresponding
             synthetic doublet.
@@ -141,6 +143,13 @@ class BoostClassifier(object):
         self.scores_ = np.array(scores)
         synth_scores = [community_scores[i] for i in self.synth_communities_]
         self._synth_scores = np.array(synth_scores)
+
+
+        community_p_values = [hypergeom.cdf(synth_cells_per_comm[i], aug_counts.shape[0], self._synthetics.shape[0], synth_cells_per_comm[i] + orig_cells_per_comm[i]) for i in community_IDs]
+        p_values = [community_p_values[i] for i in self.communities_]
+        self.p_values_ = np.array(p_values)
+        synth_p_values = [community_p_values[i] for i in self.synth_communities_]
+        self._synth_p_values_ = np.array(synth_p_values)
 
         # Find a cutoff score
         potential_cutoffs = list(np.unique(community_scores))
