@@ -30,28 +30,36 @@ class BoostClassifier(object):
             available.
         phenograph_parameters (dict, optional): Phenograph parameters to
             override and their corresponding requested values.
+        n_iters (int, optional): (Recommended value is n_iters=5, and will
+            likely be set in a future release.) Number of fit operations from
+            which to produce p-values. More runs produce more robust p-values.
+            NOTE: that most informational attributes will be set to None when
+            running more than once.
 
     Attributes:
-        communities_ (sequence of ints): Cluster ID for corresponding cell.
+        communities_ (sequence of ints): Cluster ID for corresponding cell. Not
+            produced when n_iters > 1.
         labels_ (ndarray, ndims=1): 0 for singlet, 1 for detected doublet.
         parents_ (list of sequences of int): Parent cells' indexes for each
-            synthetic doublet.
+            synthetic doublet. Not produced when n_iters > 1.
         raw_synthetics_ (ndarray, ndims=2): Raw counts of synthetic doublets.
+            Not produced when n_iters > 1.
         scores_ (ndarray): Doublet score for each cell.
-        p_values_ (ndarray): Hypergeometric test for each cell
+        p_values_ (ndarray): Hypergeometric test for each cell.
         suggested_cutoff_ (float): Recommended cutoff to use (scores_ >= cutoff).
+            Not produced when n_iters > 1.
         synth_communities_ (sequence of ints): Cluster ID for corresponding
-            synthetic doublet.
+            synthetic doublet. Not produced when n_iters > 1.
     """
 
     def __init__(self, boost_rate=0.25, knn=20, n_pca=30, n_top_var_genes=0, new_lib_as=np.mean,
-                 replace=True, n_jobs=-1, phenograph_parameters=None, n_runs=5):
+                 replace=True, n_jobs=-1, phenograph_parameters=None, n_iters=1):
         logging.debug(locals())
         self.boost_rate = boost_rate
         self.new_lib_as = new_lib_as
         self.replace = replace
         self.n_jobs = n_jobs
-        self.n_runs = n_runs
+        self.n_iters = n_iters
 
         if n_pca == 30 and n_top_var_genes > 0:
             # If user did not change n_pca, silently cap it by n_top_var_genes if needed
@@ -104,75 +112,91 @@ class BoostClassifier(object):
         self._raw_counts = raw_counts
         (self._num_cells, self._num_genes) = self._raw_counts.shape
 
-        mean_scores = np.zeros(self._num_cells)
-        mean_p_values = np.zeros(self._num_cells)
+        self._all_scores = np.zeros((self.n_iters, self._num_cells))
+        self._all_p_values = np.zeros((self.n_iters, self._num_cells))
 
-        for i in range(self.n_runs):
-            self._createLinearDoublets()
+        for i in range(self.n_iters):
+            self._all_scores[i], self._all_p_values[i] = self._one_fit()
 
-            # Normalize combined augmented set
-            print("Normalizing...")
-            aug_counts = normalize_counts(np.append(self._raw_counts, self.raw_synthetics_, axis=0))
-            self._norm_counts = aug_counts[:self._num_cells]
-            self._synthetics = aug_counts[self._num_cells:]
+        self.scores_ = np.mean(self._all_scores, axis=0)
+        self.p_values_ = np.mean(self._all_p_values, axis=0)
+        if self.n_iters > 1:
+            # TODO: Somehow report relevant data for following on multiple runs
+            del self.communities_
+            del self.parents_
+            del self.raw_synthetics_
+            del self.synth_communities_
+            # TODO Implement suggested cutoff
+            del self.suggested_cutoff_
 
-            print("Running PCA...")
-            # Get phenograph results
-            pca = PCA(n_components=self.n_pca)
-            print("Clustering augmented data set with Phenograph...\n")
-            reduced_counts = pca.fit_transform(aug_counts)
-            fullcommunities, _, _ = phenograph.cluster(reduced_counts, **self.phenograph_parameters)
-            min_ID = min(fullcommunities)
-            if min_ID < 0:
-                logging.info("Adjusting community IDs up {} to avoid negative.".format(abs(min_ID)))
-                fullcommunities = fullcommunities + abs(min_ID)
-            self.communities_ = fullcommunities[:self._num_cells]
-            self.synth_communities_ = fullcommunities[self._num_cells:]
-            community_sizes = [np.count_nonzero(fullcommunities == i)
-                               for i in np.unique(fullcommunities)]
-            print("Found communities [{0}, ... {2}], with sizes: {1}\n".format(min(fullcommunities),
-                                                                               community_sizes,
-                                                                               max(fullcommunities)))
-
-            # Count number of fake doublets in each community and assign score
-            # Number of synth/orig cells in each cluster.
-            synth_cells_per_comm = collections.Counter(self.synth_communities_)
-            orig_cells_per_comm = collections.Counter(self.communities_)
-            community_IDs = sorted(synth_cells_per_comm | orig_cells_per_comm)
-            # self.orig_cells_per_comm_ = np.array([orig_cells_per_comm[i] for i in community_IDs])
-            # self.synth_cells_per_comm_ = np.array([synth_cells_per_comm[i] for i in community_IDs])
-            community_scores = [float(synth_cells_per_comm[i]) /
-                                (synth_cells_per_comm[i] + orig_cells_per_comm[i])
-                                for i in community_IDs]
-            scores = [community_scores[i] for i in self.communities_]
-            self.scores_ = np.array(scores)
-            synth_scores = [community_scores[i] for i in self.synth_communities_]
-            self._synth_scores = np.array(synth_scores)
-            mean_scores += scores
-
-            community_p_values = [hypergeom.cdf(synth_cells_per_comm[i], aug_counts.shape[0], self._synthetics.shape[0], synth_cells_per_comm[i] + orig_cells_per_comm[i]) for i in community_IDs]
-            p_values = [community_p_values[i] for i in self.communities_]
-            self.p_values_ = np.array(p_values)
-            synth_p_values = [community_p_values[i] for i in self.synth_communities_]
-            self._synth_p_values_ = np.array(synth_p_values)
-            mean_p_values += p_values
-
-            # Find a cutoff score
-            potential_cutoffs = list(np.unique(community_scores))
-            potential_cutoffs.sort(reverse=True)
-            max_dropoff = 0
-            for i in range(len(potential_cutoffs) - 1):
-                dropoff = potential_cutoffs[i] - potential_cutoffs[i + 1]
-                if dropoff > max_dropoff:
-                    max_dropoff = dropoff
-                    cutoff = potential_cutoffs[i]
-                self.suggested_cutoff_ = cutoff
-
-        self.mean_scores_ = mean_scores / self.n_runs
-        self.mean_p_values_ = mean_p_values / self.n_runs
-
-        self.labels_ = self.mean_p_values_ >= 0.5
+        self.labels_ = self.p_values_ >= 0.5
         return self.labels_
+
+    def _one_fit(self):
+        self._createLinearDoublets()
+
+        # Normalize combined augmented set
+        print("Normalizing...")
+        aug_counts = normalize_counts(np.append(self._raw_counts, self.raw_synthetics_, axis=0))
+        self._norm_counts = aug_counts[:self._num_cells]
+        self._synthetics = aug_counts[self._num_cells:]
+
+        print("Running PCA...")
+        # Get phenograph results
+        pca = PCA(n_components=self.n_pca)
+        print("Clustering augmented data set with Phenograph...\n")
+        reduced_counts = pca.fit_transform(aug_counts)
+        fullcommunities, _, _ = phenograph.cluster(reduced_counts, **self.phenograph_parameters)
+        min_ID = min(fullcommunities)
+        if min_ID < 0:
+            logging.info("Adjusting community IDs up {} to avoid negative.".format(abs(min_ID)))
+            fullcommunities = fullcommunities + abs(min_ID)
+        self.communities_ = fullcommunities[:self._num_cells]
+        self.synth_communities_ = fullcommunities[self._num_cells:]
+        community_sizes = [np.count_nonzero(fullcommunities == i)
+                           for i in np.unique(fullcommunities)]
+        print("Found communities [{0}, ... {2}], with sizes: {1}\n".format(min(fullcommunities),
+                                                                           community_sizes,
+                                                                           max(fullcommunities)))
+
+        # Count number of fake doublets in each community and assign score
+        # Number of synth/orig cells in each cluster.
+        synth_cells_per_comm = collections.Counter(self.synth_communities_)
+        orig_cells_per_comm = collections.Counter(self.communities_)
+        community_IDs = sorted(synth_cells_per_comm | orig_cells_per_comm)
+        # self.orig_cells_per_comm_ = np.array([orig_cells_per_comm[i] for i in community_IDs])
+        # self.synth_cells_per_comm_ = np.array([synth_cells_per_comm[i] for i in community_IDs])
+        community_scores = [float(synth_cells_per_comm[i]) /
+                            (synth_cells_per_comm[i] + orig_cells_per_comm[i])
+                            for i in community_IDs]
+        scores = [community_scores[i] for i in self.communities_]
+        self.scores_ = np.array(scores)
+        synth_scores = [community_scores[i] for i in self.synth_communities_]
+        self._synth_scores = np.array(synth_scores)
+        mean_scores = scores
+
+        community_p_values = [hypergeom.cdf(synth_cells_per_comm[i], aug_counts.shape[0],
+                                            self._synthetics.shape[0],
+                                            synth_cells_per_comm[i] + orig_cells_per_comm[i])
+                              for i in community_IDs]
+        p_values = [community_p_values[i] for i in self.communities_]
+        self.p_values_ = np.array(p_values)
+        synth_p_values = [community_p_values[i] for i in self.synth_communities_]
+        self._synth_p_values_ = np.array(synth_p_values)
+        mean_p_values = p_values
+
+        # Find a cutoff score
+        potential_cutoffs = list(np.unique(community_scores))
+        potential_cutoffs.sort(reverse=True)
+        max_dropoff = 0
+        for i in range(len(potential_cutoffs) - 1):
+            dropoff = potential_cutoffs[i] - potential_cutoffs[i + 1]
+            if dropoff > max_dropoff:
+                max_dropoff = dropoff
+                cutoff = potential_cutoffs[i]
+            self.suggested_cutoff_ = cutoff
+
+        return mean_scores, mean_p_values
 
     def _downsampleCellPair(self, cell1, cell2):
         """Downsample the sum of two cells' gene expression profiles.
