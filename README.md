@@ -27,10 +27,6 @@ labels = clf.fit(raw_counts)
 
 `raw_counts` is a scRNA-seq count table. `labels` is a binary vector with the value 1 representing a detected doublet. The length of `labels` is equal to the length of `raw_counts`.
 
-Advanced usage:
-
-See our [jupyter notebook](http://nbviewer.jupyter.org/github/JonathanShor/DoubletDetection/blob/master/docs/walkthrough.ipynb).
-
 
 ## Obtaining data
 Data can be downloaded from the [10x website](https://support.10xgenomics.com/single-cell/datasets).
