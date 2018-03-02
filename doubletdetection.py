@@ -37,23 +37,27 @@ class BoostClassifier(object):
             running more than once.
 
     Attributes:
-        communities_ (sequence of ints): Cluster ID for corresponding cell. Not
-            produced when n_iters > 1.
+        communities_ (ndarray): Cluster ID for corresponding cell. 2D ndarary
+            when n_iters > 1, with shape (n_iters, num_cells).
         labels_ (ndarray, ndims=1): 0 for singlet, 1 for detected doublet.
         parents_ (list of sequences of int): Parent cells' indexes for each
-            synthetic doublet. Not produced when n_iters > 1.
+            synthetic doublet. When n_iters > 1, this is a list wrapping the
+            results from each run.
         raw_synthetics_ (ndarray, ndims=2): Raw counts of synthetic doublets.
             Not produced when n_iters > 1.
-        scores_ (ndarray): Doublet score for each cell.
-        p_values_ (ndarray): Hypergeometric test for each cell.
+        scores_ (ndarray): Doublet score for each cell. This is the mean across
+            all runs when n_iter > 1.
+        p_values_ (ndarray): Mean hypergeometric test value across n_iters runs
+             for each cell.
         suggested_cutoff_ (float): Recommended cutoff to use (scores_ >= cutoff).
             Not produced when n_iters > 1.
         synth_communities_ (sequence of ints): Cluster ID for corresponding
-            synthetic doublet. Not produced when n_iters > 1.
+            synthetic doublet. 2D ndarary when n_iters > 1, with shape
+            (n_iters, num_cells * boost_rate).
     """
 
     def __init__(self, boost_rate=0.25, knn=20, n_pca=30, n_top_var_genes=0, new_lib_as=np.mean,
-                 replace=True, n_jobs=-1, phenograph_parameters=None, n_iters=1):
+                 replace=True, n_jobs=-1, phenograph_parameters=None, n_iters=5):
         logging.debug(locals())
         self.boost_rate = boost_rate
         self.new_lib_as = new_lib_as
@@ -113,22 +117,38 @@ class BoostClassifier(object):
 
         self._all_scores = np.zeros((self.n_iters, self._num_cells))
         self._all_p_values = np.zeros((self.n_iters, self._num_cells))
+        all_communities = np.zeros((self.n_iters, self._num_cells))
+        all_parents = []
+        all_synth_communities = np.zeros((self.n_iters, int(self.boost_rate * self._num_cells)))
 
         for i in range(self.n_iters):
             self._all_scores[i], self._all_p_values[i] = self._one_fit()
+            if self.n_iters > 1:
+                all_communities[i] = self.communities_
+                all_parents.append(self.parents_)
+                all_synth_communities[i] = self.synth_communities_
 
         self.scores_ = np.mean(self._all_scores, axis=0)
         self.p_values_ = np.mean(self._all_p_values, axis=0)
         if self.n_iters > 1:
-            # TODO: Somehow report relevant data for following on multiple runs
-            del self.communities_
-            del self.parents_
+            self.communities_ = all_communities
+            self.parents_ = all_parents
+            self.synth_communities_ = all_synth_communities
             del self.raw_synthetics_
-            del self.synth_communities_
-            # TODO Implement suggested cutoff
-            del self.suggested_cutoff_
+            self.labels_ = self.p_values_ >= 0.5
+        else:
+            # Find a cutoff score
+            potential_cutoffs = list(np.unique(self.scores_))
+            potential_cutoffs.sort(reverse=True)
+            max_dropoff = 0
+            for i in range(len(potential_cutoffs) - 1):
+                dropoff = potential_cutoffs[i] - potential_cutoffs[i + 1]
+                if dropoff > max_dropoff:
+                    max_dropoff = dropoff
+                    cutoff = potential_cutoffs[i]
+                self.suggested_cutoff_ = cutoff
+            self.labels_ = self.scores_ >= self.suggested_cutoff_
 
-        self.labels_ = self.p_values_ >= 0.5
         return self.labels_
 
     def _one_fit(self):
@@ -182,17 +202,6 @@ class BoostClassifier(object):
         p_values = np.array(p_values)
         # synth_p_values = [community_p_values[i] for i in self.synth_communities_]
         # self._synth_p_values_ = np.array(synth_p_values)
-
-        # Find a cutoff score
-        potential_cutoffs = list(np.unique(community_scores))
-        potential_cutoffs.sort(reverse=True)
-        max_dropoff = 0
-        for i in range(len(potential_cutoffs) - 1):
-            dropoff = potential_cutoffs[i] - potential_cutoffs[i + 1]
-            if dropoff > max_dropoff:
-                max_dropoff = dropoff
-                cutoff = potential_cutoffs[i]
-            self.suggested_cutoff_ = cutoff
 
         return scores, p_values
 
