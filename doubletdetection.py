@@ -155,16 +155,7 @@ class BoostClassifier(object):
         self._norm_counts = aug_counts[:self._num_cells]
         self._synthetics = aug_counts[self._num_cells:]
 
-        print("Running PCA...")
-        # Get phenograph results
-        pca = PCA(n_components=self.n_pca)
-        print("Clustering augmented data set with Phenograph...\n")
-        reduced_counts = pca.fit_transform(aug_counts)
-        fullcommunities, _, _ = phenograph.cluster(reduced_counts, **self.phenograph_parameters)
-        min_ID = min(fullcommunities)
-        if min_ID < 0:
-            logging.info("Adjusting community IDs up {} to avoid negative.".format(abs(min_ID)))
-            fullcommunities = fullcommunities + abs(min_ID)
+        fullcommunities = self._cluster(aug_counts)
         self.communities_ = fullcommunities[:self._num_cells]
         self.synth_communities_ = fullcommunities[self._num_cells:]
         community_sizes = [np.count_nonzero(fullcommunities == i)
@@ -190,6 +181,36 @@ class BoostClassifier(object):
         p_values = np.array([community_p_values[i] for i in self.communities_])
 
         return scores, p_values
+
+    def _cluster(self, counts, n_pca=None, verbose=True):
+        """Reduce counts with PCA and return Phenograph cluster communities.
+
+        Args:
+            counts (ndarray): Count matrix
+            n_pca (int, optional): Number of PCA components to use. Default is
+                self.n_pca.
+            verbose (bool, optional): Print some status updates.
+
+        Returns:
+            ndarray: Cluster assignments.
+        """
+        if n_pca is None:
+            n_pca = self.n_pca
+        if verbose:
+            print("Running PCA...")
+
+        pca = PCA(n_components=self.n_pca)
+        if verbose:
+            print("Clustering with Phenograph...\n")
+        reduced_counts = pca.fit_transform(counts)
+
+        # Get phenograph results
+        fullcommunities, _, _ = phenograph.cluster(reduced_counts, **self.phenograph_parameters)
+        min_ID = min(fullcommunities)
+        if min_ID < 0:
+            logging.info("Adjusting community IDs up {} to avoid negative.".format(abs(min_ID)))
+            fullcommunities = fullcommunities + abs(min_ID)
+        return fullcommunities
 
     def _downsampleCellPair(self, cell1, cell2):
         """Downsample the sum of two cells' gene expression profiles.
