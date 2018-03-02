@@ -22,8 +22,8 @@ class BoostClassifier(object):
         n_top_var_genes (int, optional): Number of highest variance genes to
             use; other genes discarded. Will use all genes when non-positive.
         new_lib_as: (str, optional): Method to use in choosing new library size
-            for synthetic creation. Defaults to "mean". Other valid options are
-            "max", "mean_from_clusters".
+            for synthetic creation. Defaults to "max". Other valid options are
+            "mean", "mean_from_clusters", "max_from_clusters".
             NOTE: Support for functions of the form ([int, int]) -> number is
             currently maintained, but is deprecated and may be removed in a
             future release.
@@ -59,7 +59,7 @@ class BoostClassifier(object):
             (n_iters, num_cells * boost_rate).
     """
 
-    def __init__(self, boost_rate=0.25, knn=20, n_pca=30, n_top_var_genes=0, new_lib_as="mean",
+    def __init__(self, boost_rate=0.25, knn=20, n_pca=30, n_top_var_genes=0, new_lib_as="max",
                  replace=False, n_jobs=-1, phenograph_parameters=None, n_iters=5):
         logging.debug(locals())
         self.boost_rate = boost_rate
