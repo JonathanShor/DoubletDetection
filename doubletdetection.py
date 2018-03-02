@@ -23,7 +23,7 @@ class BoostClassifier(object):
             use; other genes discarded. Will use all genes when non-positive.
         new_lib_as: (str, optional): Method to use in choosing new library size
             for synthetic creation. Defaults to "mean". Other valid options are
-            "max".
+            "max", "mean_from_clusters".
             NOTE: Support for functions of the form ([int, int]) -> number is
             currently maintained, but is deprecated and may be removed in a
             future release.
@@ -235,7 +235,7 @@ class BoostClassifier(object):
 
         return new_cell
 
-    def _get_new_library_size(self, parent1, parent2):
+    def _get_new_library_size(self, row1, row2):
         """Calc new library size according to self.new_lib_as.
 
         Args:
@@ -245,6 +245,8 @@ class BoostClassifier(object):
         Returns:
             int: Size to downsample new synthetic library to.
         """
+        parent1 = self._raw_counts[row1]
+        parent2 = self._raw_counts[row2]
         lib1 = np.sum(parent1)
         lib2 = np.sum(parent2)
         try:
@@ -254,6 +256,18 @@ class BoostClassifier(object):
                 new_lib_size = int(np.max([lib1, lib2]))
             elif self.new_lib_as == "mean":
                 new_lib_size = int(np.mean([lib1, lib2]))
+            elif self.new_lib_as == "mean_from_clusters":
+                try:
+                    cluster1 = np.where(self._lib_communities == self._lib_communities[row1])[0]
+                except AttributeError:
+                    norm_counts = normalize_counts(self._raw_counts)
+                    self._lib_communities = self._cluster(norm_counts, verbose=False)
+                    cluster1 = np.where(self._lib_communities == self._lib_communities[row1])[0]
+                cluster2 = np.where(self._lib_communities == self._lib_communities[row2])[0]
+                lib1 = np.sum(self._raw_counts[np.random.choice(cluster1)])
+                lib2 = np.sum(self._raw_counts[np.random.choice(cluster2)])
+                new_lib_size = int(np.mean([lib1, lib2]))
+
         return new_lib_size
 
     def _createLinearDoublets(self):
@@ -270,16 +284,18 @@ class BoostClassifier(object):
         for i, parent_pair in enumerate(choices):
             row1 = parent_pair[0]
             row2 = parent_pair[1]
-            parent1 = self._raw_counts[row1]
-            parent2 = self._raw_counts[row2]
-            new_lib_size = self._get_new_library_size(parent1, parent2)
-            new_row = self._downsampleCellPair(parent1, parent2, new_lib_size)
+            new_lib_size = self._get_new_library_size(row1, row2)
+            new_row = self._downsampleCellPair(self._raw_counts[row1], self._raw_counts[row2],
+                                               new_lib_size)
 
             synthetic[i] = new_row
             parents.append([row1, row2])
 
         self.raw_synthetics_ = synthetic
         self.parents_ = parents
+
+        if hasattr(self, "_lib_communities"):
+            del self._lib_communities
 
 
 def getUniqueGenes(raw_counts, communities):
