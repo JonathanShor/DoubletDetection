@@ -138,15 +138,9 @@ class BoostClassifier(object):
             self.labels_ = self.p_values_ >= 0.5
         else:
             # Find a cutoff score
-            potential_cutoffs = list(np.unique(self.scores_))
-            potential_cutoffs.sort(reverse=True)
-            max_dropoff = 0
-            for i in range(len(potential_cutoffs) - 1):
-                dropoff = potential_cutoffs[i] - potential_cutoffs[i + 1]
-                if dropoff > max_dropoff:
-                    max_dropoff = dropoff
-                    cutoff = potential_cutoffs[i]
-                self.suggested_cutoff_ = cutoff
+            potential_cutoffs = np.unique(self.scores_)
+            max_dropoff = np.argmax(potential_cutoffs[1:] - potential_cutoffs[:-1]) + 1
+            self.suggested_cutoff_ = potential_cutoffs[max_dropoff]
             self.labels_ = self.scores_ >= self.suggested_cutoff_
 
         return self.labels_
@@ -184,24 +178,16 @@ class BoostClassifier(object):
         synth_cells_per_comm = collections.Counter(self.synth_communities_)
         orig_cells_per_comm = collections.Counter(self.communities_)
         community_IDs = sorted(synth_cells_per_comm | orig_cells_per_comm)
-        # self.orig_cells_per_comm_ = np.array([orig_cells_per_comm[i] for i in community_IDs])
-        # self.synth_cells_per_comm_ = np.array([synth_cells_per_comm[i] for i in community_IDs])
         community_scores = [float(synth_cells_per_comm[i]) /
                             (synth_cells_per_comm[i] + orig_cells_per_comm[i])
                             for i in community_IDs]
-        scores = [community_scores[i] for i in self.communities_]
-        scores = np.array(scores)
-        # synth_scores = [community_scores[i] for i in self.synth_communities_]
-        # self._synth_scores = np.array(synth_scores)
+        scores = np.array([community_scores[i] for i in self.communities_])
 
         community_p_values = [hypergeom.cdf(synth_cells_per_comm[i], aug_counts.shape[0],
                                             self._synthetics.shape[0],
                                             synth_cells_per_comm[i] + orig_cells_per_comm[i])
                               for i in community_IDs]
-        p_values = [community_p_values[i] for i in self.communities_]
-        p_values = np.array(p_values)
-        # synth_p_values = [community_p_values[i] for i in self.synth_communities_]
-        # self._synth_p_values_ = np.array(synth_p_values)
+        p_values = np.array([community_p_values[i] for i in self.communities_])
 
         return scores, p_values
 
