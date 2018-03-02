@@ -56,8 +56,8 @@ class BoostClassifier(object):
             (n_iters, num_cells * boost_rate).
     """
 
-    def __init__(self, boost_rate=0.25, knn=20, n_pca=30, n_top_var_genes=0, new_lib_as=np.mean,
-                 replace=True, n_jobs=-1, phenograph_parameters=None, n_iters=5):
+    def __init__(self, boost_rate=0.25, knn=20, n_pca=30, n_top_var_genes=0, new_lib_as=np.max,
+                 replace=False, n_jobs=-1, phenograph_parameters=None, n_iters=5):
         logging.debug(locals())
         self.boost_rate = boost_rate
         self.new_lib_as = new_lib_as
@@ -135,7 +135,7 @@ class BoostClassifier(object):
             self.parents_ = all_parents
             self.synth_communities_ = all_synth_communities
             del self.raw_synthetics_
-            self.labels_ = self.p_values_ >= 0.5
+            self.labels_ = self.p_values_ >= 0.99
         else:
             # Find a cutoff score
             potential_cutoffs = np.unique(self.scores_)
