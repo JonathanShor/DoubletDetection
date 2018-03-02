@@ -108,7 +108,6 @@ class BoostClassifier(object):
                 top_var_indexes = top_var_indexes[-self.n_top_var_genes:]
                 raw_counts = raw_counts[:, top_var_indexes]
 
-        print("\nCreating downsampled doublets...")
         self._raw_counts = raw_counts
         (self._num_cells, self._num_genes) = self._raw_counts.shape
 
@@ -133,6 +132,7 @@ class BoostClassifier(object):
         return self.labels_
 
     def _one_fit(self):
+        print("\nCreating downsampled doublets...")
         self._createLinearDoublets()
 
         # Normalize combined augmented set
@@ -170,20 +170,18 @@ class BoostClassifier(object):
                             (synth_cells_per_comm[i] + orig_cells_per_comm[i])
                             for i in community_IDs]
         scores = [community_scores[i] for i in self.communities_]
-        self.scores_ = np.array(scores)
-        synth_scores = [community_scores[i] for i in self.synth_communities_]
-        self._synth_scores = np.array(synth_scores)
-        mean_scores = scores
+        scores = np.array(scores)
+        # synth_scores = [community_scores[i] for i in self.synth_communities_]
+        # self._synth_scores = np.array(synth_scores)
 
         community_p_values = [hypergeom.cdf(synth_cells_per_comm[i], aug_counts.shape[0],
                                             self._synthetics.shape[0],
                                             synth_cells_per_comm[i] + orig_cells_per_comm[i])
                               for i in community_IDs]
         p_values = [community_p_values[i] for i in self.communities_]
-        self.p_values_ = np.array(p_values)
-        synth_p_values = [community_p_values[i] for i in self.synth_communities_]
-        self._synth_p_values_ = np.array(synth_p_values)
-        mean_p_values = p_values
+        p_values = np.array(p_values)
+        # synth_p_values = [community_p_values[i] for i in self.synth_communities_]
+        # self._synth_p_values_ = np.array(synth_p_values)
 
         # Find a cutoff score
         potential_cutoffs = list(np.unique(community_scores))
@@ -196,7 +194,7 @@ class BoostClassifier(object):
                 cutoff = potential_cutoffs[i]
             self.suggested_cutoff_ = cutoff
 
-        return mean_scores, mean_p_values
+        return scores, p_values
 
     def _downsampleCellPair(self, cell1, cell2):
         """Downsample the sum of two cells' gene expression profiles.
