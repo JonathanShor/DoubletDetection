@@ -267,6 +267,17 @@ class BoostClassifier(object):
                 lib1 = np.sum(self._raw_counts[np.random.choice(cluster1)])
                 lib2 = np.sum(self._raw_counts[np.random.choice(cluster2)])
                 new_lib_size = int(np.mean([lib1, lib2]))
+            elif self.new_lib_as == "max_from_clusters":
+                try:
+                    cluster1 = np.where(self._lib_communities == self._lib_communities[row1])[0]
+                except AttributeError:
+                    norm_counts = normalize_counts(self._raw_counts)
+                    self._lib_communities = self._cluster(norm_counts, verbose=False)
+                    cluster1 = np.where(self._lib_communities == self._lib_communities[row1])[0]
+                cluster2 = np.where(self._lib_communities == self._lib_communities[row2])[0]
+                lib1 = np.sum(self._raw_counts[np.random.choice(cluster1)])
+                lib2 = np.sum(self._raw_counts[np.random.choice(cluster2)])
+                new_lib_size = int(np.max([lib1, lib2]))
 
         return new_lib_size
 
