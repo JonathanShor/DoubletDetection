@@ -21,9 +21,12 @@ class BoostClassifier(object):
         n_pca (int, optional): Number of PCA components used for clustering.
         n_top_var_genes (int, optional): Number of highest variance genes to
             use; other genes discarded. Will use all genes when non-positive.
-        new_lib_as: (([int, int]) -> int, optional): Method to use in choosing
-            new library size for boosts. Defaults to np.mean. A common
-            alternative is new_lib_as=max.
+        new_lib_as: (str, optional): Method to use in choosing new library size
+            for synthetic creation. Defaults to "mean". Other valid options are
+            "max".
+            NOTE: Support for functions of the form ([int, int]) -> number is
+            currently maintained, but is deprecated and may be removed in a
+            future release.
         replace (bool, optional): If true, creates boosts by choosing parents
             with replacement
         n_jobs (int, optional): Number of cores to use. Default is -1: all
@@ -56,7 +59,7 @@ class BoostClassifier(object):
             (n_iters, num_cells * boost_rate).
     """
 
-    def __init__(self, boost_rate=0.25, knn=20, n_pca=30, n_top_var_genes=0, new_lib_as=np.max,
+    def __init__(self, boost_rate=0.25, knn=20, n_pca=30, n_top_var_genes=0, new_lib_as="mean",
                  replace=False, n_jobs=-1, phenograph_parameters=None, n_iters=5):
         logging.debug(locals())
         self.boost_rate = boost_rate
@@ -212,27 +215,46 @@ class BoostClassifier(object):
             fullcommunities = fullcommunities + abs(min_ID)
         return fullcommunities
 
-    def _downsampleCellPair(self, cell1, cell2):
+    def _downsampleCellPair(self, cell1, cell2, new_lib_size):
         """Downsample the sum of two cells' gene expression profiles.
 
         Args:
             cell1 (ndarray, ndim=1): Gene count vector.
             cell2 (ndarray, ndim=1): Gene count vector.
+            new_lib_size (int): Will downsample to this library size.
 
         Returns:
             ndarray, ndim=1: Downsampled gene count vector.
         """
         new_cell = cell1 + cell2
 
-        lib1 = np.sum(cell1)
-        lib2 = np.sum(cell2)
-        new_lib_size = int(self.new_lib_as([lib1, lib2]))
-        mol_ind = np.random.permutation(int(lib1 + lib2))[:new_lib_size]
+        mol_ind = np.random.permutation(int(np.sum(new_cell)))[:new_lib_size]
         mol_ind += 1
         bins = np.append(np.zeros((1)), np.cumsum(new_cell))
         new_cell = np.histogram(mol_ind, bins)[0]
 
         return new_cell
+
+    def _get_new_library_size(self, parent1, parent2):
+        """Calc new library size according to self.new_lib_as.
+
+        Args:
+            parent1 (ndarray): Cell vector
+            parent2 (ndarray): Cell vector
+
+        Returns:
+            int: Size to downsample new synthetic library to.
+        """
+        lib1 = np.sum(parent1)
+        lib2 = np.sum(parent2)
+        try:
+            new_lib_size = int(self.new_lib_as([lib1, lib2]))
+        except TypeError:
+            if self.new_lib_as == "max":
+                new_lib_size = int(np.max([lib1, lib2]))
+            elif self.new_lib_as == "mean":
+                new_lib_size = int(np.mean([lib1, lib2]))
+        return new_lib_size
 
     def _createLinearDoublets(self):
         """Create synthetic doublets.
@@ -248,7 +270,10 @@ class BoostClassifier(object):
         for i, parent_pair in enumerate(choices):
             row1 = parent_pair[0]
             row2 = parent_pair[1]
-            new_row = self._downsampleCellPair(self._raw_counts[row1], self._raw_counts[row2])
+            parent1 = self._raw_counts[row1]
+            parent2 = self._raw_counts[row2]
+            new_lib_size = self._get_new_library_size(parent1, parent2)
+            new_row = self._downsampleCellPair(parent1, parent2, new_lib_size)
 
             synthetic[i] = new_row
             parents.append([row1, row2])
