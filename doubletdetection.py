@@ -163,7 +163,7 @@ class BoostClassifier(object):
         fullcommunities, _, _ = phenograph.cluster(reduced_counts, **self.phenograph_parameters)
         min_ID = min(fullcommunities)
         if min_ID < 0:
-            logging.info("Adjusting community IDs up {} to avoid negative.".format(abs(min_ID)))
+            logging.debug("Adjusting community IDs up {} to avoid negative.".format(abs(min_ID)))
             fullcommunities = fullcommunities + abs(min_ID)
         self.communities_ = fullcommunities[:self._num_cells]
         self.synth_communities_ = fullcommunities[self._num_cells:]
@@ -188,6 +188,10 @@ class BoostClassifier(object):
                                             synth_cells_per_comm[i] + orig_cells_per_comm[i])
                               for i in community_IDs]
         p_values = np.array([community_p_values[i] for i in self.communities_])
+
+        if min_ID < 0:
+            scores[community_scores == 0] = 0
+            p_values[community_scores == 0] = 0
 
         return scores, p_values
 
