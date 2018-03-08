@@ -27,7 +27,9 @@ TEST_TOPVARGENES = True
 
 # FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
 # FNAME = "~/Google Drive/Computational Genomics/clean_5050.csv"
-FNAME = "~/Google Drive/Computational Genomics/pbmc_4k_dense.csv"
+# FNAME = "~/Google Drive/Computational Genomics/pbmc_4k_dense.csv"
+FPATH = "/Users/jonathanshor/Google Drive/dataset"
+DATASETNUM = 5050
 
 
 def classifierInitTest(raw_counts):
@@ -74,7 +76,10 @@ def top_var_genes_test(raw_counts, n_top_var_genes=50):
 if __name__ == '__main__':
     start_time = time.time()
 
-    raw_counts = doubletdetection.load_csv(FNAME)
+    # raw_counts = doubletdetection.load_csv(FNAME)
+    COUNTFNAME = FPATH + str(DATASETNUM) + "/d" + str(DATASETNUM) + "_counts_blosc.h5"
+    raw_counts = pd.read_hdf(COUNTFNAME, 'table').as_matrix()
+
     if TEST_CLASSIFIERINIT:
         classifierInitTest(raw_counts)
     if TEST_FIT:
