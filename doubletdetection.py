@@ -129,9 +129,13 @@ class BoostClassifier(object):
                 all_synth_communities[i] = self.synth_communities_
 
         # NaNs correspond to unclustered cells. Ignore those runs.
-        # TODO: Silence numpy warning about mean of all NaN slice
-        self.scores_ = np.nanmean(self._all_scores, axis=0)
-        self.p_values_ = np.nanmean(self._all_p_values, axis=0)
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always", category=RuntimeWarning)
+            self.scores_ = np.nanmean(self._all_scores, axis=0)
+            self.p_values_ = np.nanmean(self._all_p_values, axis=0)
+        if w:
+            warnings.warn("One or more cells failed to join a cluster across all runs.",
+                          category=RuntimeWarning)
 
         if self.n_iters > 1:
             self.communities_ = all_communities
