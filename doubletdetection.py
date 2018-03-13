@@ -128,20 +128,32 @@ class BoostClassifier(object):
                 all_parents.append(self.parents_)
                 all_synth_communities[i] = self.synth_communities_
 
-        self.scores_ = np.mean(self._all_scores, axis=0)
-        self.p_values_ = np.mean(self._all_p_values, axis=0)
+        # NaNs correspond to unclustered cells. Ignore those runs.
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always", category=RuntimeWarning)
+            self.scores_ = np.nanmean(self._all_scores, axis=0)
+            self.p_values_ = np.nanmean(self._all_p_values, axis=0)
+        if w:
+            warnings.warn("One or more cells failed to join a cluster across all runs.",
+                          category=RuntimeWarning)
+
         if self.n_iters > 1:
             self.communities_ = all_communities
             self.parents_ = all_parents
             self.synth_communities_ = all_synth_communities
             del self.raw_synthetics_
-            self.labels_ = self.p_values_ >= 0.99
+            with np.errstate(invalid='ignore'):  # Silence numpy warning about NaN comparison
+                self.labels_ = self.p_values_ >= 0.99
         else:
             # Find a cutoff score
             potential_cutoffs = np.unique(self.scores_)
-            max_dropoff = np.argmax(potential_cutoffs[1:] - potential_cutoffs[:-1]) + 1
+            if len(potential_cutoffs) > 1:
+                max_dropoff = np.argmax(potential_cutoffs[1:] - potential_cutoffs[:-1]) + 1
+            else:   # Most likely pathological dataset, only one (or no) clusters
+                max_dropoff = 0
             self.suggested_cutoff_ = potential_cutoffs[max_dropoff]
-            self.labels_ = self.scores_ >= self.suggested_cutoff_
+            with np.errstate(invalid='ignore'):  # Silence numpy warning about NaN comparison
+                self.labels_ = self.scores_ >= self.suggested_cutoff_
 
         return self.labels_
 
@@ -163,7 +175,7 @@ class BoostClassifier(object):
         fullcommunities, _, _ = phenograph.cluster(reduced_counts, **self.phenograph_parameters)
         min_ID = min(fullcommunities)
         if min_ID < 0:
-            logging.info("Adjusting community IDs up {} to avoid negative.".format(abs(min_ID)))
+            logging.debug("Adjusting community IDs up {} to avoid negative.".format(abs(min_ID)))
             fullcommunities = fullcommunities + abs(min_ID)
         self.communities_ = fullcommunities[:self._num_cells]
         self.synth_communities_ = fullcommunities[self._num_cells:]
@@ -188,6 +200,10 @@ class BoostClassifier(object):
                                             synth_cells_per_comm[i] + orig_cells_per_comm[i])
                               for i in community_IDs]
         p_values = np.array([community_p_values[i] for i in self.communities_])
+
+        if min_ID < 0:
+            scores[self.communities_ == 0] = np.nan
+            p_values[self.communities_ == 0] = np.nan
 
         return scores, p_values
 
