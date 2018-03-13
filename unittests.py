@@ -16,7 +16,8 @@ import doubletdetection
 TEST_CLASSIFIERINIT = False
 TEST_FIT = False
 TEST_UNIQUE = False
-TEST_TOPVARGENES = True
+TEST_TOPVARGENES = False
+TEST_NEGCLUSTER = True
 
 
 # import numpy as np
@@ -27,7 +28,9 @@ TEST_TOPVARGENES = True
 
 # FNAME = "~/Google Drive/Computational Genomics/pbmc8k_dense.csv"
 # FNAME = "~/Google Drive/Computational Genomics/clean_5050.csv"
-FNAME = "~/Google Drive/Computational Genomics/pbmc_4k_dense.csv"
+# FNAME = "~/Google Drive/Computational Genomics/pbmc_4k_dense.csv"
+FPATH = "/Users/jonathanshor/Google Drive/dataset"
+DATASETNUM = 5050
 
 
 def classifierInitTest(raw_counts):
@@ -36,6 +39,18 @@ def classifierInitTest(raw_counts):
 
 def fitTest(raw_counts):
     pass
+
+
+def no_neg_cluster_test(raw_counts, min_cluster_size):
+    p_params = {'min_cluster_size': min_cluster_size}
+    for n_iters in [1, 2]:
+        clf = doubletdetection.BoostClassifier(n_top_var_genes=5000,
+                                               phenograph_parameters=p_params, n_iters=n_iters)
+        clf.fit(raw_counts)
+        zero_cluster = np.where(clf.communities_.reshape(clf._all_p_values.shape) == 0)
+        assert np.all(np.isnan(clf._all_p_values[zero_cluster]))
+        assert np.all(np.isnan(clf._all_scores[zero_cluster]))
+    print("Negative cluster ID test success for min cluster size of {}.".format(min_cluster_size))
 
 
 def uniqueTest(raw_counts):
@@ -74,7 +89,10 @@ def top_var_genes_test(raw_counts, n_top_var_genes=50):
 if __name__ == '__main__':
     start_time = time.time()
 
-    raw_counts = doubletdetection.load_csv(FNAME)
+    # raw_counts = doubletdetection.load_csv(FNAME)
+    COUNTFNAME = FPATH + str(DATASETNUM) + "/d" + str(DATASETNUM) + "_counts_blosc.h5"
+    raw_counts = pd.read_hdf(COUNTFNAME, 'table').as_matrix()
+
     if TEST_CLASSIFIERINIT:
         classifierInitTest(raw_counts)
     if TEST_FIT:
@@ -83,6 +101,11 @@ if __name__ == '__main__':
         uniqueTest(raw_counts)
     if TEST_TOPVARGENES:
         top_var_genes_test(raw_counts, n_top_var_genes=200)
+    if TEST_NEGCLUSTER:
+        print("Testing some cells non-clustered.")
+        no_neg_cluster_test(raw_counts, 100)
+        print("Testing all cells non-clustered.")
+        no_neg_cluster_test(raw_counts, 100000)
 
     # clf = doubletdetection.BoostClassifier()
     # labels = clf.fit(raw_counts)
