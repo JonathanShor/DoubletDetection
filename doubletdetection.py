@@ -57,8 +57,7 @@ class BoostClassifier(object):
     """
 
     def __init__(self, boost_rate=0.25, knn=20, n_pca=30, n_top_var_genes=10000, new_lib_as=np.max,
-                 replace=False, n_jobs=-1, phenograph_parameters=None, n_iters=25):
-        logging.debug(locals())
+                 replace=False, n_jobs=-1, phenograph_parameters={'prune': True}, n_iters=25):
         self.boost_rate = boost_rate
         self.new_lib_as = new_lib_as
         self.replace = replace
@@ -81,7 +80,7 @@ class BoostClassifier(object):
             if 'n_jobs' not in phenograph_parameters:
                 phenograph_parameters['n_jobs'] = n_jobs
         else:
-            phenograph_parameters = {'k': knn, 'n_jobs': n_jobs, 'prune': True}
+            phenograph_parameters = {'k': knn, 'n_jobs': n_jobs}
         self.phenograph_parameters = phenograph_parameters
 
         if not self.replace and self.boost_rate > 0.5:
@@ -133,11 +132,9 @@ class BoostClassifier(object):
             warnings.simplefilter("always", category=RuntimeWarning)
             self.scores_ = np.nanmean(self._all_scores, axis=0)
             self.p_values_ = np.nanmean(self._all_p_values, axis=0)
-            self._voting_average = np.mean(np.ma.masked_invalid(self._all_p_values) > p_thresh, axis=0)
         if w:
             warnings.warn("One or more cells failed to join a cluster across all runs.",
                           category=RuntimeWarning)
-
 
         if self.n_iters > 1:
             self.communities_ = all_communities
@@ -145,6 +142,8 @@ class BoostClassifier(object):
             self.synth_communities_ = all_synth_communities
             del self.raw_synthetics_
             with np.errstate(invalid='ignore'):  # Silence numpy warning about NaN comparison
+                self._voting_average = np.mean(np.ma.masked_invalid(self._all_p_values) > p_thresh,
+                                               axis=0)
                 self.labels_ = self._voting_average >= voter_thresh
         else:
             # Find a cutoff score
