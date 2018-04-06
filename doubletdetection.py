@@ -56,8 +56,8 @@ class BoostClassifier(object):
             (n_iters, num_cells * boost_rate).
     """
 
-    def __init__(self, boost_rate=0.25, knn=20, n_pca=30, n_top_var_genes=0, new_lib_as=np.max,
-                 replace=False, n_jobs=-1, phenograph_parameters=None, n_iters=5):
+    def __init__(self, boost_rate=0.25, knn=20, n_pca=30, n_top_var_genes=10000, new_lib_as=np.max,
+                 replace=False, n_jobs=-1, phenograph_parameters=None, n_iters=25):
         logging.debug(locals())
         self.boost_rate = boost_rate
         self.new_lib_as = new_lib_as
@@ -81,7 +81,7 @@ class BoostClassifier(object):
             if 'n_jobs' not in phenograph_parameters:
                 phenograph_parameters['n_jobs'] = n_jobs
         else:
-            phenograph_parameters = {'k': knn, 'n_jobs': n_jobs}
+            phenograph_parameters = {'k': knn, 'n_jobs': n_jobs, 'prune': True}
         self.phenograph_parameters = phenograph_parameters
 
         if not self.replace and self.boost_rate > 0.5:
@@ -93,7 +93,7 @@ class BoostClassifier(object):
         assert (self.n_top_var_genes == 0) or (self.n_pca <= self.n_top_var_genes), (
             "n_pca={0} cannot be larger than n_top_var_genes={1}".format(n_pca, n_top_var_genes))
 
-    def fit(self, raw_counts):
+    def fit(self, raw_counts, p_thresh=0.99, voter_thresh=0.9):
         """Identify doublets in single-cell RNA-seq count table raw_counts.
 
         Args:
@@ -133,9 +133,11 @@ class BoostClassifier(object):
             warnings.simplefilter("always", category=RuntimeWarning)
             self.scores_ = np.nanmean(self._all_scores, axis=0)
             self.p_values_ = np.nanmean(self._all_p_values, axis=0)
+            self._voting_average = np.mean(np.ma.masked_invalid(self._all_p_values) > p_thresh, axis=0)
         if w:
             warnings.warn("One or more cells failed to join a cluster across all runs.",
                           category=RuntimeWarning)
+
 
         if self.n_iters > 1:
             self.communities_ = all_communities
@@ -143,7 +145,7 @@ class BoostClassifier(object):
             self.synth_communities_ = all_synth_communities
             del self.raw_synthetics_
             with np.errstate(invalid='ignore'):  # Silence numpy warning about NaN comparison
-                self.labels_ = self.p_values_ >= 0.99
+                self.labels_ = self._voting_average >= voter_thresh
         else:
             # Find a cutoff score
             potential_cutoffs = np.unique(self.scores_)
