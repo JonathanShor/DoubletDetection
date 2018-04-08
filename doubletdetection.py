@@ -144,7 +144,7 @@ class BoostClassifier(object):
             with np.errstate(invalid='ignore'):  # Silence numpy warning about NaN comparison
                 self._voting_average = np.mean(np.ma.masked_invalid(self._all_p_values) > p_thresh,
                                                axis=0)
-                self.labels_ = self._voting_average >= voter_thresh
+                self.labels_ = np.ma.filled(self._voting_average >= voter_thresh, np.nan)
         else:
             # Find a cutoff score
             potential_cutoffs = np.unique(self.scores_)
