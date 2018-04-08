@@ -97,7 +97,7 @@ class BoostClassifier:
         assert (self.n_top_var_genes == 0) or (self.n_pca <= self.n_top_var_genes), (
             "n_pca={0} cannot be larger than n_top_var_genes={1}".format(n_pca, n_top_var_genes))
 
-    def fit(self, raw_counts, p_thresh=0.99, voter_thresh=0.9):
+    def fit(self, raw_counts):
         """Identify doublets in single-cell RNA-seq count table raw_counts.
 
         Args:
@@ -146,6 +146,11 @@ class BoostClassifier:
             self.parents_ = all_parents
             self.synth_communities_ = all_synth_communities
             del self.raw_synthetics_
+
+        return self
+
+    def predict(self, p_thresh=0.99, voter_thresh=0.9):
+        if self.n_iters > 1:
             with np.errstate(invalid='ignore'):  # Silence numpy warning about NaN comparison
                 self._voting_average = np.mean(np.ma.masked_invalid(self._all_p_values) > p_thresh,
                                                axis=0)
