@@ -2,18 +2,10 @@
 
 DoubletDetection is a Python3 package to detect doublets (technical errors) in single-cell RNA-seq count matrices.
 
-To install DoubletDetection, clone or download this repository.
+To install DoubletDetection, clone or download this repository and run.
 
-To run DoubletDetection you may need to install the following packages:
-- numpy
-- pandas
-- sklearn
-- phenograph
-
-To install PhenoGraph:
-
-```
-pip3 install git+https://github.com/jacoblevine/phenograph.git
+```bash
+pip3 install --upgrade .
 ```
 
 To run basic doublet classification:
@@ -25,7 +17,9 @@ clf = doubletdetection.BoostClassifier()
 labels = clf.fit(raw_counts)
 ```
 
-`raw_counts` is a scRNA-seq count matrix, and must be a 2-dimensional numpy ndarray, with rows being cells. `labels` is a binary 1-dimensional numpy ndarray with the value 1 representing a detected doublet. The length of `labels` is equal to the length of `raw_counts`.
+`raw_counts` is a scRNA-seq count matrix, and must be a 2-dimensional numpy ndarray, with rows 
+being cells. `labels` is a binary 1-dimensional numpy ndarray with the value 1 representing a 
+detected doublet. The length of `labels` is equal to the length of `raw_counts`.
 
 
 ## Obtaining data

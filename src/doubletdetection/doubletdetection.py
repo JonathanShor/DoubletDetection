@@ -1,16 +1,17 @@
 """Doublet detection in single-cell RNA-seq data."""
 
-import numpy as np
-import pandas as pd
-import phenograph
 import collections
 import warnings
 import logging
+
+import numpy as np
+import pandas as pd
+import phenograph
 from sklearn.decomposition import PCA
 from scipy.stats import hypergeom
 
 
-class BoostClassifier(object):
+class BoostClassifier:
     """Classifier for doublets in single-cell RNA-seq data.
 
     Parameters:
@@ -257,7 +258,7 @@ class BoostClassifier(object):
         self.parents_ = parents
 
 
-def getUniqueGenes(raw_counts, communities):
+def get_unique_genes(raw_counts, communities):
     """Identify (any) genes unique to each community.
 
     Args:
