@@ -14,7 +14,8 @@ CLASSIFIERS = [
 ]
 
 if sys.version_info.major != 3:
-    raise RuntimeError('SEQC requires Python 3')
+    print('doubletdetection requires Python 3')
+    sys.exit(1)
 
 # install phenograph if pip3 is installed
 if shutil.which('pip3'):
