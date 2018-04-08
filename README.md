@@ -1,6 +1,6 @@
 # DoubletDetection
 
-DoubletDetection is a Python3 package to detect doublets (technical errors) in Single-cell RNA-seq count tables.
+DoubletDetection is a Python3 package to detect doublets (technical errors) in single-cell RNA-seq count matrices.
 
 To install DoubletDetection, clone or download this repository.
 
@@ -25,7 +25,7 @@ clf = doubletdetection.BoostClassifier()
 labels = clf.fit(raw_counts)
 ```
 
-`raw_counts` is a scRNA-seq count table. `labels` is a binary vector with the value 1 representing a detected doublet. The length of `labels` is equal to the length of `raw_counts`.
+`raw_counts` is a scRNA-seq count matrix, and must be a 2-dimensional numpy ndarray, with rows being cells. `labels` is a binary 1-dimensional numpy ndarray with the value 1 representing a detected doublet. The length of `labels` is equal to the length of `raw_counts`.
 
 
 ## Obtaining data
@@ -33,3 +33,8 @@ Data can be downloaded from the [10x website](https://support.10xgenomics.com/si
 
 
 This project is licensed under the terms of the MIT license.
+
+## Citations
+
+bioRxiv submission is in the works.
+
