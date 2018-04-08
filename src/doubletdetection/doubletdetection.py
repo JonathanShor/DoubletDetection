@@ -165,7 +165,7 @@ class BoostClassifier:
 
     def _one_fit(self):
         print("\nCreating downsampled doublets...")
-        self._createLinearDoublets()
+        self._createDoublets()
 
         # Normalize combined augmented set
         print("Normalizing...")
@@ -235,7 +235,7 @@ class BoostClassifier:
 
         return new_cell
 
-    def _createLinearDoublets(self):
+    def _createDoublets(self):
         """Create synthetic doublets.
 
         Sets .raw_synthetics_ and .parents_
