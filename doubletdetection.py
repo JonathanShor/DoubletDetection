@@ -82,7 +82,7 @@ class BoostClassifier(object):
         else:
             phenograph_parameters = {'k': knn, 'n_jobs': n_jobs}
         self.phenograph_parameters = phenograph_parameters
-        if (self.n_iters == 1) and (phenograph_parameters.get('prune') is False):
+        if (self.n_iters == 1) and (phenograph_parameters.get('prune') is True):
             warn_msg = ("Using phenograph parameter prune=False is strongly recommended when " +
                         "running only one iteration. Otherwise, expect many NaN labels.")
             warnings.warn(warn_msg)
