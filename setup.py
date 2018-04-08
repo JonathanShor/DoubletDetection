@@ -19,7 +19,8 @@ if sys.version_info.major != 3:
 
 # install phenograph if pip3 is installed
 if shutil.which('pip3'):
-    rc = check_call(['pip3', 'install', 'git+https://github.com/JonathanShor/PhenoGraph'])
+    rc = check_call(
+        ['pip3', 'install', '--upgrade', 'git+https://github.com/JonathanShor/PhenoGraph'])
     if rc:
         print('could not install phenograph, exiting')
         sys.exit(1)
