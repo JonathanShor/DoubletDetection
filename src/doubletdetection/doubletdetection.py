@@ -253,31 +253,6 @@ class BoostClassifier:
         self.parents_ = parents
 
 
-def get_unique_genes(raw_counts, communities):
-    """Identify (any) genes unique to each community.
-
-    Args:
-        raw_counts (ndarray, ndims=2): Cell x genes counts numpy array.
-        communities (ndarray, shape=(raw_counts.shape[0],)): Community ID for
-            each cell.
-
-    Returns:
-        ndarray, dtype=int: 1 for each gene unique to that community.
-    """
-    # Sum each community's genecounts, and stack up those gene profile vectors
-    profiles = np.concatenate([np.sum(raw_counts[communities == i], axis=0, keepdims=True) for i in
-                               np.unique(communities)], axis=0)
-
-    binary = np.zeros_like(profiles)
-    binary[profiles != 0] = 1
-
-    # Only 1 - sum(everything) + 1 > 0
-    uniques = binary - np.sum(binary, axis=0) + binary
-    uniques[uniques < 0] = 0
-
-    return uniques
-
-
 def load_csv(FNAME, normalize=False, read_rows=None):
     """Load a csv table from the filesystem.
 
