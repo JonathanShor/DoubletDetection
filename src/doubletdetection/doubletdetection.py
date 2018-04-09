@@ -5,7 +5,6 @@ import warnings
 import logging
 
 import numpy as np
-import pandas as pd
 import phenograph
 from sklearn.decomposition import PCA
 from scipy.stats import hypergeom
@@ -251,30 +250,6 @@ class BoostClassifier:
 
         self._raw_synthetics = synthetic
         self.parents_ = parents
-
-
-def load_csv(FNAME, normalize=False, read_rows=None):
-    """Load a csv table from the filesystem.
-
-    Note that the csv's first row and first column are assumed to be labels and
-    are discarded.
-
-    Args:
-        FNAME (string): Pathname of file to load.
-        normalize (bool, optional): Runs normalize_counts on table.
-        read_rows (None or int, optional): If specified, load only first
-            read_rows of data from FNAME.
-
-    Returns:
-        ndarray: Loaded table.
-    """
-    logging.info("Loading {}".format(FNAME))
-    counts = pd.read_csv(FNAME, index_col=0, nrows=read_rows).as_matrix()
-
-    if normalize:
-        counts = normalize_counts(counts)
-
-    return counts
 
 
 def normalize_counts(raw_counts, standardizeGenes=False):
