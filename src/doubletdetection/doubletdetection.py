@@ -57,7 +57,7 @@ class BoostClassifier:
             (n_iters, num_cells * boost_rate).
     """
 
-    def __init__(self, boost_rate=0.25, knn=20, n_pca=30, n_top_var_genes=10000, new_lib_as=np.max,
+    def __init__(self, boost_rate=0.25, knn=30, n_pca=30, n_top_var_genes=10000, new_lib_as=np.max,
                  replace=False, n_jobs=-1, phenograph_parameters={'prune': True}, n_iters=25):
         self.boost_rate = boost_rate
         self.new_lib_as = new_lib_as
