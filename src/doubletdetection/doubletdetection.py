@@ -12,42 +12,44 @@ from scipy.stats import hypergeom
 
 
 class BoostClassifier:
-    """Classifier for doublets in single-cell RNA-seq data.
+    """Classifier for across-type doublets in single-cell RNA-seq data.
 
     Parameters:
         boost_rate (float, optional): Proportion of cell population size to
             produce as synthetic doublets.
         knn (int, optional): Number of nearest neighbors used in Phenograph
             clustering. Ignored if 'k' specified in phenograph_parameters.
-        n_pca (int, optional): Number of PCA components used for clustering.
+        n_pca (int, optional): Number of principal components used for clustering.
         n_top_var_genes (int, optional): Number of highest variance genes to
             use; other genes discarded. Will use all genes when non-positive.
         new_lib_as: (([int, int]) -> int, optional): Method to use in choosing
-            new library size for boosts. Defaults to np.mean. A common
-            alternative is new_lib_as=max.
-        replace (bool, optional): If true, creates boosts by choosing parents
-            with replacement
+            new library size for synthetic doublets. Defaults to np.max. A common
+            alternative is new_lib_as=np.mean.
+        replace (bool, optional): If true, creates synthetic doublets by choosing
+            parents with replacement
         n_jobs (int, optional): Number of cores to use. Default is -1: all
             available.
         phenograph_parameters (dict, optional): Phenograph parameters to
             override and their corresponding requested values.
-        n_iters (int, optional): (Recommended value is n_iters=5, and will
-            likely be set in a future release.) Number of fit operations from
-            which to produce p-values. More runs produce more robust p-values.
+        n_iters (int, optional): Defualt value is 25. Number of fit operations from
+            which to produce p-values. This default is sufficient for convergence in
+            the number of cells called doublets.
             NOTE: that most informational attributes will be set to None when
             running more than once.
 
     Attributes:
         communities_ (ndarray): Cluster ID for corresponding cell. 2D ndarary
-            when n_iters > 1, with shape (n_iters, num_cells).
+            when n_iters > 1, with shape (n_iters, num_cells). -1 represents
+            unclustered cells.
         labels_ (ndarray, ndims=1): 0 for singlet, 1 for detected doublet.
         parents_ (list of sequences of int): Parent cells' indexes for each
             synthetic doublet. When n_iters > 1, this is a list wrapping the
             results from each run.
         raw_synthetics_ (ndarray, ndims=2): Raw counts of synthetic doublets.
             Not produced when n_iters > 1.
-        scores_ (ndarray): Doublet score for each cell. This is the mean across
-            all runs when n_iter > 1.
+        scores_ (ndarray): Doublet score for each cell. The fraction of a cell's
+            cluster which is synthetic doublets. This is the mean across all
+            runs when n_iter > 1.
         p_values_ (ndarray): Mean hypergeometric test value across n_iters runs
              for each cell.
         suggested_cutoff_ (float): Recommended cutoff to use (scores_ >= cutoff).
@@ -107,7 +109,8 @@ class BoostClassifier:
             communities_, parents_ , raw_synthetics_, scores_, suggested_cutoff_
 
         Returns:
-            labels_ (ndarray, ndims=1):  0 for singlet, 1 for detected doublet
+            labels_ (ndarray, ndims=1):  0 for singlet, 1 for detected doublet.
+                Cells with p-values > 0.99 in >= 90% of the runs by default.
         """
         if self.n_top_var_genes > 0:
             if self.n_top_var_genes < raw_counts.shape[1]:
@@ -180,9 +183,6 @@ class BoostClassifier:
         reduced_counts = pca.fit_transform(aug_counts)
         fullcommunities, _, _ = phenograph.cluster(reduced_counts, **self.phenograph_parameters)
         min_ID = min(fullcommunities)
-        if min_ID < 0:
-            logging.debug("Adjusting community IDs up {} to avoid negative.".format(abs(min_ID)))
-            fullcommunities = fullcommunities + abs(min_ID)
         self.communities_ = fullcommunities[:self._num_cells]
         self.synth_communities_ = fullcommunities[self._num_cells:]
         community_sizes = [np.count_nonzero(fullcommunities == i)
@@ -195,21 +195,21 @@ class BoostClassifier:
         # Number of synth/orig cells in each cluster.
         synth_cells_per_comm = collections.Counter(self.synth_communities_)
         orig_cells_per_comm = collections.Counter(self.communities_)
-        community_IDs = sorted(synth_cells_per_comm | orig_cells_per_comm)
-        community_scores = [float(synth_cells_per_comm[i]) /
+        community_IDs = orig_cells_per_comm.keys()
+        community_scores = {i: float(synth_cells_per_comm[i]) /
                             (synth_cells_per_comm[i] + orig_cells_per_comm[i])
-                            for i in community_IDs]
+                            for i in community_IDs}
         scores = np.array([community_scores[i] for i in self.communities_])
 
-        community_p_values = [hypergeom.cdf(synth_cells_per_comm[i], aug_counts.shape[0],
+        community_p_values = {i: hypergeom.cdf(synth_cells_per_comm[i], aug_counts.shape[0],
                                             self._synthetics.shape[0],
                                             synth_cells_per_comm[i] + orig_cells_per_comm[i])
-                              for i in community_IDs]
+                              for i in community_IDs}
         p_values = np.array([community_p_values[i] for i in self.communities_])
 
         if min_ID < 0:
-            scores[self.communities_ == 0] = np.nan
-            p_values[self.communities_ == 0] = np.nan
+            scores[self.communities_ == -1] = np.nan
+            p_values[self.communities_ == -1] = np.nan
 
         return scores, p_values
 
