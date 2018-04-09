@@ -252,14 +252,12 @@ class BoostClassifier:
         self.parents_ = parents
 
 
-def normalize_counts(raw_counts, standardizeGenes=False):
-    """Normalize count array using method in 10x pipeline.
-
-    From http://www.nature.com/articles/ncomms14049.
+def normalize_counts(raw_counts, pseudocount=0.1):
+    """Normalize count array.
 
     Args:
         raw_counts (ndarray): count data
-        standardizeGenes (bool, optional): Standardizes each gene column.
+        pseudocount (float, optional): Count to add prior to log transform.
 
     Returns:
         ndarray: Normalized data.
@@ -269,19 +267,8 @@ def normalize_counts(raw_counts, standardizeGenes=False):
 
     # Mutiply by median and divide each cell by cell sum
     median = np.median(cell_sums)
-    raw_counts = raw_counts * median / cell_sums[:, np.newaxis]
+    normed = raw_counts * median / cell_sums[:, np.newaxis]
 
-    raw_counts = np.log(raw_counts + 0.1)
-
-    if standardizeGenes:
-        # Normalize to have genes with mean 0 and std 1
-        std = np.std(raw_counts, axis=0)[np.newaxis, :]
-
-        # Fix potential divide by zero
-        std[np.where(std == 0)[0]] = 1
-
-        normed = (raw_counts - np.mean(raw_counts, axis=0)) / std
-    else:
-        normed = raw_counts
+    normed = np.log(normed + pseudocount)
 
     return normed
