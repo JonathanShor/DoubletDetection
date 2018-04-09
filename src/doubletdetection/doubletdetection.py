@@ -48,8 +48,9 @@ class BoostClassifier:
             results from each run.
         raw_synthetics_ (ndarray, ndims=2): Raw counts of synthetic doublets.
             Not produced when n_iters > 1.
-        scores_ (ndarray): Doublet score for each cell. This is the mean across
-            all runs when n_iter > 1.
+        scores_ (ndarray): Doublet score for each cell. The fraction of a cell's
+            cluster which is synthetic doublets. This is the mean across all
+            runs when n_iter > 1.
         p_values_ (ndarray): Mean hypergeometric test value across n_iters runs
              for each cell.
         suggested_cutoff_ (float): Recommended cutoff to use (scores_ >= cutoff).
