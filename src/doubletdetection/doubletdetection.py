@@ -16,38 +16,38 @@ class BoostClassifier:
     Parameters:
         boost_rate (float, optional): Proportion of cell population size to
             produce as synthetic doublets.
-        n_components (int, optional): Number of PCA components used for clustering.
+        n_components (int, optional): Number of principal components used for
+            clustering.
         n_top_var_genes (int, optional): Number of highest variance genes to
-            use; other genes discarded. Will use all genes when non-positive.
+            use; other genes discarded. Will use all genes when zero.
         new_lib_as: (([int, int]) -> int, optional): Method to use in choosing
-            new library size for boosts. Defaults to np.mean. A common
-            alternative is new_lib_as=max.
-        replace (bool, optional): If true, creates boosts by choosing parents
-            with replacement
-        phenograph_parameters (dict, optional): Phenograph parameters to
-            override and their corresponding requested values.
-        n_iters (int, optional): (Recommended value is n_iters=5, and will
-            likely be set in a future release.) Number of fit operations from
-            which to produce p-values. More runs produce more robust p-values.
-            NOTE: that most informational attributes will be set to None when
-            running more than once.
+            library size for synthetic doublets. Defaults to np.max; append
+            alternative is new_lib_as=np.mean.
+        replace (bool, optional): If False, a cell will be selected as a
+            synthetic doublet's parent no more than once.
+        phenograph_parameters (dict, optional): Parameter dict to pass directly
+            to Phenograph.
+        n_iters (int, optional): Number of fit operations from which to collect
+            p-values. Defualt value is 25.
 
     Attributes:
-        all_p_values_ (ndarray): Good words
+        all_p_values_ (ndarray): Hypergeometric test p-value per cell for cluster
+            enrichment of synthetic doublets. Shape: n_iters by num_cells.
         communities_ (ndarray): Cluster ID for corresponding cell. 2D ndarary
             when n_iters > 1, with shape (n_iters, num_cells).
         labels_ (ndarray, ndims=1): 0 for singlet, 1 for detected doublet.
         parents_ (list of sequences of int): Parent cells' indexes for each
             synthetic doublet. When n_iters > 1, this is a list wrapping the
             results from each run.
-        scores_ (ndarray): Doublet score for each cell. This is the mean across
-            all runs when n_iter > 1.
+        scores_ (ndarray): The fraction of a cell's cluster that is synthetic
+            doublets. Mean across all runs when n_iter > 1.
         suggested_score_cutoff_ (float): Cutoff used to classify cells when
             n_iters == 1 (scores_ >= cutoff). Not produced when n_iters > 1.
         synth_communities_ (sequence of ints): Cluster ID for corresponding
             synthetic doublet. 2D ndarary when n_iters > 1, with shape
             (n_iters, num_cells * boost_rate).
-        voting_average_ (TYPE): More good words
+        voting_average_ (ndarray): Fraction of iterations each cell is called a
+            doublet.
     """
 
     def __init__(self, boost_rate=0.25, n_components=30, n_top_var_genes=10000, new_lib_as=np.max,
