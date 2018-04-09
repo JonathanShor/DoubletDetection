@@ -32,20 +32,18 @@ class BoostClassifier:
 
     Attributes:
         all_p_values_ (ndarray): Hypergeometric test p-value per cell for cluster
-            enrichment of synthetic doublets. Shape: n_iters by num_cells.
-        communities_ (ndarray): Cluster ID for corresponding cell. 2D ndarary
-            when n_iters > 1, with shape (n_iters, num_cells).
+            enrichment of synthetic doublets. Shape (n_iters, num_cells).
+        communities_ (ndarray): Cluster ID for corresponding cell. Shape
+            (n_iters, num_cells).
         labels_ (ndarray, ndims=1): 0 for singlet, 1 for detected doublet.
         parents_ (list of sequences of int): Parent cells' indexes for each
-            synthetic doublet. When n_iters > 1, this is a list wrapping the
-            results from each run.
+            synthetic doublet. A list wrapping the results from each run.
         scores_ (ndarray): The fraction of a cell's cluster that is synthetic
             doublets. Mean across all runs when n_iter > 1.
         suggested_score_cutoff_ (float): Cutoff used to classify cells when
             n_iters == 1 (scores_ >= cutoff). Not produced when n_iters > 1.
         synth_communities_ (sequence of ints): Cluster ID for corresponding
-            synthetic doublet. 2D ndarary when n_iters > 1, with shape
-            (n_iters, num_cells * boost_rate).
+            synthetic doublet. Shape (n_iters, num_cells * boost_rate).
         voting_average_ (ndarray): Fraction of iterations each cell is called a
             doublet.
     """
@@ -111,10 +109,9 @@ class BoostClassifier:
 
         for i in range(self.n_iters):
             self._all_scores[i], self.all_p_values_[i] = self._one_fit()
-            if self.n_iters > 1:
-                all_communities[i] = self.communities_
-                all_parents.append(self.parents_)
-                all_synth_communities[i] = self.synth_communities_
+            all_communities[i] = self.communities_
+            all_parents.append(self.parents_)
+            all_synth_communities[i] = self.synth_communities_
 
         # Release unneeded large data vars
         del self._raw_counts
@@ -130,10 +127,9 @@ class BoostClassifier:
             warnings.warn("One or more cells failed to join a cluster across all runs.",
                           category=RuntimeWarning)
 
-        if self.n_iters > 1:
-            self.communities_ = all_communities
-            self.parents_ = all_parents
-            self.synth_communities_ = all_synth_communities
+        self.communities_ = all_communities
+        self.parents_ = all_parents
+        self.synth_communities_ = all_synth_communities
 
         return self
 
