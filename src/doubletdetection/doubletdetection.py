@@ -41,7 +41,6 @@ class BoostClassifier:
         communities_ (ndarray): Cluster ID for corresponding cell. 2D ndarary
             when n_iters > 1, with shape (n_iters, num_cells).
         labels_ (ndarray, ndims=1): 0 for singlet, 1 for detected doublet.
-            Cells with p-values > 0.99 in >= 90% of the runs by default.
         parents_ (list of sequences of int): Parent cells' indexes for each
             synthetic doublet. When n_iters > 1, this is a list wrapping the
             results from each run.
@@ -109,7 +108,8 @@ class BoostClassifier:
             communities_, parents_ , raw_synthetics_, scores_, suggested_cutoff_
 
         Returns:
-            labels_ (ndarray, ndims=1):  0 for singlet, 1 for detected doublet
+            labels_ (ndarray, ndims=1):  0 for singlet, 1 for detected doublet.
+                Cells with p-values > 0.99 in >= 90% of the runs by default.
         """
         if self.n_top_var_genes > 0:
             if self.n_top_var_genes < raw_counts.shape[1]:
