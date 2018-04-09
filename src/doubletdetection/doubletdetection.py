@@ -12,35 +12,37 @@ from scipy.stats import hypergeom
 
 
 class BoostClassifier:
-    """Classifier for doublets in single-cell RNA-seq data.
+    """Classifier for across-type doublets in single-cell RNA-seq data.
 
     Parameters:
         boost_rate (float, optional): Proportion of cell population size to
             produce as synthetic doublets.
         knn (int, optional): Number of nearest neighbors used in Phenograph
             clustering. Ignored if 'k' specified in phenograph_parameters.
-        n_pca (int, optional): Number of PCA components used for clustering.
+        n_pca (int, optional): Number of principal components used for clustering.
         n_top_var_genes (int, optional): Number of highest variance genes to
             use; other genes discarded. Will use all genes when non-positive.
         new_lib_as: (([int, int]) -> int, optional): Method to use in choosing
-            new library size for boosts. Defaults to np.mean. A common
-            alternative is new_lib_as=max.
-        replace (bool, optional): If true, creates boosts by choosing parents
-            with replacement
+            new library size for synthetic doublets. Defaults to np.max. A common
+            alternative is new_lib_as=np.mean.
+        replace (bool, optional): If true, creates synthetic doublets by choosing
+            parents with replacement
         n_jobs (int, optional): Number of cores to use. Default is -1: all
             available.
         phenograph_parameters (dict, optional): Phenograph parameters to
             override and their corresponding requested values.
-        n_iters (int, optional): (Recommended value is n_iters=5, and will
-            likely be set in a future release.) Number of fit operations from
-            which to produce p-values. More runs produce more robust p-values.
+        n_iters (int, optional): Defualt value is 25. Number of fit operations from
+            which to produce p-values. This default is sufficient for convergence in
+            the number of cells called doublets.
             NOTE: that most informational attributes will be set to None when
             running more than once.
 
     Attributes:
         communities_ (ndarray): Cluster ID for corresponding cell. 2D ndarary
-            when n_iters > 1, with shape (n_iters, num_cells).
+            when n_iters > 1, with shape (n_iters, num_cells). 0 represents
+            unclustered cells. See Phenograph docs for further explanation.
         labels_ (ndarray, ndims=1): 0 for singlet, 1 for detected doublet.
+            Cells with p-values > 0.99 in >= 90% of the runs by default.
         parents_ (list of sequences of int): Parent cells' indexes for each
             synthetic doublet. When n_iters > 1, this is a list wrapping the
             results from each run.
