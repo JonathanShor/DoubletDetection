@@ -48,6 +48,7 @@ class BoostClassifier:
         synth_communities_ (sequence of ints): Cluster ID for corresponding
             synthetic doublet. 2D ndarary when n_iters > 1, with shape
             (n_iters, num_cells * boost_rate).
+        voting_average_ (TYPE): More good words
     """
 
     def __init__(self, boost_rate=0.25, n_components=30, n_top_var_genes=10000, new_lib_as=np.max,
@@ -140,9 +141,10 @@ class BoostClassifier:
     def predict(self, p_thresh=0.99, voter_thresh=0.9):
         if self.n_iters > 1:
             with np.errstate(invalid='ignore'):  # Silence numpy warning about NaN comparison
-                self._voting_average = np.mean(np.ma.masked_invalid(self.all_p_values_) > p_thresh,
+                self.voting_average_ = np.mean(np.ma.masked_invalid(self.all_p_values_) > p_thresh,
                                                axis=0)
-                self.labels_ = np.ma.filled(self._voting_average >= voter_thresh, np.nan)
+                self.labels_ = np.ma.filled(self.voting_average_ >= voter_thresh, np.nan)
+                self.voting_average_ = np.ma.filled(self.voting_average_, np.nan)
         else:
             # Find a cutoff score
             potential_cutoffs = np.unique(self.scores_)
