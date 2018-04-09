@@ -17,9 +17,7 @@ class BoostClassifier:
     Parameters:
         boost_rate (float, optional): Proportion of cell population size to
             produce as synthetic doublets.
-        knn (int, optional): Number of nearest neighbors used in Phenograph
-            clustering. Ignored if 'k' specified in phenograph_parameters.
-        n_pca (int, optional): Number of PCA components used for clustering.
+        n_components (int, optional): Number of PCA components used for clustering.
         n_top_var_genes (int, optional): Number of highest variance genes to
             use; other genes discarded. Will use all genes when non-positive.
         new_lib_as: (([int, int]) -> int, optional): Method to use in choosing
@@ -27,8 +25,6 @@ class BoostClassifier:
             alternative is new_lib_as=max.
         replace (bool, optional): If true, creates boosts by choosing parents
             with replacement
-        n_jobs (int, optional): Number of cores to use. Default is -1: all
-            available.
         phenograph_parameters (dict, optional): Phenograph parameters to
             override and their corresponding requested values.
         n_iters (int, optional): (Recommended value is n_iters=5, and will
@@ -38,50 +34,37 @@ class BoostClassifier:
             running more than once.
 
     Attributes:
+        all_p_values_ (ndarray): Good words
         communities_ (ndarray): Cluster ID for corresponding cell. 2D ndarary
             when n_iters > 1, with shape (n_iters, num_cells).
         labels_ (ndarray, ndims=1): 0 for singlet, 1 for detected doublet.
         parents_ (list of sequences of int): Parent cells' indexes for each
             synthetic doublet. When n_iters > 1, this is a list wrapping the
             results from each run.
-        raw_synthetics_ (ndarray, ndims=2): Raw counts of synthetic doublets.
-            Not produced when n_iters > 1.
         scores_ (ndarray): Doublet score for each cell. This is the mean across
             all runs when n_iter > 1.
-        p_values_ (ndarray): Mean hypergeometric test value across n_iters runs
-             for each cell.
-        suggested_cutoff_ (float): Recommended cutoff to use (scores_ >= cutoff).
-            Not produced when n_iters > 1.
+        suggested_score_cutoff_ (float): Cutoff used to classify cells when
+            n_iters == 1 (scores_ >= cutoff). Not produced when n_iters > 1.
         synth_communities_ (sequence of ints): Cluster ID for corresponding
             synthetic doublet. 2D ndarary when n_iters > 1, with shape
             (n_iters, num_cells * boost_rate).
     """
 
-    def __init__(self, boost_rate=0.25, knn=30, n_pca=30, n_top_var_genes=10000, new_lib_as=np.max,
-                 replace=False, n_jobs=-1, phenograph_parameters={'prune': True}, n_iters=25):
+    def __init__(self, boost_rate=0.25, n_components=30, n_top_var_genes=10000, new_lib_as=np.max,
+                 replace=False, phenograph_parameters={'prune': True}, n_iters=25):
         self.boost_rate = boost_rate
         self.new_lib_as = new_lib_as
         self.replace = replace
-        self.n_jobs = n_jobs
         self.n_iters = n_iters
 
-        if n_pca == 30 and n_top_var_genes > 0:
-            # If user did not change n_pca, silently cap it by n_top_var_genes if needed
-            self.n_pca = min(n_pca, n_top_var_genes)
+        if n_components == 30 and n_top_var_genes > 0:
+            # If user did not change n_components, silently cap it by n_top_var_genes if needed
+            self.n_components = min(n_components, n_top_var_genes)
         else:
-            self.n_pca = n_pca
+            self.n_components = n_components
         # Floor negative n_top_var_genes by 0
         self.n_top_var_genes = max(0, n_top_var_genes)
 
-        if phenograph_parameters:
-            if 'k' not in phenograph_parameters:
-                phenograph_parameters['k'] = knn
-            else:
-                logging.info("Ignoring 'knn' parameter, as 'k' provided in phenograph_parameters.")
-            if 'n_jobs' not in phenograph_parameters:
-                phenograph_parameters['n_jobs'] = n_jobs
-        else:
-            phenograph_parameters = {'k': knn, 'n_jobs': n_jobs}
         self.phenograph_parameters = phenograph_parameters
         if (self.n_iters == 1) and (phenograph_parameters.get('prune') is True):
             warn_msg = ("Using phenograph parameter prune=False is strongly recommended when " +
@@ -94,8 +77,9 @@ class BoostClassifier:
             warnings.warn(warn_msg)
             self.boost_rate = 0.5
 
-        assert (self.n_top_var_genes == 0) or (self.n_pca <= self.n_top_var_genes), (
-            "n_pca={0} cannot be larger than n_top_var_genes={1}".format(n_pca, n_top_var_genes))
+        assert (self.n_top_var_genes == 0) or (self.n_components <= self.n_top_var_genes), (
+            "n_components={0} cannot be larger than n_top_var_genes={1}".format(n_components,
+                                                                                n_top_var_genes))
 
     def fit(self, raw_counts):
         """Identify doublets in single-cell RNA-seq count table raw_counts.
@@ -104,7 +88,7 @@ class BoostClassifier:
             raw_counts (ndarray): Count table, oriented cells by genes.
 
         Sets:
-            communities_, parents_ , raw_synthetics_, scores_, suggested_cutoff_
+            communities_, parents_ , scores_, suggested_score_cutoff_
 
         Returns:
             labels_ (ndarray, ndims=1):  0 for singlet, 1 for detected doublet
@@ -120,23 +104,28 @@ class BoostClassifier:
         (self._num_cells, self._num_genes) = self._raw_counts.shape
 
         self._all_scores = np.zeros((self.n_iters, self._num_cells))
-        self._all_p_values = np.zeros((self.n_iters, self._num_cells))
+        self.all_p_values_ = np.zeros((self.n_iters, self._num_cells))
         all_communities = np.zeros((self.n_iters, self._num_cells))
         all_parents = []
         all_synth_communities = np.zeros((self.n_iters, int(self.boost_rate * self._num_cells)))
 
         for i in range(self.n_iters):
-            self._all_scores[i], self._all_p_values[i] = self._one_fit()
+            self._all_scores[i], self.all_p_values_[i] = self._one_fit()
             if self.n_iters > 1:
                 all_communities[i] = self.communities_
                 all_parents.append(self.parents_)
                 all_synth_communities[i] = self.synth_communities_
 
+        # Release unneeded large data vars
+        del self._raw_counts
+        del self._norm_counts
+        del self._raw_synthetics
+        del self._synthetics
+
         # NaNs correspond to unclustered cells. Ignore those runs.
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always", category=RuntimeWarning)
             self.scores_ = np.nanmean(self._all_scores, axis=0)
-            self.p_values_ = np.nanmean(self._all_p_values, axis=0)
         if w:
             warnings.warn("One or more cells failed to join a cluster across all runs.",
                           category=RuntimeWarning)
@@ -145,14 +134,13 @@ class BoostClassifier:
             self.communities_ = all_communities
             self.parents_ = all_parents
             self.synth_communities_ = all_synth_communities
-            del self.raw_synthetics_
 
         return self
 
     def predict(self, p_thresh=0.99, voter_thresh=0.9):
         if self.n_iters > 1:
             with np.errstate(invalid='ignore'):  # Silence numpy warning about NaN comparison
-                self._voting_average = np.mean(np.ma.masked_invalid(self._all_p_values) > p_thresh,
+                self._voting_average = np.mean(np.ma.masked_invalid(self.all_p_values_) > p_thresh,
                                                axis=0)
                 self.labels_ = np.ma.filled(self._voting_average >= voter_thresh, np.nan)
         else:
@@ -162,9 +150,9 @@ class BoostClassifier:
                 max_dropoff = np.argmax(potential_cutoffs[1:] - potential_cutoffs[:-1]) + 1
             else:   # Most likely pathological dataset, only one (or no) clusters
                 max_dropoff = 0
-            self.suggested_cutoff_ = potential_cutoffs[max_dropoff]
+            self.suggested_score_cutoff_ = potential_cutoffs[max_dropoff]
             with np.errstate(invalid='ignore'):  # Silence numpy warning about NaN comparison
-                self.labels_ = self.scores_ >= self.suggested_cutoff_
+                self.labels_ = self.scores_ >= self.suggested_score_cutoff_
 
         return self.labels_
 
@@ -174,13 +162,13 @@ class BoostClassifier:
 
         # Normalize combined augmented set
         print("Normalizing...")
-        aug_counts = normalize_counts(np.append(self._raw_counts, self.raw_synthetics_, axis=0))
+        aug_counts = normalize_counts(np.append(self._raw_counts, self._raw_synthetics, axis=0))
         self._norm_counts = aug_counts[:self._num_cells]
         self._synthetics = aug_counts[self._num_cells:]
 
         print("Running PCA...")
         # Get phenograph results
-        pca = PCA(n_components=self.n_pca)
+        pca = PCA(n_components=self.n_components)
         print("Clustering augmented data set with Phenograph...\n")
         reduced_counts = pca.fit_transform(aug_counts)
         fullcommunities, _, _ = phenograph.cluster(reduced_counts, **self.phenograph_parameters)
@@ -243,7 +231,7 @@ class BoostClassifier:
     def _createDoublets(self):
         """Create synthetic doublets.
 
-        Sets .raw_synthetics_ and .parents_
+        Sets .parents_
         """
         # Number of synthetic doublets to add
         num_synths = int(self.boost_rate * self._num_cells)
@@ -259,7 +247,7 @@ class BoostClassifier:
             synthetic[i] = new_row
             parents.append([row1, row2])
 
-        self.raw_synthetics_ = synthetic
+        self._raw_synthetics = synthetic
         self.parents_ = parents
 
 
