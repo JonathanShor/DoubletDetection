@@ -26,9 +26,8 @@ detected doublet. The length of `labels` is equal to the length of `raw_counts`.
 Data can be downloaded from the [10x website](https://support.10xgenomics.com/single-cell/datasets).
 
 
-This project is licensed under the terms of the MIT license.
-
 ## Citations
 
 bioRxiv submission is in the works.
 
+This project is licensed under the terms of the MIT license.
