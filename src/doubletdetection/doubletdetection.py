@@ -39,8 +39,7 @@ class BoostClassifier:
 
     Attributes:
         communities_ (ndarray): Cluster ID for corresponding cell. 2D ndarary
-            when n_iters > 1, with shape (n_iters, num_cells). 0 represents
-            unclustered cells. See Phenograph docs for further explanation.
+            when n_iters > 1, with shape (n_iters, num_cells).
         labels_ (ndarray, ndims=1): 0 for singlet, 1 for detected doublet.
             Cells with p-values > 0.99 in >= 90% of the runs by default.
         parents_ (list of sequences of int): Parent cells' indexes for each
