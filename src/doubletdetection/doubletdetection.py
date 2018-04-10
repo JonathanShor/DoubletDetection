@@ -47,7 +47,9 @@ class BoostClassifier:
         replace (bool, optional): If False, a cell will be selected as a
             synthetic doublet's parent no more than once.
         phenograph_parameters (dict, optional): Parameter dict to pass directly
-            to Phenograph.
+            to Phenograph. Note that we change the Phenograph 'prune' default to
+            True; you must specifically include 'prune': False here to change
+            this.
         n_iters (int, optional): Number of fit operations from which to collect
             p-values. Defualt value is 25.
         normalizer ((ndarray) -> ndarray): Method to normalize raw_counts.
@@ -94,6 +96,8 @@ class BoostClassifier:
         # Floor negative n_top_var_genes by 0
         self.n_top_var_genes = max(0, n_top_var_genes)
 
+        if 'prune' not in phenograph_parameters:
+            phenograph_parameters['prune'] = True
         self.phenograph_parameters = phenograph_parameters
         if (self.n_iters == 1) and (phenograph_parameters.get('prune') is True):
             warn_msg = ("Using phenograph parameter prune=False is strongly recommended when " +
