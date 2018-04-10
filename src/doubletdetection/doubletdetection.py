@@ -2,7 +2,6 @@
 
 import collections
 import warnings
-import logging
 
 import numpy as np
 import phenograph
@@ -82,7 +81,7 @@ class BoostClassifier:
                                                                                 n_top_var_genes))
 
     def fit(self, raw_counts):
-        """Identify doublets in single-cell RNA-seq count table raw_counts.
+        """Fits the classifier on raw_counts.
 
         Args:
             raw_counts (ndarray): Count table, oriented cells by genes.
