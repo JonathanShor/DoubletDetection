@@ -2,9 +2,11 @@
 
 DoubletDetection is a Python3 package to detect doublets (technical errors) in single-cell RNA-seq count matrices.
 
-To install DoubletDetection, clone or download this repository and run.
+To install DoubletDetection:
 
-```bash
+```
+git clone https://github.com/JonathanShor/DoubletDetection.git
+cd DoubletDetection
 pip3 install --upgrade .
 ```
 
@@ -12,9 +14,9 @@ To run basic doublet classification:
 
 ```
 import doubletdetection
-raw_counts = doubletdetection.load_csv('/your/path/filename.csv')
 clf = doubletdetection.BoostClassifier()
-labels = clf.fit(raw_counts)
+# raw_counts is a cells by genes count matrix
+labels = clf.fit(raw_counts).predict()
 ```
 
 `raw_counts` is a scRNA-seq count matrix, and must be a 2-dimensional numpy ndarray, with rows 
