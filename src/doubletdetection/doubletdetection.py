@@ -134,6 +134,17 @@ class BoostClassifier:
         return self
 
     def predict(self, p_thresh=0.99, voter_thresh=0.9):
+        """Produce doublet calls from fitted classifier
+
+        Args:
+            p_thresh (float, optional): hypergeometric test p-value threshold
+                that determines per iteration doublet calls
+            voter_thresh (float, optional): fraction of iterations a cell must
+                be called a doublet
+
+        Returns:
+            labels_ (ndarray, ndims=1):  0 for singlet, 1 for detected doublet
+        """
         if self.n_iters > 1:
             with np.errstate(invalid='ignore'):  # Silence numpy warning about NaN comparison
                 self.voting_average_ = np.mean(np.ma.masked_invalid(self.all_p_values_) > p_thresh,
