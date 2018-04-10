@@ -44,6 +44,8 @@ class BoostClassifier:
             n_iters == 1 (scores_ >= cutoff). Not produced when n_iters > 1.
         synth_communities_ (sequence of ints): Cluster ID for corresponding
             synthetic doublet. Shape (n_iters, num_cells * boost_rate).
+        top_var_genes_ (ndarray): Indices of the n_top_var_genes used. Not
+            generated if n_top_var_genes <= 0.
         voting_average_ (ndarray): Fraction of iterations each cell is called a
             doublet.
     """
@@ -95,8 +97,8 @@ class BoostClassifier:
             if self.n_top_var_genes < raw_counts.shape[1]:
                 gene_variances = np.var(raw_counts, axis=0)
                 top_var_indexes = np.argsort(gene_variances)
-                top_var_indexes = top_var_indexes[-self.n_top_var_genes:]
-                raw_counts = raw_counts[:, top_var_indexes]
+                self.top_var_genes_ = top_var_indexes[-self.n_top_var_genes:]
+                raw_counts = raw_counts[:, self.top_var_genes_]
 
         self._raw_counts = raw_counts
         (self._num_cells, self._num_genes) = self._raw_counts.shape
