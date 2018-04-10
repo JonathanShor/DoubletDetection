@@ -172,9 +172,6 @@ class BoostClassifier:
         reduced_counts = pca.fit_transform(aug_counts)
         fullcommunities, _, _ = phenograph.cluster(reduced_counts, **self.phenograph_parameters)
         min_ID = min(fullcommunities)
-        if min_ID < 0:
-            logging.debug("Adjusting community IDs up {} to avoid negative.".format(abs(min_ID)))
-            fullcommunities = fullcommunities + abs(min_ID)
         self.communities_ = fullcommunities[:self._num_cells]
         self.synth_communities_ = fullcommunities[self._num_cells:]
         community_sizes = [np.count_nonzero(fullcommunities == i)
@@ -187,21 +184,21 @@ class BoostClassifier:
         # Number of synth/orig cells in each cluster.
         synth_cells_per_comm = collections.Counter(self.synth_communities_)
         orig_cells_per_comm = collections.Counter(self.communities_)
-        community_IDs = sorted(synth_cells_per_comm | orig_cells_per_comm)
-        community_scores = [float(synth_cells_per_comm[i]) /
+        community_IDs = orig_cells_per_comm.keys()
+        community_scores = {i: float(synth_cells_per_comm[i]) /
                             (synth_cells_per_comm[i] + orig_cells_per_comm[i])
-                            for i in community_IDs]
+                            for i in community_IDs}
         scores = np.array([community_scores[i] for i in self.communities_])
 
-        community_p_values = [hypergeom.cdf(synth_cells_per_comm[i], aug_counts.shape[0],
+        community_p_values = {i: hypergeom.cdf(synth_cells_per_comm[i], aug_counts.shape[0],
                                             self._synthetics.shape[0],
                                             synth_cells_per_comm[i] + orig_cells_per_comm[i])
-                              for i in community_IDs]
+                              for i in community_IDs}
         p_values = np.array([community_p_values[i] for i in self.communities_])
 
         if min_ID < 0:
-            scores[self.communities_ == 0] = np.nan
-            p_values[self.communities_ == 0] = np.nan
+            scores[self.communities_ == -1] = np.nan
+            p_values[self.communities_ == -1] = np.nan
 
         return scores, p_values
 
