@@ -9,6 +9,28 @@ from sklearn.decomposition import PCA
 from scipy.stats import hypergeom
 
 
+def normalize_counts(raw_counts, pseudocount=0.1):
+    """Normalize count array.
+
+    Args:
+        raw_counts (ndarray): count data
+        pseudocount (float, optional): Count to add prior to log transform.
+
+    Returns:
+        ndarray: Normalized data.
+    """
+    # Sum across cells
+    cell_sums = np.sum(raw_counts, axis=1)
+
+    # Mutiply by median and divide each cell by cell sum
+    median = np.median(cell_sums)
+    normed = raw_counts * median / cell_sums[:, np.newaxis]
+
+    normed = np.log(normed + pseudocount)
+
+    return normed
+
+
 class BoostClassifier:
     """Classifier for doublets in single-cell RNA-seq data.
 
@@ -28,6 +50,12 @@ class BoostClassifier:
             to Phenograph.
         n_iters (int, optional): Number of fit operations from which to collect
             p-values. Defualt value is 25.
+        normalizer ((ndarray) -> ndarray): Method to normalize raw_counts.
+            Defaults to normalize_counts, included in this package. Note: To use
+            normalize_counts with its pseudocount parameter changed from the
+            default 0.1 value to some positive float `new_var`, use:
+            normalizer=lambda counts: doubletdetection.normalize_counts(counts,
+            pseudocount=new_var)
 
     Attributes:
         all_p_values_ (ndarray): Hypergeometric test p-value per cell for cluster
@@ -50,11 +78,13 @@ class BoostClassifier:
     """
 
     def __init__(self, boost_rate=0.25, n_components=30, n_top_var_genes=10000, new_lib_as=np.max,
-                 replace=False, phenograph_parameters={'prune': True}, n_iters=25):
+                 replace=False, phenograph_parameters={'prune': True}, n_iters=25,
+                 normalizer=normalize_counts):
         self.boost_rate = boost_rate
         self.new_lib_as = new_lib_as
         self.replace = replace
         self.n_iters = n_iters
+        self.normalizer = normalizer
 
         if n_components == 30 and n_top_var_genes > 0:
             # If user did not change n_components, silently cap it by n_top_var_genes if needed
@@ -168,7 +198,7 @@ class BoostClassifier:
 
         # Normalize combined augmented set
         print("Normalizing...")
-        aug_counts = normalize_counts(np.append(self._raw_counts, self._raw_synthetics, axis=0))
+        aug_counts = self.normalizer(np.append(self._raw_counts, self._raw_synthetics, axis=0))
         self._norm_counts = aug_counts[:self._num_cells]
         self._synthetics = aug_counts[self._num_cells:]
 
@@ -252,25 +282,3 @@ class BoostClassifier:
 
         self._raw_synthetics = synthetic
         self.parents_ = parents
-
-
-def normalize_counts(raw_counts, pseudocount=0.1):
-    """Normalize count array.
-
-    Args:
-        raw_counts (ndarray): count data
-        pseudocount (float, optional): Count to add prior to log transform.
-
-    Returns:
-        ndarray: Normalized data.
-    """
-    # Sum across cells
-    cell_sums = np.sum(raw_counts, axis=1)
-
-    # Mutiply by median and divide each cell by cell sum
-    median = np.median(cell_sums)
-    normed = raw_counts * median / cell_sums[:, np.newaxis]
-
-    normed = np.log(normed + pseudocount)
-
-    return normed
