@@ -33,15 +33,15 @@ class BoostClassifier:
     Attributes:
         all_p_values_ (ndarray): Hypergeometric test p-value per cell for cluster
             enrichment of synthetic doublets. Shape (n_iters, num_cells).
+        all_scores_ (ndarray): The fraction of a cell's cluster that is
+            synthetic doublets. Shape (n_iters, num_cells).
         communities_ (ndarray): Cluster ID for corresponding cell. Shape
             (n_iters, num_cells).
         labels_ (ndarray, ndims=1): 0 for singlet, 1 for detected doublet.
         parents_ (list of sequences of int): Parent cells' indexes for each
             synthetic doublet. A list wrapping the results from each run.
-        scores_ (ndarray): The fraction of a cell's cluster that is synthetic
-            doublets. Mean across all runs when n_iter > 1.
         suggested_score_cutoff_ (float): Cutoff used to classify cells when
-            n_iters == 1 (scores_ >= cutoff). Not produced when n_iters > 1.
+            n_iters == 1 (scores >= cutoff). Not produced when n_iters > 1.
         synth_communities_ (sequence of ints): Cluster ID for corresponding
             synthetic doublet. Shape (n_iters, num_cells * boost_rate).
         voting_average_ (ndarray): Fraction of iterations each cell is called a
@@ -86,10 +86,11 @@ class BoostClassifier:
             raw_counts (ndarray): Count table, oriented cells by genes.
 
         Sets:
-            communities_, parents_ , scores_, suggested_score_cutoff_
+            all_scores_, all_p_values_, communities_, parents_,
+            synth_communities
 
         Returns:
-            labels_ (ndarray, ndims=1):  0 for singlet, 1 for detected doublet
+            The fitted classifier.
         """
         if self.n_top_var_genes > 0:
             if self.n_top_var_genes < raw_counts.shape[1]:
@@ -101,14 +102,14 @@ class BoostClassifier:
         self._raw_counts = raw_counts
         (self._num_cells, self._num_genes) = self._raw_counts.shape
 
-        self._all_scores = np.zeros((self.n_iters, self._num_cells))
+        self.all_scores_ = np.zeros((self.n_iters, self._num_cells))
         self.all_p_values_ = np.zeros((self.n_iters, self._num_cells))
         all_communities = np.zeros((self.n_iters, self._num_cells))
         all_parents = []
         all_synth_communities = np.zeros((self.n_iters, int(self.boost_rate * self._num_cells)))
 
         for i in range(self.n_iters):
-            self._all_scores[i], self.all_p_values_[i] = self._one_fit()
+            self.all_scores_[i], self.all_p_values_[i] = self._one_fit()
             all_communities[i] = self.communities_
             all_parents.append(self.parents_)
             all_synth_communities[i] = self.synth_communities_
@@ -118,14 +119,6 @@ class BoostClassifier:
         del self._norm_counts
         del self._raw_synthetics
         del self._synthetics
-
-        # NaNs correspond to unclustered cells. Ignore those runs.
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always", category=RuntimeWarning)
-            self.scores_ = np.nanmean(self._all_scores, axis=0)
-        if w:
-            warnings.warn("One or more cells failed to join a cluster across all runs.",
-                          category=RuntimeWarning)
 
         self.communities_ = all_communities
         self.parents_ = all_parents
@@ -142,6 +135,10 @@ class BoostClassifier:
             voter_thresh (float, optional): fraction of iterations a cell must
                 be called a doublet
 
+        Sets:
+            labels_ and voting_average_ if n_iters > 1.
+            labels_ and suggested_score_cutoff_ if n_iters == 1.
+
         Returns:
             labels_ (ndarray, ndims=1):  0 for singlet, 1 for detected doublet
         """
@@ -153,14 +150,14 @@ class BoostClassifier:
                 self.voting_average_ = np.ma.filled(self.voting_average_, np.nan)
         else:
             # Find a cutoff score
-            potential_cutoffs = np.unique(self.scores_)
+            potential_cutoffs = np.unique(self.all_scores_[~np.isnan(self.all_scores_)])
             if len(potential_cutoffs) > 1:
                 max_dropoff = np.argmax(potential_cutoffs[1:] - potential_cutoffs[:-1]) + 1
             else:   # Most likely pathological dataset, only one (or no) clusters
                 max_dropoff = 0
             self.suggested_score_cutoff_ = potential_cutoffs[max_dropoff]
             with np.errstate(invalid='ignore'):  # Silence numpy warning about NaN comparison
-                self.labels_ = self.scores_ >= self.suggested_score_cutoff_
+                self.labels_ = self.all_scores_[0, :] >= self.suggested_score_cutoff_
 
         return self.labels_
 
