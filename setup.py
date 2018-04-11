@@ -40,6 +40,8 @@ setup(
     package_dir={'': 'src'},
     packages=['doubletdetection'],
     install_requires=[
+        'bhtsne',
+        'matplotlib',
         'numpy',
         'pandas',
         'scipy',
