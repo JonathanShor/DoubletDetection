@@ -31,7 +31,7 @@ else:
 
 setup(
     name='doubletdetection',
-    version='2.0.0',
+    version='2.1.0',
     description='Method to detect and enable removal of doublets from single-cell RNA-sequencing '
                 'data',
     url='https://github.com/JonathanShor/DoubletDetection',
