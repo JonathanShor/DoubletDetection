@@ -1,4 +1,4 @@
-bhtsne
+cmake
 matplotlib
 numpy
 pandas
