@@ -6,6 +6,8 @@ import warnings
 import numpy as np
 import phenograph
 from sklearn.decomposition import PCA
+from sklearn.utils import check_array
+from scipy.io import mmread
 from scipy.stats import hypergeom
 
 
@@ -29,6 +31,20 @@ def normalize_counts(raw_counts, pseudocount=0.1):
     normed = np.log(normed + pseudocount)
 
     return normed
+
+
+def load_mtx(file):
+    """Load count matrix in mtx format
+
+    Args:
+        file (str): Path to mtx file
+
+    Returns:
+        ndarray: Raw count matrix.
+    """
+    raw_counts = np.transpose(mmread(file).toarray())
+
+    return raw_counts
 
 
 class BoostClassifier:
@@ -127,6 +143,9 @@ class BoostClassifier:
         Returns:
             The fitted classifier.
         """
+
+        raw_counts = check_array(raw_counts, accept_sparse=False, force_all_finite=True)
+
         if self.n_top_var_genes > 0:
             if self.n_top_var_genes < raw_counts.shape[1]:
                 gene_variances = np.var(raw_counts, axis=0)
