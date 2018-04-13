@@ -24,8 +24,13 @@ if shutil.which('pip3'):
     if rc:
         print('could not install phenograph, exiting')
         sys.exit(1)
+    rc = check_call(
+        ['pip3', 'install', '--upgrade', 'git+https://github.com/DmitryUlyanov/Multicore-TSNE.git'])
+    if rc:
+        print('could not install Multicore-TSNE, exiting')
+        sys.exit(1)
 else:
-    print('pip3 was not available, cannot install phenograph')
+    print('pip3 was not available, cannot install phenograph, Multicore-TSNE')
     sys.exit(1)
 
 
@@ -40,6 +45,8 @@ setup(
     package_dir={'': 'src'},
     packages=['doubletdetection'],
     install_requires=[
+        'cmake',
+        'matplotlib',
         'numpy',
         'pandas',
         'scipy',

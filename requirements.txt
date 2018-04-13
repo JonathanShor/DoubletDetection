@@ -1,3 +1,5 @@
+cmake
+matplotlib
 numpy
 pandas
 scipy
