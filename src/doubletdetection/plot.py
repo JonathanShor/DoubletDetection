@@ -8,19 +8,12 @@ import warnings
 import numpy as np
 
 import matplotlib
-from matplotlib import font_manager
 try:
     os.environ['DISPLAY']
 except KeyError:
     matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-with warnings.catch_warnings():
-    # catch warnings that system can't find fonts
-    warnings.simplefilter('ignore')
-    fm = font_manager.fontManager
-    fm.findfont('Raleway')
-    fm.findfont('Lato')
 warnings.filterwarnings(
     action="ignore", module="matplotlib", message="^tight_layout")
 # Ignore warning for convergence plot
