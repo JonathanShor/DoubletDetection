@@ -9,6 +9,8 @@ from sklearn.decomposition import PCA
 from sklearn.utils import check_array
 from scipy.io import mmread
 from scipy.stats import hypergeom
+import scipy.sparse as sp_sparse
+import tables
 
 
 def normalize_counts(raw_counts, pseudocount=0.1):
@@ -31,6 +33,39 @@ def normalize_counts(raw_counts, pseudocount=0.1):
     normed = np.log(normed + pseudocount)
 
     return normed
+
+
+def load_10x_h5(file, genome):
+    """Load count matrix in 10x H5 format
+       Adapted from:
+       https://support.10xgenomics.com/single-cell-gene-expression/software/
+       pipelines/latest/advanced/h5_matrices
+
+    Args:
+        file (str): Path to H5 file
+        genome (str): genome, top level h5 group
+
+    Returns:
+        ndarray: Raw count matrix.
+    """
+
+    with tables.open_file(filename, 'r') as f:
+    try:
+        group = f.get_node(f.root, genome)
+    except tables.NoSuchNodeError:
+        print "That genome does not exist in this file."
+        return None
+    gene_ids = getattr(group, 'genes').read()
+    gene_names = getattr(group, 'gene_names').read()
+    barcodes = getattr(group, 'barcodes').read()
+    data = getattr(group, 'data').read()
+    indices = getattr(group, 'indices').read()
+    indptr = getattr(group, 'indptr').read()
+    shape = getattr(group, 'shape').read()
+    matrix = sp_sparse.csc_matrix((data, indices, indptr), shape=shape)
+    dense_matrix = matrix.toarray()
+
+    return dense_matrix
 
 
 def load_mtx(file):
