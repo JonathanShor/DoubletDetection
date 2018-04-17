@@ -47,15 +47,17 @@ def load_10x_h5(file, genome):
 
     Returns:
         ndarray: Raw count matrix.
+        ndarray: Barcodes
+        ndarray: Gene names
     """
 
-    with tables.open_file(filename, 'r') as f:
-    try:
-        group = f.get_node(f.root, genome)
-    except tables.NoSuchNodeError:
-        print "That genome does not exist in this file."
-        return None
-    gene_ids = getattr(group, 'genes').read()
+    with tables.open_file(file, 'r') as f:
+        try:
+            group = f.get_node(f.root, genome)
+        except tables.NoSuchNodeError:
+            print("That genome does not exist in this file.")
+            return None
+    # gene_ids = getattr(group, 'genes').read()
     gene_names = getattr(group, 'gene_names').read()
     barcodes = getattr(group, 'barcodes').read()
     data = getattr(group, 'data').read()
@@ -65,7 +67,7 @@ def load_10x_h5(file, genome):
     matrix = sp_sparse.csc_matrix((data, indices, indptr), shape=shape)
     dense_matrix = matrix.toarray()
 
-    return dense_matrix
+    return dense_matrix, barcodes, gene_names
 
 
 def load_mtx(file):
