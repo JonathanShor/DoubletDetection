@@ -178,8 +178,12 @@ class BoostClassifier:
         Returns:
             The fitted classifier.
         """
-
-        raw_counts = check_array(raw_counts, accept_sparse=False, force_all_finite=True)
+        try:
+            raw_counts = check_array(raw_counts, accept_sparse=False, force_all_finite=True,
+                                     ensure_2d=True)
+        except TypeError:   # Only catches sparse error. Non-finite & n_dims still raised.
+            warnings.warn("Sparse raw_counts is automatically densified.")
+            raw_counts = raw_counts.toarray()
 
         if self.n_top_var_genes > 0:
             if self.n_top_var_genes < raw_counts.shape[1]:
