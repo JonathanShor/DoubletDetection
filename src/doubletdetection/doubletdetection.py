@@ -6,7 +6,11 @@ import warnings
 import numpy as np
 import phenograph
 from sklearn.decomposition import PCA
+from sklearn.utils import check_array
+from scipy.io import mmread
 from scipy.stats import hypergeom
+import scipy.sparse as sp_sparse
+import tables
 
 
 def normalize_counts(raw_counts, pseudocount=0.1):
@@ -29,6 +33,55 @@ def normalize_counts(raw_counts, pseudocount=0.1):
     normed = np.log(normed + pseudocount)
 
     return normed
+
+
+def load_10x_h5(file, genome):
+    """Load count matrix in 10x H5 format
+       Adapted from:
+       https://support.10xgenomics.com/single-cell-gene-expression/software/
+       pipelines/latest/advanced/h5_matrices
+
+    Args:
+        file (str): Path to H5 file
+        genome (str): genome, top level h5 group
+
+    Returns:
+        ndarray: Raw count matrix.
+        ndarray: Barcodes
+        ndarray: Gene names
+    """
+
+    with tables.open_file(file, 'r') as f:
+        try:
+            group = f.get_node(f.root, genome)
+        except tables.NoSuchNodeError:
+            print("That genome does not exist in this file.")
+            return None
+    # gene_ids = getattr(group, 'genes').read()
+    gene_names = getattr(group, 'gene_names').read()
+    barcodes = getattr(group, 'barcodes').read()
+    data = getattr(group, 'data').read()
+    indices = getattr(group, 'indices').read()
+    indptr = getattr(group, 'indptr').read()
+    shape = getattr(group, 'shape').read()
+    matrix = sp_sparse.csc_matrix((data, indices, indptr), shape=shape)
+    dense_matrix = matrix.toarray()
+
+    return dense_matrix, barcodes, gene_names
+
+
+def load_mtx(file):
+    """Load count matrix in mtx format
+
+    Args:
+        file (str): Path to mtx file
+
+    Returns:
+        ndarray: Raw count matrix.
+    """
+    raw_counts = np.transpose(mmread(file).toarray())
+
+    return raw_counts
 
 
 class BoostClassifier:
@@ -118,7 +171,7 @@ class BoostClassifier:
         """Fits the classifier on raw_counts.
 
         Args:
-            raw_counts (ndarray): Count table, oriented cells by genes.
+            raw_counts (array-like): Count matrix, oriented cells by genes.
 
         Sets:
             all_scores_, all_p_values_, communities_, parents_,
@@ -127,6 +180,13 @@ class BoostClassifier:
         Returns:
             The fitted classifier.
         """
+        try:
+            raw_counts = check_array(raw_counts, accept_sparse=False, force_all_finite=True,
+                                     ensure_2d=True)
+        except TypeError:   # Only catches sparse error. Non-finite & n_dims still raised.
+            warnings.warn("Sparse raw_counts is automatically densified.")
+            raw_counts = raw_counts.toarray()
+
         if self.n_top_var_genes > 0:
             if self.n_top_var_genes < raw_counts.shape[1]:
                 gene_variances = np.var(raw_counts, axis=0)

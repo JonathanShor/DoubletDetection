@@ -51,5 +51,6 @@ setup(
         'pandas',
         'scipy',
         'sklearn',
+        'tables'
     ],
 )
