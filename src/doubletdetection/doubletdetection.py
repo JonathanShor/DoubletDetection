@@ -95,8 +95,9 @@ class BoostClassifier:
         n_top_var_genes (int, optional): Number of highest variance genes to
             use; other genes discarded. Will use all genes when zero.
         new_lib_as: (([int, int]) -> int, optional): Method to use in choosing
-            library size for synthetic doublets. Defaults to np.max; append
-            alternative is new_lib_as=np.mean.
+            library size for synthetic doublets. Defaults to None which makes
+            synthetic doublets the exact addition of its parents; alternative
+            is new_lib_as=np.max.
         replace (bool, optional): If False, a cell will be selected as a
             synthetic doublet's parent no more than once.
         phenograph_parameters (dict, optional): Parameter dict to pass directly
@@ -132,7 +133,7 @@ class BoostClassifier:
             doublet.
     """
 
-    def __init__(self, boost_rate=0.25, n_components=30, n_top_var_genes=10000, new_lib_as=np.max,
+    def __init__(self, boost_rate=0.25, n_components=30, n_top_var_genes=10000, new_lib_as=None,
                  replace=False, phenograph_parameters={'prune': True}, n_iters=25,
                  normalizer=normalize_counts):
         self.boost_rate = boost_rate
@@ -339,8 +340,10 @@ class BoostClassifier:
         for i, parent_pair in enumerate(choices):
             row1 = parent_pair[0]
             row2 = parent_pair[1]
-            new_row = self._downsampleCellPair(self._raw_counts[row1], self._raw_counts[row2])
-
+            if self.new_lib_as is not None:
+                new_row = self._downsampleCellPair(self._raw_counts[row1], self._raw_counts[row2])
+            else:
+                new_row = self._raw_counts[row1] + self._raw_counts[row2]
             synthetic[i] = new_row
             parents.append([row1, row2])
 
