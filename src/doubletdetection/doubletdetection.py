@@ -134,12 +134,13 @@ class BoostClassifier:
 
     def __init__(self, boost_rate=0.25, n_components=30, n_top_var_genes=10000, new_lib_as=np.max,
                  replace=False, phenograph_parameters={'prune': True}, n_iters=25,
-                 normalizer=normalize_counts):
+                 normalizer=normalize_counts, lib_scale=1):
         self.boost_rate = boost_rate
         self.new_lib_as = new_lib_as
         self.replace = replace
         self.n_iters = n_iters
         self.normalizer = normalizer
+        self.lib_scale = lib_scale
 
         if n_components == 30 and n_top_var_genes > 0:
             # If user did not change n_components, silently cap it by n_top_var_genes if needed
@@ -339,9 +340,11 @@ class BoostClassifier:
         for i, parent_pair in enumerate(choices):
             row1 = parent_pair[0]
             row2 = parent_pair[1]
-            new_row = self._downsampleCellPair(self._raw_counts[row1], self._raw_counts[row2])
-
-            synthetic[i] = new_row
+            if self.new_lib_as is not None:
+                new_row = self._downsampleCellPair(self._raw_counts[row1], self._raw_counts[row2])
+            else:
+                new_row = self._raw_counts[row1] + self._raw_counts[row2]
+            synthetic[i] = self.lib_scale * new_row
             parents.append([row1, row2])
 
         self._raw_synthetics = synthetic
