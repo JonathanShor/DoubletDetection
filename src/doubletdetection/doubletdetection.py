@@ -96,8 +96,8 @@ class BoostClassifier:
             use; other genes discarded. Will use all genes when zero.
         new_lib_as: (([int, int]) -> int, optional): Method to use in choosing
             library size for synthetic doublets. Defaults to None which makes
-            synthetic doublets the exact addition of its parents; append
-            alternative is new_lib_as=np.max.
+            synthetic doublets the exact addition of its parents; alternative
+            is new_lib_as=np.max.
         replace (bool, optional): If False, a cell will be selected as a
             synthetic doublet's parent no more than once.
         phenograph_parameters (dict, optional): Parameter dict to pass directly
