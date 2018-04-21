@@ -112,8 +112,6 @@ class BoostClassifier:
             default 0.1 value to some positive float `new_var`, use:
             normalizer=lambda counts: doubletdetection.normalize_counts(counts,
             pseudocount=new_var)
-        lib_scale (float, optional): if new_lib_as is None, scale synthetic
-            doublet by a value
 
     Attributes:
         all_p_values_ (ndarray): Hypergeometric test p-value per cell for cluster
@@ -137,13 +135,12 @@ class BoostClassifier:
 
     def __init__(self, boost_rate=0.25, n_components=30, n_top_var_genes=10000, new_lib_as=None,
                  replace=False, phenograph_parameters={'prune': True}, n_iters=25,
-                 normalizer=normalize_counts, lib_scale=1):
+                 normalizer=normalize_counts):
         self.boost_rate = boost_rate
         self.new_lib_as = new_lib_as
         self.replace = replace
         self.n_iters = n_iters
         self.normalizer = normalizer
-        self.lib_scale = lib_scale
 
         if n_components == 30 and n_top_var_genes > 0:
             # If user did not change n_components, silently cap it by n_top_var_genes if needed
@@ -346,7 +343,7 @@ class BoostClassifier:
             if self.new_lib_as is not None:
                 new_row = self._downsampleCellPair(self._raw_counts[row1], self._raw_counts[row2])
             else:
-                new_row = self.lib_scale * (self._raw_counts[row1] + self._raw_counts[row2])
+                new_row = self._raw_counts[row1] + self._raw_counts[row2]
             synthetic[i] = new_row
             parents.append([row1, row2])
 
