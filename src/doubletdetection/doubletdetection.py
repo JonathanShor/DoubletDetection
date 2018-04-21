@@ -95,8 +95,9 @@ class BoostClassifier:
         n_top_var_genes (int, optional): Number of highest variance genes to
             use; other genes discarded. Will use all genes when zero.
         new_lib_as: (([int, int]) -> int, optional): Method to use in choosing
-            library size for synthetic doublets. Defaults to np.max; append
-            alternative is new_lib_as=np.mean.
+            library size for synthetic doublets. Defaults to None which makes
+            synthetic doublets the exact addition of its parents; append
+            alternative is new_lib_as=np.max.
         replace (bool, optional): If False, a cell will be selected as a
             synthetic doublet's parent no more than once.
         phenograph_parameters (dict, optional): Parameter dict to pass directly
@@ -111,6 +112,7 @@ class BoostClassifier:
             default 0.1 value to some positive float `new_var`, use:
             normalizer=lambda counts: doubletdetection.normalize_counts(counts,
             pseudocount=new_var)
+        lib_scale (float, optional): if new_lib_as is None, scale doublet by a value
 
     Attributes:
         all_p_values_ (ndarray): Hypergeometric test p-value per cell for cluster
@@ -132,7 +134,7 @@ class BoostClassifier:
             doublet.
     """
 
-    def __init__(self, boost_rate=0.25, n_components=30, n_top_var_genes=10000, new_lib_as=np.max,
+    def __init__(self, boost_rate=0.25, n_components=30, n_top_var_genes=10000, new_lib_as=None,
                  replace=False, phenograph_parameters={'prune': True}, n_iters=25,
                  normalizer=normalize_counts, lib_scale=1):
         self.boost_rate = boost_rate
