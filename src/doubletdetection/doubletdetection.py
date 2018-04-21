@@ -112,7 +112,8 @@ class BoostClassifier:
             default 0.1 value to some positive float `new_var`, use:
             normalizer=lambda counts: doubletdetection.normalize_counts(counts,
             pseudocount=new_var)
-        lib_scale (float, optional): if new_lib_as is None, scale doublet by a value
+        lib_scale (float, optional): if new_lib_as is None, scale synthetic
+            doublet by a value
 
     Attributes:
         all_p_values_ (ndarray): Hypergeometric test p-value per cell for cluster
@@ -345,8 +346,8 @@ class BoostClassifier:
             if self.new_lib_as is not None:
                 new_row = self._downsampleCellPair(self._raw_counts[row1], self._raw_counts[row2])
             else:
-                new_row = self._raw_counts[row1] + self._raw_counts[row2]
-            synthetic[i] = self.lib_scale * new_row
+                new_row = self.lib_scale * (self._raw_counts[row1] + self._raw_counts[row2])
+            synthetic[i] = new_row
             parents.append([row1, row2])
 
         self._raw_synthetics = synthetic
