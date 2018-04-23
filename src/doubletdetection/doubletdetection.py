@@ -175,8 +175,8 @@ class BoostClassifier:
             raw_counts (array-like): Count matrix, oriented cells by genes.
 
         Sets:
-            all_scores_, all_p_values_, communities_, parents_,
-            synth_communities
+            all_scores_, all_p_values_, communities_, n_top_var_genes,
+            parents, synth_communities
 
         Returns:
             The fitted classifier.
@@ -270,8 +270,8 @@ class BoostClassifier:
         print("Running PCA...")
         # Get phenograph results
         pca = PCA(n_components=self.n_components)
-        print("Clustering augmented data set with Phenograph...\n")
         reduced_counts = pca.fit_transform(aug_counts)
+        print("Clustering augmented data set with Phenograph...\n")
         fullcommunities, _, _ = phenograph.cluster(reduced_counts, **self.phenograph_parameters)
         min_ID = min(fullcommunities)
         self.communities_ = fullcommunities[:self._num_cells]
