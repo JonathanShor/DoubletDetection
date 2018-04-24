@@ -6,7 +6,11 @@ import warnings
 import numpy as np
 import phenograph
 from sklearn.decomposition import PCA
+from sklearn.utils import check_array
+from scipy.io import mmread
 from scipy.stats import hypergeom
+import scipy.sparse as sp_sparse
+import tables
 
 
 def normalize_counts(raw_counts, pseudocount=0.1):
@@ -31,6 +35,55 @@ def normalize_counts(raw_counts, pseudocount=0.1):
     return normed
 
 
+def load_10x_h5(file, genome):
+    """Load count matrix in 10x H5 format
+       Adapted from:
+       https://support.10xgenomics.com/single-cell-gene-expression/software/
+       pipelines/latest/advanced/h5_matrices
+
+    Args:
+        file (str): Path to H5 file
+        genome (str): genome, top level h5 group
+
+    Returns:
+        ndarray: Raw count matrix.
+        ndarray: Barcodes
+        ndarray: Gene names
+    """
+
+    with tables.open_file(file, 'r') as f:
+        try:
+            group = f.get_node(f.root, genome)
+        except tables.NoSuchNodeError:
+            print("That genome does not exist in this file.")
+            return None
+    # gene_ids = getattr(group, 'genes').read()
+    gene_names = getattr(group, 'gene_names').read()
+    barcodes = getattr(group, 'barcodes').read()
+    data = getattr(group, 'data').read()
+    indices = getattr(group, 'indices').read()
+    indptr = getattr(group, 'indptr').read()
+    shape = getattr(group, 'shape').read()
+    matrix = sp_sparse.csc_matrix((data, indices, indptr), shape=shape)
+    dense_matrix = matrix.toarray()
+
+    return dense_matrix, barcodes, gene_names
+
+
+def load_mtx(file):
+    """Load count matrix in mtx format
+
+    Args:
+        file (str): Path to mtx file
+
+    Returns:
+        ndarray: Raw count matrix.
+    """
+    raw_counts = np.transpose(mmread(file).toarray())
+
+    return raw_counts
+
+
 class BoostClassifier:
     """Classifier for doublets in single-cell RNA-seq data.
 
@@ -42,12 +95,15 @@ class BoostClassifier:
         n_top_var_genes (int, optional): Number of highest variance genes to
             use; other genes discarded. Will use all genes when zero.
         new_lib_as: (([int, int]) -> int, optional): Method to use in choosing
-            library size for synthetic doublets. Defaults to np.max; append
-            alternative is new_lib_as=np.mean.
+            library size for synthetic doublets. Defaults to None which makes
+            synthetic doublets the exact addition of its parents; alternative
+            is new_lib_as=np.max.
         replace (bool, optional): If False, a cell will be selected as a
             synthetic doublet's parent no more than once.
         phenograph_parameters (dict, optional): Parameter dict to pass directly
-            to Phenograph.
+            to Phenograph. Note that we change the Phenograph 'prune' default to
+            True; you must specifically include 'prune': False here to change
+            this.
         n_iters (int, optional): Number of fit operations from which to collect
             p-values. Defualt value is 25.
         normalizer ((ndarray) -> ndarray): Method to normalize raw_counts.
@@ -77,7 +133,7 @@ class BoostClassifier:
             doublet.
     """
 
-    def __init__(self, boost_rate=0.25, n_components=30, n_top_var_genes=10000, new_lib_as=np.max,
+    def __init__(self, boost_rate=0.25, n_components=30, n_top_var_genes=10000, new_lib_as=None,
                  replace=False, phenograph_parameters={'prune': True}, n_iters=25,
                  normalizer=normalize_counts):
         self.boost_rate = boost_rate
@@ -94,6 +150,8 @@ class BoostClassifier:
         # Floor negative n_top_var_genes by 0
         self.n_top_var_genes = max(0, n_top_var_genes)
 
+        if 'prune' not in phenograph_parameters:
+            phenograph_parameters['prune'] = True
         self.phenograph_parameters = phenograph_parameters
         if (self.n_iters == 1) and (phenograph_parameters.get('prune') is True):
             warn_msg = ("Using phenograph parameter prune=False is strongly recommended when " +
@@ -114,15 +172,22 @@ class BoostClassifier:
         """Fits the classifier on raw_counts.
 
         Args:
-            raw_counts (ndarray): Count table, oriented cells by genes.
+            raw_counts (array-like): Count matrix, oriented cells by genes.
 
         Sets:
-            all_scores_, all_p_values_, communities_, parents_,
+            all_scores_, all_p_values_, communities_, top_var_genes, parents,
             synth_communities
 
         Returns:
             The fitted classifier.
         """
+        try:
+            raw_counts = check_array(raw_counts, accept_sparse=False, force_all_finite=True,
+                                     ensure_2d=True)
+        except TypeError:   # Only catches sparse error. Non-finite & n_dims still raised.
+            warnings.warn("Sparse raw_counts is automatically densified.")
+            raw_counts = raw_counts.toarray()
+
         if self.n_top_var_genes > 0:
             if self.n_top_var_genes < raw_counts.shape[1]:
                 gene_variances = np.var(raw_counts, axis=0)
@@ -140,6 +205,7 @@ class BoostClassifier:
         all_synth_communities = np.zeros((self.n_iters, int(self.boost_rate * self._num_cells)))
 
         for i in range(self.n_iters):
+            print("Iteration {:3}/{}".format(i + 1, self.n_iters))
             self.all_scores_[i], self.all_p_values_[i] = self._one_fit()
             all_communities[i] = self.communities_
             all_parents.append(self.parents_)
@@ -205,8 +271,8 @@ class BoostClassifier:
         print("Running PCA...")
         # Get phenograph results
         pca = PCA(n_components=self.n_components)
-        print("Clustering augmented data set with Phenograph...\n")
         reduced_counts = pca.fit_transform(aug_counts)
+        print("Clustering augmented data set with Phenograph...\n")
         fullcommunities, _, _ = phenograph.cluster(reduced_counts, **self.phenograph_parameters)
         min_ID = min(fullcommunities)
         self.communities_ = fullcommunities[:self._num_cells]
@@ -275,8 +341,10 @@ class BoostClassifier:
         for i, parent_pair in enumerate(choices):
             row1 = parent_pair[0]
             row2 = parent_pair[1]
-            new_row = self._downsampleCellPair(self._raw_counts[row1], self._raw_counts[row2])
-
+            if self.new_lib_as is not None:
+                new_row = self._downsampleCellPair(self._raw_counts[row1], self._raw_counts[row2])
+            else:
+                new_row = self._raw_counts[row1] + self._raw_counts[row2]
             synthetic[i] = new_row
             parents.append([row1, row2])
 

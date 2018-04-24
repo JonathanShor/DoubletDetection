@@ -1,4 +1,7 @@
+cmake
+matplotlib
 numpy
 pandas
 scipy
 sklearn
+tables
