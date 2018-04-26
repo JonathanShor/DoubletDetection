@@ -1,4 +1,3 @@
-from .doubletdetection import normalize_counts
 from sklearn.decomposition import PCA
 from MulticoreTSNE import MulticoreTSNE as TSNE
 import phenograph
@@ -18,6 +17,29 @@ warnings.filterwarnings(
     action="ignore", module="matplotlib", message="^tight_layout")
 # Ignore warning for convergence plot
 np.warnings.filterwarnings('ignore')
+
+
+def normalize_counts(raw_counts, pseudocount=0.1):
+    """Normalize count array.
+
+    Args:
+        raw_counts (ndarray): count data
+        pseudocount (float, optional): Count to add prior to log transform.
+
+    Returns:
+        ndarray: Normalized data.
+    """
+    # Sum across cells
+
+    cell_sums = np.sum(raw_counts, axis=1)
+
+    # Mutiply by median and divide each cell by cell sum
+    median = np.median(cell_sums)
+    normed = raw_counts * median / cell_sums[:, np.newaxis]
+
+    normed = np.log10(normed + pseudocount)
+
+    return normed
 
 
 def convergence(clf, show=False, save=None, p_thresh=0.99, voter_thresh=0.9):
