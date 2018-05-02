@@ -259,7 +259,7 @@ class BoostClassifier:
         return self.labels_
 
     def _one_fit(self):
-        print("\nCreating downsampled doublets...")
+        print("\nCreating synthetic doublets...")
         self._createDoublets()
 
         # Normalize combined augmented set
