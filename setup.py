@@ -17,23 +17,6 @@ if sys.version_info.major != 3:
     print('doubletdetection requires Python 3')
     sys.exit(1)
 
-# install phenograph if pip3 is installed
-if shutil.which('pip3'):
-    rc = check_call(
-        ['pip3', 'install', '--upgrade', 'git+https://github.com/JonathanShor/PhenoGraph'])
-    if rc:
-        print('could not install phenograph, exiting')
-        sys.exit(1)
-    rc = check_call(
-        ['pip3', 'install', '--upgrade', 'git+https://github.com/DmitryUlyanov/Multicore-TSNE.git'])
-    if rc:
-        print('could not install Multicore-TSNE, exiting')
-        sys.exit(1)
-else:
-    print('pip3 was not available, cannot install phenograph, Multicore-TSNE')
-    sys.exit(1)
-
-
 setup(
     name='doubletdetection',
     version='2.2.0',
@@ -44,13 +27,5 @@ setup(
     author_email='ajg2188@columbia.edu',
     package_dir={'': 'src'},
     packages=['doubletdetection'],
-    install_requires=[
-        'cmake',
-        'matplotlib',
-        'numpy',
-        'pandas',
-        'scipy',
-        'sklearn',
-        'tables'
-    ],
+    install_requires=[],
 )
