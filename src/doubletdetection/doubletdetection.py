@@ -227,7 +227,7 @@ class BoostClassifier:
         """
         if self.n_iters > 1:
             with np.errstate(invalid='ignore'):  # Silence numpy warning about NaN comparison
-                self.voting_average_ = np.mean(np.ma.masked_invalid(self.all_p_values_) > p_thresh,
+                self.voting_average_ = np.mean(np.ma.masked_invalid(self.all_p_values_) >= p_thresh,
                                                axis=0)
                 self.labels_ = np.ma.filled(self.voting_average_ >= voter_thresh, np.nan)
                 self.voting_average_ = np.ma.filled(self.voting_average_, np.nan)
