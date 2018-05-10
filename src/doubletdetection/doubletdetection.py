@@ -253,8 +253,8 @@ class BoostClassifier:
         if self.normalizer is not None:
                 aug_counts = self.normalizer(np.append(self._raw_counts, self._raw_synthetics, axis=0))
         else:
-            aug_lib_size = np.concatenate([self._lib_size, np.sum(self._raw_synthetics, axis=1)])
             synth_lib_size = np.sum(self._raw_synthetics, axis=1)
+            aug_lib_size = np.concatenate([self._lib_size, synth_lib_size])
             normed_synths = self._raw_synthetics / synth_lib_size[:, np.newaxis]
             aug_counts = np.concatenate([self._normed_raw_counts, normed_synths], axis=0)
             aug_counts = np.log(aug_counts * np.median(aug_lib_size) + 0.1)
