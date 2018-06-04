@@ -240,6 +240,7 @@ class BoostClassifier:
             self.suggested_score_cutoff_ = potential_cutoffs[max_dropoff]
             with np.errstate(invalid='ignore'):  # Silence numpy warning about NaN comparison
                 self.labels_ = self.all_scores_[0, :] >= self.suggested_score_cutoff_
+            self.labels_[np.isnan(self.all_scores_)] = np.nan
 
         return self.labels_
 
