@@ -13,28 +13,6 @@ import scipy.sparse as sp_sparse
 import tables
 
 
-def normalize_counts(raw_counts, pseudocount=0.1):
-    """Normalize count array.
-
-    Args:
-        raw_counts (ndarray): count data
-        pseudocount (float, optional): Count to add prior to log transform.
-
-    Returns:
-        ndarray: Normalized data.
-    """
-    # Sum across cells
-    cell_sums = np.sum(raw_counts, axis=1)
-
-    # Mutiply by median and divide each cell by cell sum
-    median = np.median(cell_sums)
-    normed = raw_counts * median / cell_sums[:, np.newaxis]
-
-    normed = np.log(normed + pseudocount)
-
-    return normed
-
-
 def load_10x_h5(file, genome):
     """Load count matrix in 10x H5 format
        Adapted from:
@@ -135,7 +113,7 @@ class BoostClassifier:
 
     def __init__(self, boost_rate=0.25, n_components=30, n_top_var_genes=10000, new_lib_as=None,
                  replace=False, phenograph_parameters={'prune': True}, n_iters=25,
-                 normalizer=normalize_counts):
+                 normalizer=None):
         self.boost_rate = boost_rate
         self.new_lib_as = new_lib_as
         self.replace = replace
@@ -197,6 +175,10 @@ class BoostClassifier:
 
         self._raw_counts = raw_counts
         (self._num_cells, self._num_genes) = self._raw_counts.shape
+        if self.normalizer is None:
+            # Memoize these; default normalizer treats these invariant for all synths
+            self._lib_size = np.sum(raw_counts, axis=1)
+            self._normed_raw_counts = self._raw_counts / self._lib_size[:, np.newaxis]
 
         self.all_scores_ = np.zeros((self.n_iters, self._num_cells))
         self.all_p_values_ = np.zeros((self.n_iters, self._num_cells))
@@ -216,6 +198,9 @@ class BoostClassifier:
         del self._norm_counts
         del self._raw_synthetics
         del self._synthetics
+        if self.normalizer is None:
+            del self._normed_raw_counts
+            del self._lib_size
 
         self.communities_ = all_communities
         self.parents_ = all_parents
@@ -241,7 +226,7 @@ class BoostClassifier:
         """
         if self.n_iters > 1:
             with np.errstate(invalid='ignore'):  # Silence numpy warning about NaN comparison
-                self.voting_average_ = np.mean(np.ma.masked_invalid(self.all_p_values_) > p_thresh,
+                self.voting_average_ = np.mean(np.ma.masked_invalid(self.all_p_values_) >= p_thresh,
                                                axis=0)
                 self.labels_ = np.ma.filled(self.voting_average_ >= voter_thresh, np.nan)
                 self.voting_average_ = np.ma.filled(self.voting_average_, np.nan)
@@ -264,7 +249,16 @@ class BoostClassifier:
 
         # Normalize combined augmented set
         print("Normalizing...")
-        aug_counts = self.normalizer(np.append(self._raw_counts, self._raw_synthetics, axis=0))
+        if self.normalizer is not None:
+            aug_counts = self.normalizer(np.append(self._raw_counts, self._raw_synthetics, axis=0))
+        else:
+            # Follows doubletdetection.plot.normalize_counts, but uses memoized normed raw_counts
+            synth_lib_size = np.sum(self._raw_synthetics, axis=1)
+            aug_lib_size = np.concatenate([self._lib_size, synth_lib_size])
+            normed_synths = self._raw_synthetics / synth_lib_size[:, np.newaxis]
+            aug_counts = np.concatenate([self._normed_raw_counts, normed_synths], axis=0)
+            aug_counts = np.log(aug_counts * np.median(aug_lib_size) + 0.1)
+
         self._norm_counts = aug_counts[:self._num_cells]
         self._synthetics = aug_counts[self._num_cells:]
 
@@ -294,8 +288,8 @@ class BoostClassifier:
         scores = np.array([community_scores[i] for i in self.communities_])
 
         community_p_values = {i: hypergeom.cdf(synth_cells_per_comm[i], aug_counts.shape[0],
-                                            self._synthetics.shape[0],
-                                            synth_cells_per_comm[i] + orig_cells_per_comm[i])
+                                               self._synthetics.shape[0],
+                                               synth_cells_per_comm[i] + orig_cells_per_comm[i])
                               for i in community_IDs}
         p_values = np.array([community_p_values[i] for i in self.communities_])
 
