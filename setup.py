@@ -19,7 +19,7 @@ if sys.version_info.major != 3:
 
 setup(
     name='doubletdetection',
-    version='2.2.0',
+    version='2.3.0',
     description='Method to detect and enable removal of doublets from single-cell RNA-sequencing '
                 'data',
     url='https://github.com/JonathanShor/DoubletDetection',
