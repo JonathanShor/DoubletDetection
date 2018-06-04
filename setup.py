@@ -1,7 +1,5 @@
 from setuptools import setup
 import sys
-import shutil
-from subprocess import check_call
 
 CLASSIFIERS = [
     "Development Status :: 4 - Beta",
