@@ -58,10 +58,9 @@ def convergence(clf, show=False, save=None, p_thresh=0.99, voter_thresh=0.9):
     with np.errstate(invalid='ignore'):
         for i in range(clf.n_iters):
             cum_p_values = clf.all_p_values_[:i + 1]
-            cum_vote_average = np.mean(
-                np.ma.masked_invalid(cum_p_values) > p_thresh, axis=0)
-            cum_doublets = np.ma.filled(cum_vote_average >= voter_thresh, np.nan)
-            doubs_per_run.append(np.sum(cum_doublets))
+            cum_vote_average = np.mean(np.ma.masked_invalid(cum_p_values) > p_thresh, axis=0)
+            cum_doublets = np.ma.filled((cum_vote_average >= voter_thresh).astype(float), np.nan)
+            doubs_per_run.append(np.nansum(cum_doublets))
 
     # Ignore warning for convergence plot
     with warnings.catch_warnings():
@@ -111,19 +110,21 @@ def tsne(raw_counts, labels, n_components=30, n_jobs=-1, show=False, save=None,
                          svd_solver='randomized').fit_transform(norm_counts)
     communities, _, _ = phenograph.cluster(reduced_counts)
     tsne_counts = TSNE(n_jobs=-1).fit_transform(reduced_counts)
+    # Ensure only looking at positively identified doublets
+    doublets = labels == 1
 
     fig, axes = plt.subplots(1, 1, figsize=(3, 3), dpi=200)
     axes.scatter(tsne_counts[:, 0], tsne_counts[:, 1],
                  c=communities, cmap=plt.cm.tab20, s=1)
-    axes.scatter(tsne_counts[:, 0][labels], tsne_counts[:, 1]
-                 [labels], s=3, edgecolor='k', facecolor='k')
+    axes.scatter(tsne_counts[:, 0][doublets], tsne_counts[:, 1][doublets],
+                 s=3, edgecolor='k', facecolor='k')
     axes.set_title('Cells with Detected\n Doublets in Black')
     plt.xticks([])
     plt.yticks([])
     axes.set_xlabel('{} doublets out of {} cells.\n {}%  across-type doublet rate.'.format(
-        np.sum(labels),
+        np.sum(doublets),
         raw_counts.shape[0],
-        np.round(100 * np.sum(labels) / raw_counts.shape[0], 2)))
+        np.round(100 * np.sum(doublets) / raw_counts.shape[0], 2)))
 
     if show is True:
         plt.show()
