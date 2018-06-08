@@ -37,7 +37,7 @@ def normalize_counts(raw_counts, pseudocount=0.1):
     return normed
 
 
-def convergence(clf, show=False, save=None, p_thresh=0.99, voter_thresh=0.9):
+def convergence(clf, show=False, save=None, p_thresh=0.01, voter_thresh=0.9):
     """Produce a plot showing number of cells called doublet per iter
 
     Args:
@@ -58,7 +58,7 @@ def convergence(clf, show=False, save=None, p_thresh=0.99, voter_thresh=0.9):
     with np.errstate(invalid='ignore'):
         for i in range(clf.n_iters):
             cum_p_values = clf.all_p_values_[:i + 1]
-            cum_vote_average = np.mean(np.ma.masked_invalid(cum_p_values) > p_thresh, axis=0)
+            cum_vote_average = np.mean(np.ma.masked_invalid(cum_p_values) <= np.log(p_thresh), axis=0)
             cum_doublets = np.ma.filled((cum_vote_average >= voter_thresh).astype(float), np.nan)
             doubs_per_run.append(np.nansum(cum_doublets))
 
@@ -132,3 +132,59 @@ def tsne(raw_counts, labels, n_components=30, n_jobs=-1, show=False, save=None,
         fig.savefig(save, format='pdf', bbox_inches='tight')
 
     return fig, tsne_counts
+
+
+def threshold(clf, show=False, save=None, p_grid=None, voter_grid=None):
+    """Produce a plot showing number of cells called doublet across
+       various thresholds
+
+    Args:
+        clf (BoostClassifier object): Fitted classifier
+        show (bool, optional): If True, runs plt.show()
+        save (str, optional): filename for saved figure,
+            figure not saved by default
+        p_grid (ndarray, optional): p-value thresholds to use
+        voter_grid (ndarray, optional): voting thresholds to use
+
+    Returns:
+        matplotlib figure
+    """
+    # Ignore numpy complaining about np.nan comparisons
+    with np.errstate(invalid='ignore'):
+        if p_grid is None:
+            p_grid = np.unique(clf.all_p_values_)
+            p_grid = p_grid[p_grid < np.log(0.01)]
+        if voter_grid is None:
+            voter_grid = np.arange(0.3, 1.0, 0.01)
+        doubs_per_t = np.zeros((len(voter_grid), len(p_grid)))
+        for i in range(len(voter_grid)):
+            for j in range(len(p_grid)):
+                voting_average = np.mean(np.ma.masked_invalid(clf.all_p_values_) <= p_grid[j],
+                                         axis=0)
+                labels = np.ma.filled((voting_average >= voter_grid[i]).astype(float), np.nan)
+                doubs_per_t[i, j] = np.nansum(labels)
+
+    # Ignore warning for convergence plot
+    with warnings.catch_warnings():
+        warnings.filterwarnings(action="ignore", module="matplotlib", message="^tight_layout")
+
+        f, ax = plt.subplots(1, 1, figsize=(3, 3), dpi=200)
+        cax = ax.imshow(doubs_per_t, cmap='hot', aspect='auto')
+        v_step = 20
+        p_step = 20
+        ax.set_xticks(np.arange(len(p_grid))[::p_step])
+        ax.set_xticklabels(np.around(p_grid, 1)[::p_step], rotation='vertical')
+        ax.set_yticks(np.arange(len(voter_grid))[::v_step])
+        ax.set_yticklabels(np.around(voter_grid, 2)[::v_step])
+        cbar = f.colorbar(cax)
+        cbar.set_label('Predicted Doublets')
+        ax.set_xlabel("Log p-value")
+        ax.set_ylabel("Voting Threshold")
+        ax.set_title('Threshold Diagnostics')
+
+    if show is True:
+        plt.show()
+    if isinstance(save, str):
+        f.savefig(save, format='pdf', bbox_inches='tight')
+
+    return f
