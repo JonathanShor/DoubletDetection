@@ -92,7 +92,7 @@ class BoostClassifier:
             pseudocount=new_var)
 
     Attributes:
-        all_p_values_ (ndarray): Hypergeometric test p-value per cell for cluster
+        all_p_values_ (ndarray): Hypergeometric test natural log p-value per cell for cluster
             enrichment of synthetic doublets. Shape (n_iters, num_cells).
         all_scores_ (ndarray): The fraction of a cell's cluster that is
             synthetic doublets. Shape (n_iters, num_cells).
