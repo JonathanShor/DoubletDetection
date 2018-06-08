@@ -134,26 +134,37 @@ def tsne(raw_counts, labels, n_components=30, n_jobs=-1, show=False, save=None,
     return fig, tsne_counts
 
 
-def threshold(clf, show=False, save=None, p_grid=None, voter_grid=None):
+def threshold(clf, log10=True, show=False, save=None, p_grid=None, voter_grid=None, v_step=20,
+              p_step=20):
     """Produce a plot showing number of cells called doublet across
        various thresholds
 
     Args:
         clf (BoostClassifier object): Fitted classifier
+        log10 (bool, optional): use log10 p values
         show (bool, optional): If True, runs plt.show()
         save (str, optional): filename for saved figure,
             figure not saved by default
         p_grid (ndarray, optional): p-value thresholds to use
         voter_grid (ndarray, optional): voting thresholds to use
+        p_step (int, optional): number of xlabels to skip in plot
+        v_step (int, optional): number of ylabels to skip in plot
+
 
     Returns:
         matplotlib figure
     """
     # Ignore numpy complaining about np.nan comparisons
     with np.errstate(invalid='ignore'):
+        all_p_values =clf.all_p_values_
+        if log10 is True:
+            all_p_values /= np.log(10)
         if p_grid is None:
-            p_grid = np.unique(clf.all_p_values_)
-            p_grid = p_grid[p_grid < np.log(0.01)]
+            p_grid = np.unique(all_p_values)
+            if log10 is True:
+                p_grid = p_grid[p_grid < np.log10(0.01)]
+            else:
+                p_grid = p_grid[p_grid < np.log(0.01)]
         if voter_grid is None:
             voter_grid = np.arange(0.3, 1.0, 0.01)
         doubs_per_t = np.zeros((len(voter_grid), len(p_grid)))
@@ -170,15 +181,16 @@ def threshold(clf, show=False, save=None, p_grid=None, voter_grid=None):
 
         f, ax = plt.subplots(1, 1, figsize=(3, 3), dpi=200)
         cax = ax.imshow(doubs_per_t, cmap='hot', aspect='auto')
-        v_step = 20
-        p_step = 20
         ax.set_xticks(np.arange(len(p_grid))[::p_step])
         ax.set_xticklabels(np.around(p_grid, 1)[::p_step], rotation='vertical')
         ax.set_yticks(np.arange(len(voter_grid))[::v_step])
         ax.set_yticklabels(np.around(voter_grid, 2)[::v_step])
         cbar = f.colorbar(cax)
         cbar.set_label('Predicted Doublets')
-        ax.set_xlabel("Log p-value")
+        if log10 is True:
+            ax.set_xlabel("Log10 p-value")
+        else:
+            ax.set_xlabel("Log p-value")
         ax.set_ylabel("Voting Threshold")
         ax.set_title('Threshold Diagnostics')
 
