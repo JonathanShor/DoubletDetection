@@ -208,7 +208,7 @@ class BoostClassifier:
 
         return self
 
-    def predict(self, p_thresh=0.99, voter_thresh=0.9):
+    def predict(self, p_thresh=0.01, voter_thresh=0.9):
         """Produce doublet calls from fitted classifier
 
         Args:
@@ -226,7 +226,7 @@ class BoostClassifier:
         """
         if self.n_iters > 1:
             with np.errstate(invalid='ignore'):  # Silence numpy warning about NaN comparison
-                self.voting_average_ = np.mean(np.ma.masked_invalid(self.all_p_values_) >= np.log(p_thresh),
+                self.voting_average_ = np.mean(np.ma.masked_invalid(self.all_p_values_) <= np.log(p_thresh),
                                                axis=0)
                 self.labels_ = np.ma.filled((self.voting_average_ >= voter_thresh).astype(float), np.nan)
                 self.voting_average_ = np.ma.filled(self.voting_average_, np.nan)
