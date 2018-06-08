@@ -226,7 +226,7 @@ class BoostClassifier:
         """
         if self.n_iters > 1:
             with np.errstate(invalid='ignore'):  # Silence numpy warning about NaN comparison
-                self.voting_average_ = np.mean(np.ma.masked_invalid(self.all_p_values_) >= p_thresh,
+                self.voting_average_ = np.mean(np.ma.masked_invalid(self.all_p_values_) >= np.log(p_thresh),
                                                axis=0)
                 self.labels_ = np.ma.filled((self.voting_average_ >= voter_thresh).astype(float), np.nan)
                 self.voting_average_ = np.ma.filled(self.voting_average_, np.nan)
@@ -288,7 +288,7 @@ class BoostClassifier:
                             for i in community_IDs}
         scores = np.array([community_scores[i] for i in self.communities_])
 
-        community_p_values = {i: hypergeom.cdf(synth_cells_per_comm[i], aug_counts.shape[0],
+        community_p_values = {i: hypergeom.logcdf(synth_cells_per_comm[i], aug_counts.shape[0],
                                                self._synthetics.shape[0],
                                                synth_cells_per_comm[i] + orig_cells_per_comm[i])
                               for i in community_IDs}
