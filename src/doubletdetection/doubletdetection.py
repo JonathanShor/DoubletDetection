@@ -289,8 +289,8 @@ class BoostClassifier:
         scores = np.array([community_scores[i] for i in self.communities_])
 
         community_p_values = {i: hypergeom.logsf(synth_cells_per_comm[i], aug_counts.shape[0],
-                                               self._synthetics.shape[0],
-                                               synth_cells_per_comm[i] + orig_cells_per_comm[i])
+                                                 self._synthetics.shape[0],
+                                                 synth_cells_per_comm[i] + orig_cells_per_comm[i])
                               for i in community_IDs}
         p_values = np.array([community_p_values[i] for i in self.communities_])
 

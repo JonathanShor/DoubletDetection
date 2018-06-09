@@ -156,7 +156,7 @@ def threshold(clf, log10=True, show=False, save=None, p_grid=None, voter_grid=No
     """
     # Ignore numpy complaining about np.nan comparisons
     with np.errstate(invalid='ignore'):
-        all_p_values =clf.all_p_values_
+        all_p_values = np.copy(clf.all_p_values_)
         if log10 is True:
             all_p_values /= np.log(10)
         if p_grid is None:
