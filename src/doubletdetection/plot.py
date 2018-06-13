@@ -136,19 +136,21 @@ def tsne(raw_counts, labels, n_components=30, n_jobs=-1, show=False, save=None,
     return fig, tsne_counts
 
 
-def threshold(clf, log10=True, show=False, save=None, p_grid=None, voter_grid=None, v_step=20,
+def threshold(clf, log10=True, show=False, save_name=None, p_grid=None, voter_grid=None, v_step=20,
               p_step=20):
     """Produce a plot showing number of cells called doublet across
        various thresholds
 
     Args:
         clf (BoostClassifier object): Fitted classifier
-        log10 (bool, optional): use log10 p values
+        log10 (bool, optional): Use natural log p values if False, log10
+            otherwise.
         show (bool, optional): If True, runs plt.show()
-        save (str, optional): filename for saved figure,
-            figure not saved by default
+        save_name (str, optional): If provided, the figure is saved to this
+            filepath.
         p_grid (ndarray, optional): p-value thresholds to use
-        voter_grid (ndarray, optional): voting thresholds to use
+        voter_grid (ndarray, optional): Voting thresholds to use. Defaults to
+            np.arange(0.3, 1.0, 0.01).
         p_step (int, optional): number of xlabels to skip in plot
         v_step (int, optional): number of ylabels to skip in plot
 
@@ -160,13 +162,13 @@ def threshold(clf, log10=True, show=False, save=None, p_grid=None, voter_grid=No
     with np.errstate(invalid='ignore'):
         all_p_values = np.copy(clf.all_log_p_values_)
         if log10 is True:
+            our_log = np.log10
             all_p_values /= np.log(10)
+        else:
+            our_log = np.log
         if p_grid is None:
             p_grid = np.unique(all_p_values)
-            if log10 is True:
-                p_grid = p_grid[p_grid < np.log10(0.01)]
-            else:
-                p_grid = p_grid[p_grid < np.log(0.01)]
+            p_grid = p_grid[p_grid < our_log(0.01)]
         if voter_grid is None:
             voter_grid = np.arange(0.3, 1.0, 0.01)
         doubs_per_t = np.zeros((len(voter_grid), len(p_grid)))
@@ -198,7 +200,7 @@ def threshold(clf, log10=True, show=False, save=None, p_grid=None, voter_grid=No
 
     if show is True:
         plt.show()
-    if isinstance(save, str):
-        f.savefig(save, format='pdf', bbox_inches='tight')
+    if save_name:
+        f.savefig(save_name, format='pdf', bbox_inches='tight')
 
     return f
