@@ -45,7 +45,7 @@ def convergence(clf, show=False, save=None, p_thresh=0.01, voter_thresh=0.9):
         show (bool, optional): If True, runs plt.show()
         save (str, optional): filename for saved figure,
             figure not saved by default
-        p_thresh (float, optional): hypergeometric test p-value threshold
+        p_thresh (float, optional): hypergeometric test log p-value threshold
             that determines per iteration doublet calls
         voter_thresh (float, optional): fraction of iterations a cell must
             be called a doublet
@@ -57,7 +57,7 @@ def convergence(clf, show=False, save=None, p_thresh=0.01, voter_thresh=0.9):
     # Ignore numpy complaining about np.nan comparisons
     with np.errstate(invalid='ignore'):
         for i in range(clf.n_iters):
-            cum_p_values = clf.all_p_values_[:i + 1]
+            cum_p_values = clf.all_log_p_values_[:i + 1]
             cum_vote_average = np.mean(np.ma.masked_invalid(cum_p_values) <= np.log(p_thresh), axis=0)
             cum_doublets = np.ma.filled((cum_vote_average >= voter_thresh).astype(float), np.nan)
             doubs_per_run.append(np.nansum(cum_doublets))
@@ -156,7 +156,7 @@ def threshold(clf, log10=True, show=False, save=None, p_grid=None, voter_grid=No
     """
     # Ignore numpy complaining about np.nan comparisons
     with np.errstate(invalid='ignore'):
-        all_p_values = np.copy(clf.all_p_values_)
+        all_p_values = np.copy(clf.all_log_p_values_)
         if log10 is True:
             all_p_values /= np.log(10)
         if p_grid is None:
@@ -170,7 +170,7 @@ def threshold(clf, log10=True, show=False, save=None, p_grid=None, voter_grid=No
         doubs_per_t = np.zeros((len(voter_grid), len(p_grid)))
         for i in range(len(voter_grid)):
             for j in range(len(p_grid)):
-                voting_average = np.mean(np.ma.masked_invalid(clf.all_p_values_) <= p_grid[j],
+                voting_average = np.mean(np.ma.masked_invalid(clf.all_log_p_values_) <= p_grid[j],
                                          axis=0)
                 labels = np.ma.filled((voting_average >= voter_grid[i]).astype(float), np.nan)
                 doubs_per_t[i, j] = np.nansum(labels)

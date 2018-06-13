@@ -92,7 +92,7 @@ class BoostClassifier:
             pseudocount=new_var)
 
     Attributes:
-        all_p_values_ (ndarray): Hypergeometric test natural log p-value per cell for cluster
+        all_log_p_values_ (ndarray): Hypergeometric test natural log p-value per cell for cluster
             enrichment of synthetic doublets. Shape (n_iters, num_cells).
         all_scores_ (ndarray): The fraction of a cell's cluster that is
             synthetic doublets. Shape (n_iters, num_cells).
@@ -153,7 +153,7 @@ class BoostClassifier:
             raw_counts (array-like): Count matrix, oriented cells by genes.
 
         Sets:
-            all_scores_, all_p_values_, communities_, top_var_genes, parents,
+            all_scores_, all_log_p_values_, communities_, top_var_genes, parents,
             synth_communities
 
         Returns:
@@ -181,14 +181,14 @@ class BoostClassifier:
             self._normed_raw_counts = self._raw_counts / self._lib_size[:, np.newaxis]
 
         self.all_scores_ = np.zeros((self.n_iters, self._num_cells))
-        self.all_p_values_ = np.zeros((self.n_iters, self._num_cells))
+        self.all_log_p_values_ = np.zeros((self.n_iters, self._num_cells))
         all_communities = np.zeros((self.n_iters, self._num_cells))
         all_parents = []
         all_synth_communities = np.zeros((self.n_iters, int(self.boost_rate * self._num_cells)))
 
         for i in range(self.n_iters):
             print("Iteration {:3}/{}".format(i + 1, self.n_iters))
-            self.all_scores_[i], self.all_p_values_[i] = self._one_fit()
+            self.all_scores_[i], self.all_log_p_values_[i] = self._one_fit()
             all_communities[i] = self.communities_
             all_parents.append(self.parents_)
             all_synth_communities[i] = self.synth_communities_
@@ -212,7 +212,7 @@ class BoostClassifier:
         """Produce doublet calls from fitted classifier
 
         Args:
-            p_thresh (float, optional): hypergeometric test p-value threshold
+            p_thresh (float, optional): hypergeometric test log p-value threshold
                 that determines per iteration doublet calls
             voter_thresh (float, optional): fraction of iterations a cell must
                 be called a doublet
@@ -226,7 +226,7 @@ class BoostClassifier:
         """
         if self.n_iters > 1:
             with np.errstate(invalid='ignore'):  # Silence numpy warning about NaN comparison
-                self.voting_average_ = np.mean(np.ma.masked_invalid(self.all_p_values_) <= np.log(p_thresh),
+                self.voting_average_ = np.mean(np.ma.masked_invalid(self.all_log_p_values_) <= np.log(p_thresh),
                                                axis=0)
                 self.labels_ = np.ma.filled((self.voting_average_ >= voter_thresh).astype(float), np.nan)
                 self.voting_average_ = np.ma.filled(self.voting_average_, np.nan)
