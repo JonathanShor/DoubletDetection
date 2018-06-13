@@ -20,8 +20,7 @@ clf = doubletdetection.BoostClassifier()
 labels = clf.fit(raw_counts).predict()
 ```
 
-`raw_counts` is a scRNA-seq count matrix (cells by genes), and is array-like. `labels` is a binary 1-dimensional numpy ndarray with the value 1 representing a
-detected doublet.
+`raw_counts` is a scRNA-seq count matrix (cells by genes), and is array-like. `labels` is a 1-dimensional numpy ndarray with the value 1 representing a detected doublet, 0 a singlet, and np.nan an ambiguous cell.
 
 The classifier works best when there are several cell types present in the data. Furthermore, it should be applied individually to each run in an aggregated count matrix.
 
