@@ -53,12 +53,14 @@ def convergence(clf, show=False, save=None, p_thresh=0.01, voter_thresh=0.9):
     Returns:
         matplotlib figure
     """
+    log_p_thresh = np.log(p_thresh)
     doubs_per_run = []
     # Ignore numpy complaining about np.nan comparisons
     with np.errstate(invalid='ignore'):
         for i in range(clf.n_iters):
-            cum_p_values = clf.all_log_p_values_[:i + 1]
-            cum_vote_average = np.mean(np.ma.masked_invalid(cum_p_values) <= np.log(p_thresh), axis=0)
+            cum_log_p_values = clf.all_log_p_values_[:i + 1]
+            cum_vote_average = np.mean(np.ma.masked_invalid(cum_log_p_values) <= log_p_thresh,
+                                       axis=0)
             cum_doublets = np.ma.filled((cum_vote_average >= voter_thresh).astype(float), np.nan)
             doubs_per_run.append(np.nansum(cum_doublets))
 

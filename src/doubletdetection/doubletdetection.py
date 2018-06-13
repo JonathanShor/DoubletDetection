@@ -92,8 +92,12 @@ class BoostClassifier:
             pseudocount=new_var)
 
     Attributes:
-        all_log_p_values_ (ndarray): Hypergeometric test natural log p-value per cell for cluster
-            enrichment of synthetic doublets. Shape (n_iters, num_cells).
+        all_log_p_values_ (ndarray): Hypergeometric test natural log p-value per
+            cell for cluster enrichment of synthetic doublets. Shape (n_iters,
+            num_cells).
+        all_p_values_ (ndarray): DEPRECATED. Exponentiated all_log_p_values.
+            Due to rounding point errors, use of all_log_p_values recommended.
+            Will be removed in v3.0.
         all_scores_ (ndarray): The fraction of a cell's cluster that is
             synthetic doublets. Shape (n_iters, num_cells).
         communities_ (ndarray): Cluster ID for corresponding cell. Shape
@@ -153,8 +157,8 @@ class BoostClassifier:
             raw_counts (array-like): Count matrix, oriented cells by genes.
 
         Sets:
-            all_scores_, all_log_p_values_, communities_, top_var_genes, parents,
-            synth_communities
+            all_scores_, all_p_values_, all_log_p_values_, communities_,
+            top_var_genes, parents, synth_communities
 
         Returns:
             The fitted classifier.
@@ -205,6 +209,7 @@ class BoostClassifier:
         self.communities_ = all_communities
         self.parents_ = all_parents
         self.synth_communities_ = all_synth_communities
+        self.all_p_values_ = np.exp(self.all_log_p_values_)
 
         return self
 
@@ -224,11 +229,13 @@ class BoostClassifier:
         Returns:
             labels_ (ndarray, ndims=1):  0 for singlet, 1 for detected doublet
         """
+        log_p_thresh = np.log(p_thresh)
         if self.n_iters > 1:
             with np.errstate(invalid='ignore'):  # Silence numpy warning about NaN comparison
-                self.voting_average_ = np.mean(np.ma.masked_invalid(self.all_log_p_values_) <= np.log(p_thresh),
-                                               axis=0)
-                self.labels_ = np.ma.filled((self.voting_average_ >= voter_thresh).astype(float), np.nan)
+                self.voting_average_ = np.mean(
+                    np.ma.masked_invalid(self.all_log_p_values_) <= log_p_thresh, axis=0)
+                self.labels_ = np.ma.filled((self.voting_average_ >= voter_thresh).astype(float),
+                                             np.nan)
                 self.voting_average_ = np.ma.filled(self.voting_average_, np.nan)
         else:
             # Find a cutoff score
@@ -288,17 +295,18 @@ class BoostClassifier:
                             for i in community_IDs}
         scores = np.array([community_scores[i] for i in self.communities_])
 
-        community_p_values = {i: hypergeom.logsf(synth_cells_per_comm[i], aug_counts.shape[0],
-                                                 self._synthetics.shape[0],
-                                                 synth_cells_per_comm[i] + orig_cells_per_comm[i])
-                              for i in community_IDs}
-        p_values = np.array([community_p_values[i] for i in self.communities_])
+        community_log_p_values = {i: hypergeom.logsf(synth_cells_per_comm[i], aug_counts.shape[0],
+                                                     self._synthetics.shape[0],
+                                                     synth_cells_per_comm[i] +
+                                                     orig_cells_per_comm[i])
+                                  for i in community_IDs}
+        log_p_values = np.array([community_log_p_values[i] for i in self.communities_])
 
         if min_ID < 0:
             scores[self.communities_ == -1] = np.nan
-            p_values[self.communities_ == -1] = np.nan
+            log_p_values[self.communities_ == -1] = np.nan
 
-        return scores, p_values
+        return scores, log_p_values
 
     def _downsampleCellPair(self, cell1, cell2):
         """Downsample the sum of two cells' gene expression profiles.
