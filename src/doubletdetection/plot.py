@@ -200,7 +200,7 @@ def threshold(clf, log10=True, show=False, save=None, p_grid=None, voter_grid=No
 
     if show is True:
         plt.show()
-    if save_name:
-        f.savefig(save_name, format='pdf', bbox_inches='tight')
+    if save:
+        f.savefig(save, format='pdf', bbox_inches='tight')
 
     return f
