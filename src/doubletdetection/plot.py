@@ -136,7 +136,7 @@ def tsne(raw_counts, labels, n_components=30, n_jobs=-1, show=False, save=None,
     return fig, tsne_counts
 
 
-def threshold(clf, log10=True, show=False, save_name=None, p_grid=None, voter_grid=None, v_step=20,
+def threshold(clf, log10=True, show=False, save=None, p_grid=None, voter_grid=None, v_step=20,
               p_step=20):
     """Produce a plot showing number of cells called doublet across
        various thresholds
@@ -146,7 +146,7 @@ def threshold(clf, log10=True, show=False, save_name=None, p_grid=None, voter_gr
         log10 (bool, optional): Use natural log p values if False, log10
             otherwise.
         show (bool, optional): If True, runs plt.show()
-        save_name (str, optional): If provided, the figure is saved to this
+        save (str, optional): If provided, the figure is saved to this
             filepath.
         p_grid (ndarray, optional): p-value thresholds to use
         voter_grid (ndarray, optional): Voting thresholds to use. Defaults to
