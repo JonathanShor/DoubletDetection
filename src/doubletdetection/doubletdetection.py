@@ -212,7 +212,7 @@ class BoostClassifier:
         """Produce doublet calls from fitted classifier
 
         Args:
-            p_thresh (float, optional): hypergeometric test log p-value threshold
+            p_thresh (float, optional): hypergeometric test p-value threshold
                 that determines per iteration doublet calls
             voter_thresh (float, optional): fraction of iterations a cell must
                 be called a doublet

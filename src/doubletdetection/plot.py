@@ -45,7 +45,7 @@ def convergence(clf, show=False, save=None, p_thresh=0.01, voter_thresh=0.9):
         show (bool, optional): If True, runs plt.show()
         save (str, optional): filename for saved figure,
             figure not saved by default
-        p_thresh (float, optional): hypergeometric test log p-value threshold
+        p_thresh (float, optional): hypergeometric test p-value threshold
             that determines per iteration doublet calls
         voter_thresh (float, optional): fraction of iterations a cell must
             be called a doublet
