@@ -146,9 +146,10 @@ def threshold(clf, show=False, save=None, log_p_grid=None, voter_grid=None, v_st
         show (bool, optional): If True, runs plt.show()
         save (str, optional): If provided, the figure is saved to this
             filepath.
-        log_p_grid (ndarray, optional): log10 p-value thresholds to use
+        log_p_grid (ndarray, optional): log10 p-value thresholds to use.
+            Defaults to np.arange(-100, -1)
         voter_grid (ndarray, optional): Voting thresholds to use. Defaults to
-            np.arange(0.3, 1.0, 0.01).
+            np.arange(0.3, 1.0, 0.05).
         p_step (int, optional): number of xlabels to skip in plot
         v_step (int, optional): number of ylabels to skip in plot
 
