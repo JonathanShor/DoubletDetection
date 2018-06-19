@@ -90,6 +90,10 @@ class BoostClassifier:
             default 0.1 value to some positive float `new_var`, use:
             normalizer=lambda counts: doubletdetection.normalize_counts(counts,
             pseudocount=new_var)
+        random_state (int, optional): If provided, passed to PCA and used to
+            seedrandom seed numpy's RNG. NOTE: Phenograph does not currently
+            admit a random seed, and so this will not guarantee identical
+            results across runs.
 
     Attributes:
         all_log_p_values_ (ndarray): Hypergeometric test natural log p-value per
@@ -117,12 +121,16 @@ class BoostClassifier:
 
     def __init__(self, boost_rate=0.25, n_components=30, n_top_var_genes=10000, new_lib_as=None,
                  replace=False, phenograph_parameters={'prune': True}, n_iters=25,
-                 normalizer=None):
+                 normalizer=None, random_state=None):
         self.boost_rate = boost_rate
         self.new_lib_as = new_lib_as
         self.replace = replace
         self.n_iters = n_iters
         self.normalizer = normalizer
+        self.random_state = random_state
+
+        if self.random_state:
+            np.random.seed(self.random_state)
 
         if n_components == 30 and n_top_var_genes > 0:
             # If user did not change n_components, silently cap it by n_top_var_genes if needed
@@ -235,7 +243,7 @@ class BoostClassifier:
                 self.voting_average_ = np.mean(
                     np.ma.masked_invalid(self.all_log_p_values_) <= log_p_thresh, axis=0)
                 self.labels_ = np.ma.filled((self.voting_average_ >= voter_thresh).astype(float),
-                                             np.nan)
+                                            np.nan)
                 self.voting_average_ = np.ma.filled(self.voting_average_, np.nan)
         else:
             # Find a cutoff score
@@ -272,7 +280,7 @@ class BoostClassifier:
 
         print("Running PCA...")
         # Get phenograph results
-        pca = PCA(n_components=self.n_components)
+        pca = PCA(n_components=self.n_components, random_state=self.random_state)
         reduced_counts = pca.fit_transform(aug_counts)
         print("Clustering augmented data set with Phenograph...\n")
         fullcommunities, _, _ = phenograph.cluster(reduced_counts, **self.phenograph_parameters)
