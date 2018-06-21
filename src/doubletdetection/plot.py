@@ -136,7 +136,7 @@ def tsne(raw_counts, labels, n_components=30, n_jobs=-1, show=False, save=None,
     return fig, tsne_counts
 
 
-def threshold(clf, show=False, save=None, log_p_grid=None, voter_grid=None, v_step=2,
+def threshold(clf, show=False, save=None, log10=True, log_p_grid=None, voter_grid=None, v_step=2,
               p_step=5):
     """Produce a plot showing number of cells called doublet across
        various thresholds
@@ -146,8 +146,10 @@ def threshold(clf, show=False, save=None, log_p_grid=None, voter_grid=None, v_st
         show (bool, optional): If True, runs plt.show()
         save (str, optional): If provided, the figure is saved to this
             filepath.
-        log_p_grid (ndarray, optional): log10 p-value thresholds to use.
-            Defaults to np.arange(-100, -1)
+        log10 (bool, optional): log base to use. 10 if True, natural log
+            if False.
+        log_p_grid (ndarray, optional): log p-value thresholds to use.
+            Defaults to np.arange(-100, -1). log base decided by log10
         voter_grid (ndarray, optional): Voting thresholds to use. Defaults to
             np.arange(0.3, 1.0, 0.05).
         p_step (int, optional): number of xlabels to skip in plot
@@ -160,7 +162,8 @@ def threshold(clf, show=False, save=None, log_p_grid=None, voter_grid=None, v_st
     # Ignore numpy complaining about np.nan comparisons
     with np.errstate(invalid='ignore'):
         all_log_p_values_ = np.copy(clf.all_log_p_values_)
-        all_log_p_values_ /= np.log(10)
+        if log10 is True:
+            all_log_p_values_ /= np.log(10)
         if log_p_grid is None:
             log_p_grid = np.arange(-100, -1)
         if voter_grid is None:
@@ -185,7 +188,10 @@ def threshold(clf, show=False, save=None, log_p_grid=None, voter_grid=None, v_st
         ax.set_yticklabels(np.around(voter_grid, 2)[::v_step])
         cbar = f.colorbar(cax)
         cbar.set_label('Predicted Doublets')
-        ax.set_xlabel("Log10 p-value")
+        if log10 is True:
+            ax.set_xlabel('Log10 p-value')
+        else:
+            ax.set_xlabel('Log p-value')
         ax.set_ylabel("Voting Threshold")
         ax.set_title('Threshold Diagnostics')
 
