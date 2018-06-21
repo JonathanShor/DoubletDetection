@@ -213,7 +213,7 @@ class BoostClassifier:
 
         return self
 
-    def predict(self, p_thresh=0.01, voter_thresh=0.9):
+    def predict(self, p_thresh=1e-7, voter_thresh=0.9):
         """Produce doublet calls from fitted classifier
 
         Args:
