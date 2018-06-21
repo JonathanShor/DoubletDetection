@@ -37,7 +37,7 @@ def normalize_counts(raw_counts, pseudocount=0.1):
     return normed
 
 
-def convergence(clf, show=False, save=None, p_thresh=10e-8, voter_thresh=0.9):
+def convergence(clf, show=False, save=None, p_thresh=1e-7, voter_thresh=0.9):
     """Produce a plot showing number of cells called doublet per iter
 
     Args:
