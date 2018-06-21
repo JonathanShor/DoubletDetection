@@ -146,8 +146,7 @@ def threshold(clf, show=False, save=None, log10=True, log_p_grid=None, voter_gri
         show (bool, optional): If True, runs plt.show()
         save (str, optional): If provided, the figure is saved to this
             filepath.
-        log10 (bool, optional): log base to use. 10 if True, natural log
-            if False.
+        log10 (bool, optional): Use log 10 if true, natural log if false.
         log_p_grid (ndarray, optional): log p-value thresholds to use.
             Defaults to np.arange(-100, -1). log base decided by log10
         voter_grid (ndarray, optional): Voting thresholds to use. Defaults to
@@ -162,7 +161,7 @@ def threshold(clf, show=False, save=None, log10=True, log_p_grid=None, voter_gri
     # Ignore numpy complaining about np.nan comparisons
     with np.errstate(invalid='ignore'):
         all_log_p_values_ = np.copy(clf.all_log_p_values_)
-        if log10 is True:
+        if log10:
             all_log_p_values_ /= np.log(10)
         if log_p_grid is None:
             log_p_grid = np.arange(-100, -1)
