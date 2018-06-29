@@ -106,6 +106,7 @@ def tsne(raw_counts, labels, n_components=30, n_jobs=-1, show=False, save=None,
     Returns:
         matplotlib figure
         ndarray: tsne reduction
+        communities: result of PhenoGraph clustering
     """
     norm_counts = normalizer(raw_counts)
     reduced_counts = PCA(n_components=n_components,
@@ -133,7 +134,7 @@ def tsne(raw_counts, labels, n_components=30, n_jobs=-1, show=False, save=None,
     if isinstance(save, str):
         fig.savefig(save, format='pdf', bbox_inches='tight')
 
-    return fig, tsne_counts
+    return fig, tsne_counts, communities
 
 
 def threshold(clf, show=False, save=None, log10=True, log_p_grid=None, voter_grid=None, v_step=2,
