@@ -83,7 +83,7 @@ def convergence(clf, show=False, save=None, p_thresh=1e-7, voter_thresh=0.9):
 
 
 def tsne(raw_counts, labels, n_components=30, n_jobs=-1, show=False, save=None,
-         normalizer=normalize_counts):
+         normalizer=normalize_counts, random_state=None):
     """Produce a tsne plot of the data with doublets in black.
 
         Count matrix is normalized and dimension reduced before plotting.
@@ -102,6 +102,7 @@ def tsne(raw_counts, labels, n_components=30, n_jobs=-1, show=False, save=None,
             from the default 0.1 value to some positive float `new_var`, use:
             normalizer=lambda counts: doubletdetection.normalize_counts(counts,
             pseudocount=new_var)
+        random_state (int, optional): If provided, passed to PCA and TSNE
 
     Returns:
         matplotlib figure
@@ -110,9 +111,9 @@ def tsne(raw_counts, labels, n_components=30, n_jobs=-1, show=False, save=None,
     """
     norm_counts = normalizer(raw_counts)
     reduced_counts = PCA(n_components=n_components,
-                         svd_solver='randomized').fit_transform(norm_counts)
+                         svd_solver='randomized', random_state=random_state).fit_transform(norm_counts)
     communities, _, _ = phenograph.cluster(reduced_counts)
-    tsne_counts = TSNE(n_jobs=-1).fit_transform(reduced_counts)
+    tsne_counts = TSNE(n_jobs=-1, random_state=random_state).fit_transform(reduced_counts)
     # Ensure only looking at positively identified doublets
     doublets = labels == 1
 
