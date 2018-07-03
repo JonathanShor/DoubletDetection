@@ -5,6 +5,7 @@ import phenograph
 import os
 import warnings
 import numpy as np
+from sklearn.utils import check_array
 
 import matplotlib
 try:
@@ -89,7 +90,7 @@ def tsne(raw_counts, labels, n_components=30, n_jobs=-1, show=False, save=None,
         Count matrix is normalized and dimension reduced before plotting.
 
     Args:
-        raw_counts (ndarray): cells by genes count matrix
+        raw_counts (array-like): Count matrix, oriented cells by genes.
         labels (ndarray): predicted doublets from predict method
         n_components (int, optional): number of PCs to use prior to TSNE
         n_jobs (int, optional): number of cores to use for TSNE, -1 for all
@@ -109,6 +110,13 @@ def tsne(raw_counts, labels, n_components=30, n_jobs=-1, show=False, save=None,
         ndarray: tsne reduction
         communities: result of PhenoGraph clustering
     """
+
+    try:
+        raw_counts = check_array(raw_counts, accept_sparse=False, force_all_finite=True,
+                                 ensure_2d=True)
+    except TypeError:   # Only catches sparse error. Non-finite & n_dims still raised.
+        warnings.warn("Sparse raw_counts is automatically densified.")
+        raw_counts = raw_counts.toarray()
     norm_counts = normalizer(raw_counts)
     reduced_counts = PCA(n_components=n_components,
                          svd_solver='randomized', random_state=random_state).fit_transform(norm_counts)
