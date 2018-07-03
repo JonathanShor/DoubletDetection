@@ -69,11 +69,11 @@ def convergence(clf, show=False, save=None, p_thresh=1e-7, voter_thresh=0.9):
     with warnings.catch_warnings():
         warnings.filterwarnings(action="ignore", module="matplotlib", message="^tight_layout")
 
-        f, ax = plt.subplots(1, 1, figsize=(3, 3), dpi=200)
+        f, ax = plt.subplots(1, 1, figsize=(4, 4), dpi=150)
         ax.plot(np.arange(len(doubs_per_run)), doubs_per_run)
         ax.set_xlabel("Number of Iterations")
         ax.set_ylabel("Number of Predicted Doublets")
-        ax.set_title('Predicted Doublets\n per Iteration')
+        ax.set_title('Predicted Doublets per Iteration')
 
         if show is True:
             plt.show()
@@ -125,15 +125,14 @@ def tsne(raw_counts, labels, n_components=30, n_jobs=-1, show=False, save=None,
     # Ensure only looking at positively identified doublets
     doublets = labels == 1
 
-    fig, axes = plt.subplots(1, 1, figsize=(3, 3), dpi=200)
+    fig, axes = plt.subplots(1, 1, figsize=(4, 4), dpi=150)
     axes.scatter(tsne_counts[:, 0], tsne_counts[:, 1],
                  c=communities, cmap=plt.cm.tab20, s=1)
     axes.scatter(tsne_counts[:, 0][doublets], tsne_counts[:, 1][doublets],
-                 s=3, edgecolor='k', facecolor='k')
-    axes.set_title('Cells with Detected\n Doublets in Black')
-    plt.xticks([])
-    plt.yticks([])
-    axes.set_xlabel('{} doublets out of {} cells.\n {}%  across-type doublet rate.'.format(
+                 s=3, c='black', label='predictions')
+    axes.axis('off')
+    axes.legend(frameon=False)
+    axes.set_title('{} doublets out of {} cells\n {}% cross-type doublet rate'.format(
         np.sum(doublets),
         raw_counts.shape[0],
         np.round(100 * np.sum(doublets) / raw_counts.shape[0], 2)))
@@ -189,7 +188,7 @@ def threshold(clf, show=False, save=None, log10=True, log_p_grid=None, voter_gri
     with warnings.catch_warnings():
         warnings.filterwarnings(action="ignore", module="matplotlib", message="^tight_layout")
 
-        f, ax = plt.subplots(1, 1, figsize=(3, 3), dpi=200)
+        f, ax = plt.subplots(1, 1, figsize=(4, 4), dpi=150)
         cax = ax.imshow(doubs_per_t, cmap='hot', aspect='auto')
         ax.set_xticks(np.arange(len(log_p_grid))[::p_step])
         ax.set_xticklabels(np.around(log_p_grid, 1)[::p_step], rotation='vertical')
