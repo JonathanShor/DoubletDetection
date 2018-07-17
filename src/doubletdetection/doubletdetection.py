@@ -221,14 +221,15 @@ class BoostClassifier:
 
         return self
 
-    def predict(self, p_thresh=1e-7, voter_thresh=0.9):
+    def predict(self, p_thresh, voter_thresh):
         """Produce doublet calls from fitted classifier
 
         Args:
-            p_thresh (float, optional): hypergeometric test p-value threshold
-                that determines per iteration doublet calls
-            voter_thresh (float, optional): fraction of iterations a cell must
-                be called a doublet
+            p_thresh (float): Hypergeometric test p-value threshold that
+                determines per iteration doublet calls. Previously used a
+                default of 1e-7.
+            voter_thresh (float): Fraction of iterations a cell must be called a
+                doublet. Previously used a default of 0.9.
 
         Sets:
             labels_ and voting_average_ if n_iters > 1.
