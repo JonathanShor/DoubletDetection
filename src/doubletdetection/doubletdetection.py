@@ -238,12 +238,14 @@ class BoostClassifier:
         Returns:
             labels_ (ndarray, ndims=1):  0 for singlet, 1 for detected doublet
         """
-        log_p_thresh = np.log(p_thresh)
+        self.p_thresh = p_thresh
+        self.voter_thresh = voter_thresh
+        log_p_thresh = np.log(self.p_thresh)
         if self.n_iters > 1:
             with np.errstate(invalid='ignore'):  # Silence numpy warning about NaN comparison
                 self.voting_average_ = np.mean(
                     np.ma.masked_invalid(self.all_log_p_values_) <= log_p_thresh, axis=0)
-                self.labels_ = np.ma.filled((self.voting_average_ >= voter_thresh).astype(float),
+                self.labels_ = np.ma.filled((self.voting_average_ >= self.voter_thresh).astype(float),
                                             np.nan)
                 self.voting_average_ = np.ma.filled(self.voting_average_, np.nan)
         else:
