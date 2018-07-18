@@ -150,6 +150,8 @@ class BoostClassifier:
 
         if "prune" not in phenograph_parameters:
             phenograph_parameters["prune"] = True
+        if ("verbosity" not in phenograph_parameters) and (not self.verbose):
+            phenograph_parameters["verbosity"] = 1
         self.phenograph_parameters = phenograph_parameters
         if (self.n_iters == 1) and (phenograph_parameters.get("prune") is True):
             warn_msg = (
