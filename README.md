@@ -1,6 +1,8 @@
 # DoubletDetection
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.2658730.svg)](https://doi.org/10.5281/zenodo.2658730)
 
 DoubletDetection is a Python3 package to detect doublets (technical errors) in single-cell RNA-seq count matrices.
+
 
 To install DoubletDetection:
 
@@ -34,6 +36,8 @@ Data can be downloaded from the [10x website](https://support.10xgenomics.com/si
 
 
 ## Citations
-bioRxiv submission is in the works.
+bioRxiv submission and journal publication expected in the coming months. Please use the following for now:
+
+Gayoso, Adam, & Shor, Jonathan. (2018, July 17). DoubletDetection (Version v2.4). Zenodo. http://doi.org/10.5281/zenodo.2658730
 
 This project is licensed under the terms of the MIT license.
