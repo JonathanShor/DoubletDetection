@@ -38,6 +38,6 @@ Data can be downloaded from the [10x website](https://support.10xgenomics.com/si
 ## Citations
 bioRxiv submission and journal publication expected in the coming months. Please use the following for now:
 
-Gayoso, Adam, & Shor, Jonathan. (2018, July 17). DoubletDetection (Version v2.4). Zenodo. http://doi.org/10.5281/zenodo.2658730
+Gayoso, Adam, & Shor, Jonathan. (2018, July 17). DoubletDetection (Version v2.4). Zenodo. http://doi.org/10.5281/zenodo.2678042
 
 This project is licensed under the terms of the MIT license.
