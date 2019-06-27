@@ -201,11 +201,7 @@ class BoostClassifier:
         """
 
         raw_counts = check_array(
-            raw_counts,
-            accept_sparse="csr",
-            force_all_finite=True,
-            ensure_2d=True,
-            dtype="float32",
+            raw_counts, accept_sparse="csr", force_all_finite=True, ensure_2d=True, dtype="float32"
         )
 
         if sp_sparse.issparse(raw_counts) is not True:
@@ -238,9 +234,7 @@ class BoostClassifier:
         self.all_log_p_values_ = np.zeros((self.n_iters, self._num_cells))
         all_communities = np.zeros((self.n_iters, self._num_cells))
         all_parents = []
-        all_synth_communities = np.zeros(
-            (self.n_iters, int(self.boost_rate * self._num_cells))
-        )
+        all_synth_communities = np.zeros((self.n_iters, int(self.boost_rate * self._num_cells)))
 
         for i in tqdm(range(self.n_iters)):
             if self.verbose:
@@ -284,9 +278,7 @@ class BoostClassifier:
         """
         log_p_thresh = np.log(p_thresh)
         if self.n_iters > 1:
-            with np.errstate(
-                invalid="ignore"
-            ):  # Silence numpy warning about NaN comparison
+            with np.errstate(invalid="ignore"):  # Silence numpy warning about NaN comparison
                 self.voting_average_ = np.mean(
                     np.ma.masked_invalid(self.all_log_p_values_) <= log_p_thresh, axis=0
                 )
@@ -298,15 +290,11 @@ class BoostClassifier:
             # Find a cutoff score
             potential_cutoffs = np.unique(self.all_scores_[~np.isnan(self.all_scores_)])
             if len(potential_cutoffs) > 1:
-                max_dropoff = (
-                    np.argmax(potential_cutoffs[1:] - potential_cutoffs[:-1]) + 1
-                )
+                max_dropoff = np.argmax(potential_cutoffs[1:] - potential_cutoffs[:-1]) + 1
             else:  # Most likely pathological dataset, only one (or no) clusters
                 max_dropoff = 0
             self.suggested_score_cutoff_ = potential_cutoffs[max_dropoff]
-            with np.errstate(
-                invalid="ignore"
-            ):  # Silence numpy warning about NaN comparison
+            with np.errstate(invalid="ignore"):  # Silence numpy warning about NaN comparison
                 self.labels_ = self.all_scores_[0, :] >= self.suggested_score_cutoff_
             self.labels_[np.isnan(self.all_scores_)[0, :]] = np.nan
 
@@ -380,8 +368,7 @@ class BoostClassifier:
         orig_cells_per_comm = collections.Counter(self.communities_)
         community_IDs = orig_cells_per_comm.keys()
         community_scores = {
-            i: float(synth_cells_per_comm[i])
-            / (synth_cells_per_comm[i] + orig_cells_per_comm[i])
+            i: float(synth_cells_per_comm[i]) / (synth_cells_per_comm[i] + orig_cells_per_comm[i])
             for i in community_IDs
         }
         scores = np.array([community_scores[i] for i in self.communities_])
@@ -412,9 +399,7 @@ class BoostClassifier:
         num_synths = int(self.boost_rate * self._num_cells)
 
         # Parent indices
-        choices = np.random.choice(
-            self._num_cells, size=(num_synths, 2), replace=self.replace
-        )
+        choices = np.random.choice(self._num_cells, size=(num_synths, 2), replace=self.replace)
         parents = [list(p) for p in choices]
 
         parent0 = self._raw_counts[choices[:, 0], :]
