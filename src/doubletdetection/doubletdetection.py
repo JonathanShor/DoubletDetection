@@ -139,7 +139,6 @@ class BoostClassifier:
         self.n_iters = n_iters
         self.normalizer = normalizer
         self.random_state = random_state
-        self.n_jobs = n_jobs
 
         if self.random_state:
             np.random.seed(self.random_state)
@@ -310,7 +309,6 @@ class BoostClassifier:
 
         aug_counts = anndata.AnnData(aug_counts)
         aug_counts.obs['n_counts'] = aug_lib_size
-        # sc.pp.regress_out(aug_counts, ['n_counts'], n_jobs=self.n_jobs)
         sc.pp.scale(aug_counts, max_value=15)
 
         print("Running PCA...")
