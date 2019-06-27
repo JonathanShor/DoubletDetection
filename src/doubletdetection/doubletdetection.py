@@ -72,10 +72,6 @@ class BoostClassifier:
             clustering.
         n_top_var_genes (int, optional): Number of highest variance genes to
             use; other genes discarded. Will use all genes when zero.
-        new_lib_as: (([int, int]) -> int, optional): Method to use in choosing
-            library size for synthetic doublets. Defaults to None which makes
-            synthetic doublets the exact addition of its parents; alternative
-            is new_lib_as=np.max.
         replace (bool, optional): If False, a cell will be selected as a
             synthetic doublet's parent no more than once.
         phenograph_parameters (dict, optional): Parameter dict to pass directly
@@ -119,11 +115,10 @@ class BoostClassifier:
             doublet.
     """
 
-    def __init__(self, boost_rate=0.25, n_components=30, n_top_var_genes=10000, new_lib_as=None,
+    def __init__(self, boost_rate=0.25, n_components=30, n_top_var_genes=10000,
                  replace=False, phenograph_parameters={'prune': True}, n_iters=25,
                  normalizer=None, random_state=None):
         self.boost_rate = boost_rate
-        self.new_lib_as = new_lib_as
         self.replace = replace
         self.n_iters = n_iters
         self.normalizer = normalizer
@@ -316,28 +311,6 @@ class BoostClassifier:
 
         return scores, log_p_values
 
-    def _downsampleCellPair(self, cell1, cell2):
-        """Downsample the sum of two cells' gene expression profiles.
-
-        Args:
-            cell1 (ndarray, ndim=1): Gene count vector.
-            cell2 (ndarray, ndim=1): Gene count vector.
-
-        Returns:
-            ndarray, ndim=1: Downsampled gene count vector.
-        """
-        new_cell = cell1 + cell2
-
-        lib1 = np.sum(cell1)
-        lib2 = np.sum(cell2)
-        new_lib_size = int(self.new_lib_as([lib1, lib2]))
-        mol_ind = np.random.permutation(int(lib1 + lib2))[:new_lib_size]
-        mol_ind += 1
-        bins = np.append(np.zeros((1)), np.cumsum(new_cell))
-        new_cell = np.histogram(mol_ind, bins)[0]
-
-        return new_cell
-
     def _createDoublets(self):
         """Create synthetic doublets.
 
@@ -345,19 +318,14 @@ class BoostClassifier:
         """
         # Number of synthetic doublets to add
         num_synths = int(self.boost_rate * self._num_cells)
-        synthetic = np.zeros((num_synths, self._num_genes))
-        parents = []
 
+        # Parent indices
         choices = np.random.choice(self._num_cells, size=(num_synths, 2), replace=self.replace)
-        for i, parent_pair in enumerate(choices):
-            row1 = parent_pair[0]
-            row2 = parent_pair[1]
-            if self.new_lib_as is not None:
-                new_row = self._downsampleCellPair(self._raw_counts[row1], self._raw_counts[row2])
-            else:
-                new_row = self._raw_counts[row1] + self._raw_counts[row2]
-            synthetic[i] = new_row
-            parents.append([row1, row2])
+        parents = [list(p) for p in choices]
+
+        parent0 = self._raw_counts[choices[:, 0], :]
+        parent1 = self._raw_counts[choices[:, 1], :]
+        synthetic = parent0 + parent1
 
         self._raw_synthetics = synthetic
         self.parents_ = parents
