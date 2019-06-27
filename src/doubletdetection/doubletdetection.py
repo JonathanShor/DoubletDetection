@@ -328,4 +328,4 @@ class BoostClassifier:
         synthetic = parent0 + parent1
 
         self._raw_synthetics = synthetic
-        self.parents = parents
+        self.parents_ = parents
