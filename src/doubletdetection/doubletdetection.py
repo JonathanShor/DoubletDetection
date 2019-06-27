@@ -7,9 +7,11 @@ import numpy as np
 import phenograph
 from sklearn.decomposition import PCA
 from sklearn.utils import check_array
+from sklearn.utils.sparsefuncs_fast import inplace_csr_row_normalize_l1
 from scipy.io import mmread
 from scipy.stats import hypergeom
 import scipy.sparse as sp_sparse
+from scipy.sparse import csr_matrix
 import tables
 
 
@@ -43,9 +45,8 @@ def load_10x_h5(file, genome):
     indptr = getattr(group, 'indptr').read()
     shape = getattr(group, 'shape').read()
     matrix = sp_sparse.csc_matrix((data, indices, indptr), shape=shape)
-    dense_matrix = matrix.toarray()
 
-    return dense_matrix, barcodes, gene_names
+    return matrix, barcodes, gene_names
 
 
 def load_mtx(file):
@@ -57,9 +58,9 @@ def load_mtx(file):
     Returns:
         ndarray: Raw count matrix.
     """
-    raw_counts = np.transpose(mmread(file).toarray())
+    raw_counts = np.transpose(mmread(file))
 
-    return raw_counts
+    return raw_counts.tocsc()
 
 
 class BoostClassifier:
@@ -166,26 +167,33 @@ class BoostClassifier:
         Returns:
             The fitted classifier.
         """
-        try:
-            raw_counts = check_array(raw_counts, accept_sparse=False, force_all_finite=True,
-                                     ensure_2d=True)
-        except TypeError:   # Only catches sparse error. Non-finite & n_dims still raised.
-            warnings.warn("Sparse raw_counts is automatically densified.")
-            raw_counts = raw_counts.toarray()
+        
+        raw_counts = check_array(raw_counts, accept_sparse="csr", force_all_finite=True,
+                                    ensure_2d=True, dtype="float32")
+        
+        if sp_sparse.issparse(raw_counts) is not True:
+            print('Sparsifying matrix.')
+            raw_counts = csr_matrix(raw_counts)
 
         if self.n_top_var_genes > 0:
             if self.n_top_var_genes < raw_counts.shape[1]:
-                gene_variances = np.var(raw_counts, axis=0)
+                gene_variances = (
+                    np.array(raw_counts.power(2).mean(axis=0)) - (np.array(raw_counts.mean(axis=0))) ** 2
+                )[0]
                 top_var_indexes = np.argsort(gene_variances)
                 self.top_var_genes_ = top_var_indexes[-self.n_top_var_genes:]
+                # csc if faster for column indexing
+                raw_counts = raw_counts.tocsc()
                 raw_counts = raw_counts[:, self.top_var_genes_]
+                raw_counts = raw_counts.tocsr()
 
         self._raw_counts = raw_counts
         (self._num_cells, self._num_genes) = self._raw_counts.shape
         if self.normalizer is None:
             # Memoize these; default normalizer treats these invariant for all synths
-            self._lib_size = np.sum(raw_counts, axis=1)
-            self._normed_raw_counts = self._raw_counts / self._lib_size[:, np.newaxis]
+            self._lib_size = np.sum(raw_counts, axis=1).A
+            self._normed_raw_counts = self._raw_counts.copy()
+            inplace_csr_row_normalize_l1(self._normed_raw_counts)
 
         self.all_scores_ = np.zeros((self.n_iters, self._num_cells))
         self.all_log_p_values_ = np.zeros((self.n_iters, self._num_cells))
@@ -264,11 +272,12 @@ class BoostClassifier:
             aug_counts = self.normalizer(np.append(self._raw_counts, self._raw_synthetics, axis=0))
         else:
             # Follows doubletdetection.plot.normalize_counts, but uses memoized normed raw_counts
-            synth_lib_size = np.sum(self._raw_synthetics, axis=1)
+            synth_lib_size = np.sum(self._raw_synthetics, axis=1).A
             aug_lib_size = np.concatenate([self._lib_size, synth_lib_size])
-            normed_synths = self._raw_synthetics / synth_lib_size[:, np.newaxis]
-            aug_counts = np.concatenate([self._normed_raw_counts, normed_synths], axis=0)
-            aug_counts = np.log(aug_counts * np.median(aug_lib_size) + 0.1)
+            normed_synths = self._raw_synthetics.copy()
+            inplace_csr_row_normalize_l1(normed_synths)
+            aug_counts = sp_sparse.vstack((self._normed_raw_counts, normed_synths))
+            aug_counts = np.log(aug_counts.A * np.median(aug_lib_size) + 0.1)
 
         self._norm_counts = aug_counts[:self._num_cells]
         self._synthetics = aug_counts[self._num_cells:]
