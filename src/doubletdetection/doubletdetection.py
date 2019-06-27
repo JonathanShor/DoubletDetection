@@ -287,7 +287,7 @@ class BoostClassifier:
         # Normalize combined augmented set
         print("Normalizing...")
         if self.normalizer is not None:
-            aug_counts = self.normalizer(np.append(self._raw_counts, self._raw_synthetics, axis=0))
+            aug_counts = self.normalizer(sp_sparse.vstack((self._raw_counts, self._raw_synthetics)))
         else:
             # Follows doubletdetection.plot.normalize_counts, but uses memoized normed raw_counts
             synth_lib_size = np.sum(self._raw_synthetics, axis=1).A1
