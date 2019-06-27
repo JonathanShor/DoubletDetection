@@ -132,7 +132,7 @@ class BoostClassifier:
         phenograph_parameters={"prune": True},
         n_iters=25,
         normalizer=None,
-        random_state=None,
+        random_state=42,
     ):
         self.boost_rate = boost_rate
         self.replace = replace
@@ -308,13 +308,14 @@ class BoostClassifier:
         self._synthetics = aug_counts[self._num_cells :]
 
         aug_counts = anndata.AnnData(aug_counts)
+        # sc.pp.scale(aug_counts, max_value=10)
 
         print("Running PCA...")
         sc.tl.pca(aug_counts, n_comps=self.n_components, random_state=self.random_state)
         print("Clustering augmented data set...\n")
-        sc.pp.neighbors(aug_counts)
-        sc.tl.leiden(aug_counts)
-        fullcommunities = np.array(b.obs['aug_counts'], dtype=int)
+        sc.pp.neighbors(aug_counts, random_state=self.random_state, method="umap", n_neighbors=15)
+        sc.tl.louvain(aug_counts, random_state=self.random_state, resolution=3, directed=False)
+        fullcommunities = np.array(aug_counts.obs['louvain'], dtype=int)
         min_ID = min(fullcommunities)
         self.communities_ = fullcommunities[: self._num_cells]
         self.synth_communities_ = fullcommunities[self._num_cells :]
