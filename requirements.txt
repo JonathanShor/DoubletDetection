@@ -5,5 +5,5 @@ pandas
 scipy
 sklearn
 tables
-git+https://github.com/DmitryUlyanov/Multicore-TSNE.git
+umap-learn
 git+https://github.com/JonathanShor/PhenoGraph
