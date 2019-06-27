@@ -81,7 +81,7 @@ class BoostClassifier:
             this.
         n_iters (int, optional): Number of fit operations from which to collect
             p-values. Defualt value is 25.
-        normalizer ((ndarray) -> ndarray): Method to normalize raw_counts.
+        normalizer ((sp_sparse) -> ndarray): Method to normalize raw_counts.
             Defaults to normalize_counts, included in this package. Note: To use
             normalize_counts with its pseudocount parameter changed from the
             default 0.1 value to some positive float `new_var`, use:
