@@ -13,6 +13,13 @@ from scipy.stats import hypergeom
 import scipy.sparse as sp_sparse
 from scipy.sparse import csr_matrix
 import tables
+import scanpy as sc
+import anndata
+
+import leidenalg
+import igraph as ig
+
+from sklearn.neighbors import kneighbors_graph
 
 
 def load_10x_h5(file, genome):
@@ -300,12 +307,14 @@ class BoostClassifier:
         self._norm_counts = aug_counts[: self._num_cells]
         self._synthetics = aug_counts[self._num_cells :]
 
+        aug_counts = anndata.AnnData(aug_counts)
+
         print("Running PCA...")
-        # Get phenograph results
-        pca = PCA(n_components=self.n_components, random_state=self.random_state)
-        reduced_counts = pca.fit_transform(aug_counts)
-        print("Clustering augmented data set with Phenograph...\n")
-        fullcommunities, _, _ = phenograph.cluster(reduced_counts, **self.phenograph_parameters)
+        sc.tl.pca(aug_counts, n_comps=self.n_components, random_state=self.random_state)
+        print("Clustering augmented data set...\n")
+        sc.pp.neighbors(aug_counts)
+        sc.tl.leiden(aug_counts)
+        fullcommunities = np.array(b.obs['aug_counts'], dtype=int)
         min_ID = min(fullcommunities)
         self.communities_ = fullcommunities[: self._num_cells]
         self.synth_communities_ = fullcommunities[self._num_cells :]
@@ -313,7 +322,7 @@ class BoostClassifier:
             np.count_nonzero(fullcommunities == i) for i in np.unique(fullcommunities)
         ]
         print(
-            "Found communities [{0}, ... {2}], with sizes: {1}\n".format(
+            "Found clusters [{0}, ... {2}], with sizes: {1}\n".format(
                 min(fullcommunities), community_sizes, max(fullcommunities)
             )
         )
@@ -364,3 +373,15 @@ class BoostClassifier:
 
         self._raw_synthetics = synthetic
         self.parents_ = parents
+
+
+def leiden_clusters(latent, k=10, rands=0):
+    nn_matrix = kneighbors_graph(latent, k)
+    rows, cols = np.where(nn_matrix.todense() == 1)
+    edges = [(row, col) for row, col in zip(rows, cols)]
+    g = ig.Graph()
+    g.add_vertices(latent.shape[0])
+    g.add_edges(edges)
+    res = leidenalg.find_partition(g, leidenalg.ModularityVertexPartition, seed=rands)
+    clusters = np.asarray(res.membership)
+    return clusters
