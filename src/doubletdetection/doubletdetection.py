@@ -308,8 +308,8 @@ class BoostClassifier:
         sc.tl.pca(aug_counts, n_comps=self.n_components, random_state=self.random_state)
         print("Clustering augmented data set...\n")
         sc.pp.neighbors(aug_counts, random_state=self.random_state, method="umap", n_neighbors=10)
-        sc.tl.louvain(aug_counts, random_state=self.random_state, resolution=3)
-        fullcommunities = np.array(aug_counts.obs['louvain'], dtype=int)
+        sc.tl.louvain(aug_counts, random_state=self.random_state, resolution=4, directed=False)
+        fullcommunities = np.array(aug_counts.obs["louvain"], dtype=int)
         min_ID = min(fullcommunities)
         self.communities_ = fullcommunities[: self._num_cells]
         self.synth_communities_ = fullcommunities[self._num_cells :]
