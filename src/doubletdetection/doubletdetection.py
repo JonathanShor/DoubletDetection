@@ -13,6 +13,7 @@ from scipy.sparse import csr_matrix
 import tables
 import scanpy as sc
 import anndata
+from tqdm.auto import tqdm
 
 
 def load_10x_h5(file, genome):
@@ -217,7 +218,7 @@ class BoostClassifier:
         all_parents = []
         all_synth_communities = np.zeros((self.n_iters, int(self.boost_rate * self._num_cells)))
 
-        for i in range(self.n_iters):
+        for i in tqdm(range(self.n_iters)):
             print("Iteration {:3}/{}".format(i + 1, self.n_iters))
             self.all_scores_[i], self.all_log_p_values_[i] = self._one_fit()
             all_communities[i] = self.communities_
