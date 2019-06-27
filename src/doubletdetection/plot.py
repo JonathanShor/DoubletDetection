@@ -1,5 +1,5 @@
 from sklearn.decomposition import PCA
-from MulticoreTSNE import MulticoreTSNE as TSNE
+import umap
 import phenograph
 
 import os
@@ -83,17 +83,16 @@ def convergence(clf, show=False, save=None, p_thresh=1e-7, voter_thresh=0.9):
     return f
 
 
-def tsne(raw_counts, labels, n_components=30, n_jobs=-1, show=False, save=None,
+def umap_plot(raw_counts, labels, n_components=30, show=False, save=None,
          normalizer=normalize_counts, random_state=None):
-    """Produce a tsne plot of the data with doublets in black.
+    """Produce a umap plot of the data with doublets in black.
 
         Count matrix is normalized and dimension reduced before plotting.
 
     Args:
         raw_counts (array-like): Count matrix, oriented cells by genes.
         labels (ndarray): predicted doublets from predict method
-        n_components (int, optional): number of PCs to use prior to TSNE
-        n_jobs (int, optional): number of cores to use for TSNE, -1 for all
+        n_components (int, optional): number of PCs to use prior to UMAP
         show (bool, optional): If True, runs plt.show()
         save (str, optional): filename for saved figure,
             figure not saved by default
@@ -103,11 +102,11 @@ def tsne(raw_counts, labels, n_components=30, n_jobs=-1, show=False, save=None,
             from the default 0.1 value to some positive float `new_var`, use:
             normalizer=lambda counts: doubletdetection.normalize_counts(counts,
             pseudocount=new_var)
-        random_state (int, optional): If provided, passed to PCA and TSNE
+        random_state (int, optional): If provided, passed to PCA and UMAP
 
     Returns:
         matplotlib figure
-        ndarray: tsne reduction
+        ndarray: umap reduction
         communities: result of PhenoGraph clustering
     """
 
@@ -121,14 +120,14 @@ def tsne(raw_counts, labels, n_components=30, n_jobs=-1, show=False, save=None,
     reduced_counts = PCA(n_components=n_components,
                          svd_solver='randomized', random_state=random_state).fit_transform(norm_counts)
     communities, _, _ = phenograph.cluster(reduced_counts)
-    tsne_counts = TSNE(n_jobs=-1, random_state=random_state).fit_transform(reduced_counts)
+    umap_dr = umap.UMAP(random_state=random_state, min_dist=0.5).fit_transform(reduced_counts)
     # Ensure only looking at positively identified doublets
     doublets = labels == 1
 
     fig, axes = plt.subplots(1, 1, figsize=(4, 4), dpi=150)
-    axes.scatter(tsne_counts[:, 0], tsne_counts[:, 1],
+    axes.scatter(umap_dr[:, 0], umap_dr[:, 1],
                  c=communities, cmap=plt.cm.tab20, s=1)
-    axes.scatter(tsne_counts[:, 0][doublets], tsne_counts[:, 1][doublets],
+    axes.scatter(umap_dr[:, 0][doublets], umap_dr[:, 1][doublets],
                  s=3, c='black', label='predictions')
     axes.axis('off')
     axes.legend(frameon=False)
@@ -142,7 +141,7 @@ def tsne(raw_counts, labels, n_components=30, n_jobs=-1, show=False, save=None,
     if isinstance(save, str):
         fig.savefig(save, format='pdf', bbox_inches='tight')
 
-    return fig, tsne_counts, communities
+    return fig, umap_dr, communities
 
 
 def threshold(clf, show=False, save=None, log10=True, log_p_grid=None, voter_grid=None, v_step=2,
