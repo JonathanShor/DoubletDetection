@@ -308,7 +308,9 @@ class BoostClassifier:
         self._synthetics = aug_counts[self._num_cells :]
 
         aug_counts = anndata.AnnData(aug_counts)
-        # sc.pp.scale(aug_counts, max_value=10)
+        aug_counts.obs['n_counts'] = aug_lib_size
+        sc.pp.regress_out(aug_counts, ['n_counts'])
+        sc.pp.scale(aug_counts, max_value=15)
 
         print("Running PCA...")
         sc.tl.pca(aug_counts, n_comps=self.n_components, random_state=self.random_state)
