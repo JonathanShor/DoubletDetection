@@ -4,8 +4,6 @@ import collections
 import warnings
 
 import numpy as np
-import phenograph
-from sklearn.decomposition import PCA
 from sklearn.utils import check_array
 from sklearn.utils.sparsefuncs_fast import inplace_csr_row_normalize_l1
 from scipy.io import mmread
@@ -15,11 +13,6 @@ from scipy.sparse import csr_matrix
 import tables
 import scanpy as sc
 import anndata
-
-import leidenalg
-import igraph as ig
-
-from sklearn.neighbors import kneighbors_graph
 
 
 def load_10x_h5(file, genome):
@@ -375,15 +368,3 @@ class BoostClassifier:
 
         self._raw_synthetics = synthetic
         self.parents_ = parents
-
-
-def leiden_clusters(latent, k=10, rands=0):
-    nn_matrix = kneighbors_graph(latent, k)
-    rows, cols = np.where(nn_matrix.todense() == 1)
-    edges = [(row, col) for row, col in zip(rows, cols)]
-    g = ig.Graph()
-    g.add_vertices(latent.shape[0])
-    g.add_edges(edges)
-    res = leidenalg.find_partition(g, leidenalg.ModularityVertexPartition, seed=rands)
-    clusters = np.asarray(res.membership)
-    return clusters
