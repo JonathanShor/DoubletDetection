@@ -31,7 +31,7 @@ The classifier works best when
 - There are several cell types present in the data
 - It is applied individually to each run in an aggregated count matrix
 
-See our [jupyter notebook](https://nbviewer.jupyter.org/github/JonathanShor/DoubletDetection/blob/master/docs/PBMC_8k_vignette.ipynb) for an example on 8k PBMCs from 10x.
+See our [jupyter notebook](https://nbviewer.jupyter.org/github/JonathanShor/DoubletDetection/blob/master/tests/notebooks/PBMC_8k_vignette.ipynb) for an example on 8k PBMCs from 10x.
 
 ## Obtaining data
 Data can be downloaded from the [10x website](https://support.10xgenomics.com/single-cell/datasets).
