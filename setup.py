@@ -23,7 +23,7 @@ setup(
     url='https://github.com/JonathanShor/DoubletDetection',
     author='Adam Gayoso, Jonathan Shor, Ambrose J. Carr',
     author_email='ajg2188@columbia.edu',
-    package_dir={'': 'src'},
+    package_dir={'': 'doubletdetection'},
     packages=['doubletdetection'],
     install_requires=[],
 )
