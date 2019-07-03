@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 import sys
 
 CLASSIFIERS = [
@@ -23,7 +23,7 @@ setup(
     url='https://github.com/JonathanShor/DoubletDetection',
     author='Adam Gayoso, Jonathan Shor, Ambrose J. Carr',
     author_email='ajg2188@columbia.edu',
-    package_dir={'': 'doubletdetection'},
-    packages=['doubletdetection'],
+    include_package_data=True,
+    packages=find_packages(),
     install_requires=[],
 )
