@@ -6,13 +6,12 @@ CLASSIFIERS = [
     "Natural Language :: English",
     "License :: OSI Approved :: MIT",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
 
 if sys.version_info.major != 3:
-    print('doubletdetection requires Python 3')
+    print('doubletdetection requires Python 3.7')
     sys.exit(1)
 
 setup(
