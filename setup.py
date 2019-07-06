@@ -24,5 +24,15 @@ setup(
     author_email='ajg2188@columbia.edu',
     include_package_data=True,
     packages=find_packages(),
-    install_requires=[],
+    install_requires=[
+          'numpy>=1.14.2',
+          'pandas>=0.22.0',
+          'scipy>=1.0.1',
+          'scikit-learn',
+          'tables>=3.4.2',
+          'Cython',
+          'cmake',
+          'MulticoreTSNE',
+          'matplotlib>=2.2.2',
+      ],
 )

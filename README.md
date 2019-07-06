@@ -9,10 +9,10 @@ DoubletDetection is a Python3 package to detect doublets (technical errors) in s
 To install DoubletDetection:
 
 ```
+pip3 install git+https://github.com/JonathanShor/PhenoGraph.git
 git clone https://github.com/JonathanShor/DoubletDetection.git
 cd DoubletDetection
-pip3 install -r requirements.txt
-pip3 install --upgrade .
+pip3 install .
 ```
 
 To run basic doublet classification:
@@ -27,7 +27,7 @@ labels = clf.fit(raw_counts).predict()
 - `raw_counts` is a scRNA-seq count matrix (cells by genes), and is array-like
 - `labels` is a 1-dimensional numpy ndarray with the value 1 representing a detected doublet, 0 a singlet, and `np.nan` an ambiguous cell.
 
-The classifier works best when 
+The classifier works best when
 - There are several cell types present in the data
 - It is applied individually to each run in an aggregated count matrix
 
