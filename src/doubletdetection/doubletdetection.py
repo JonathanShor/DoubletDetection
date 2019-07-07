@@ -92,6 +92,8 @@ class BoostClassifier:
             seedrandom seed numpy's RNG. NOTE: Phenograph does not currently
             admit a random seed, and so this will not guarantee identical
             results across runs.
+        verbose (bool, optional): Set to False to silence all normal operation
+            informational messages. Defaults to True.
 
     Attributes:
         all_log_p_values_ (ndarray): Hypergeometric test natural log p-value per
@@ -126,13 +128,15 @@ class BoostClassifier:
         phenograph_parameters={"prune": True},
         n_iters=25,
         normalizer=None,
-        random_state=42,
+        random_state=None,
+        verbose=True,
     ):
         self.boost_rate = boost_rate
         self.replace = replace
         self.n_iters = n_iters
         self.normalizer = normalizer
         self.random_state = random_state
+        self.verbose = verbose
 
         if self.random_state:
             np.random.seed(self.random_state)
@@ -147,6 +151,8 @@ class BoostClassifier:
 
         if "prune" not in phenograph_parameters:
             phenograph_parameters["prune"] = True
+        if ("verbosity" not in phenograph_parameters) and (not self.verbose):
+            phenograph_parameters["verbosity"] = 1
         self.phenograph_parameters = phenograph_parameters
         if (self.n_iters == 1) and (phenograph_parameters.get("prune") is True):
             warn_msg = (
@@ -188,7 +194,8 @@ class BoostClassifier:
         )
 
         if sp_sparse.issparse(raw_counts) is not True:
-            print("Sparsifying matrix.")
+            if self.verbose:
+                print("Sparsifying matrix.")
             raw_counts = csr_matrix(raw_counts)
 
         if self.n_top_var_genes > 0:
@@ -219,7 +226,8 @@ class BoostClassifier:
         all_synth_communities = np.zeros((self.n_iters, int(self.boost_rate * self._num_cells)))
 
         for i in tqdm(range(self.n_iters)):
-            print("Iteration {:3}/{}".format(i + 1, self.n_iters))
+            if self.verbose:
+                print("Iteration {:3}/{}".format(i + 1, self.n_iters))
             self.all_scores_[i], self.all_log_p_values_[i] = self._one_fit()
             all_communities[i] = self.communities_
             all_parents.append(self.parents_)
@@ -282,13 +290,17 @@ class BoostClassifier:
         return self.labels_
 
     def _one_fit(self):
-        print("\nCreating synthetic doublets...")
+        if self.verbose:
+            print("\nCreating synthetic doublets...")
         self._createDoublets()
 
         # Normalize combined augmented set
-        print("Normalizing...")
+        if self.verbose:
+            print("Normalizing...")
         if self.normalizer is not None:
-            aug_counts = self.normalizer(np.append(self._raw_counts, self._raw_synthetics, axis=0))
+            aug_counts = self.normalizer(
+                sp_sparse.vstack((self._raw_counts, self._raw_synthetics))
+            )
         else:
             # Follows doubletdetection.plot.normalize_counts, but uses memoized normed raw_counts
             synth_lib_size = np.sum(self._raw_synthetics, axis=1).A1
@@ -305,9 +317,11 @@ class BoostClassifier:
         aug_counts.obs['n_counts'] = aug_lib_size
         sc.pp.scale(aug_counts, max_value=15)
 
-        print("Running PCA...")
+        if self.verbose:
+            print("Running PCA...")
         sc.tl.pca(aug_counts, n_comps=self.n_components, random_state=self.random_state)
-        print("Clustering augmented data set...\n")
+        if self.verbose:
+            print("Clustering augmented data set...\n")
         sc.pp.neighbors(aug_counts, random_state=self.random_state, method="umap", n_neighbors=10)
         sc.tl.louvain(aug_counts, random_state=self.random_state, resolution=4, directed=False)
         fullcommunities = np.array(aug_counts.obs["louvain"], dtype=int)
@@ -317,11 +331,12 @@ class BoostClassifier:
         community_sizes = [
             np.count_nonzero(fullcommunities == i) for i in np.unique(fullcommunities)
         ]
-        print(
-            "Found clusters [{0}, ... {2}], with sizes: {1}\n".format(
-                min(fullcommunities), community_sizes, max(fullcommunities)
+        if self.verbose:
+            print(
+                "Found clusters [{0}, ... {2}], with sizes: {1}\n".format(
+                    min(fullcommunities), community_sizes, max(fullcommunities)
+                )
             )
-        )
 
         # Count number of fake doublets in each community and assign score
         # Number of synth/orig cells in each cluster.
