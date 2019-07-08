@@ -144,7 +144,7 @@ class BoostClassifier:
         n_iters=25,
         normalizer=None,
         random_state=0,
-        verbose=True,
+        verbose=False,
         standard_scaling=True,
     ):
         self.boost_rate = boost_rate
