@@ -4,7 +4,12 @@ import collections
 import warnings
 
 import numpy as np
-import phenograph
+try:
+    import phenograph
+except ImportError:
+    raise ImportError(
+        'please install phenograph: '
+        'pip3 install git+https://github.com/JonathanShor/PhenoGraph.git')
 from sklearn.decomposition import PCA
 from sklearn.utils import check_array
 from sklearn.utils.sparsefuncs_fast import inplace_csr_row_normalize_l1

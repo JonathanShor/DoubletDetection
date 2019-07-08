@@ -1,9 +1,0 @@
-cmake
-matplotlib
-numpy
-pandas
-scipy
-sklearn
-tables
-umap-learn
-git+https://github.com/JonathanShor/PhenoGraph
