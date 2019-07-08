@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 import sys
 
 CLASSIFIERS = [
@@ -23,7 +23,7 @@ setup(
     author="Adam Gayoso, Jonathan Shor, Ambrose J. Carr",
     author_email="ajg2188@columbia.edu",
     include_package_data=True,
-    packages=find_packages(),
+    packages=["doubletdetection"],
     install_requires=[
         "numpy>=1.14.2",
         "pandas>=0.22.0",
