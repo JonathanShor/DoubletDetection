@@ -9,7 +9,6 @@ DoubletDetection is a Python3 package to detect doublets (technical errors) in s
 To install DoubletDetection:
 
 ```
-pip3 install git+https://github.com/JonathanShor/PhenoGraph.git
 git clone https://github.com/JonathanShor/DoubletDetection.git
 cd DoubletDetection
 pip3 install .
