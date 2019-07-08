@@ -139,7 +139,7 @@ class BoostClassifier:
         n_components=30,
         n_top_var_genes=10000,
         replace=False,
-        use_phenograph=False,
+        use_phenograph=True,
         phenograph_parameters={"prune": True},
         n_iters=25,
         normalizer=None,
