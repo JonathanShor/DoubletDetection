@@ -1,6 +1,5 @@
 from sklearn.decomposition import PCA
 import umap
-import phenograph
 
 import os
 import warnings
@@ -64,12 +63,16 @@ def convergence(clf, show=False, save=None, p_thresh=1e-7, voter_thresh=0.9):
             cum_vote_average = np.mean(
                 np.ma.masked_invalid(cum_log_p_values) <= log_p_thresh, axis=0
             )
-            cum_doublets = np.ma.filled((cum_vote_average >= voter_thresh).astype(float), np.nan)
+            cum_doublets = np.ma.filled(
+                (cum_vote_average >= voter_thresh).astype(float), np.nan
+            )
             doubs_per_run.append(np.nansum(cum_doublets))
 
     # Ignore warning for convergence plot
     with warnings.catch_warnings():
-        warnings.filterwarnings(action="ignore", module="matplotlib", message="^tight_layout")
+        warnings.filterwarnings(
+            action="ignore", module="matplotlib", message="^tight_layout"
+        )
 
         f, ax = plt.subplots(1, 1, figsize=(4, 4), dpi=150)
         ax.plot(np.arange(len(doubs_per_run)), doubs_per_run)
@@ -116,7 +119,6 @@ def umap_plot(
     Returns:
         matplotlib figure
         ndarray: umap reduction
-        communities: result of PhenoGraph clustering
     """
 
     try:
@@ -130,15 +132,27 @@ def umap_plot(
     reduced_counts = PCA(
         n_components=n_components, svd_solver="randomized", random_state=random_state
     ).fit_transform(norm_counts)
-    communities, _, _ = phenograph.cluster(reduced_counts)
-    umap_dr = umap.UMAP(random_state=random_state, min_dist=0.5).fit_transform(reduced_counts)
+    umap_dr = umap.UMAP(random_state=random_state, min_dist=0.5).fit_transform(
+        reduced_counts
+    )
     # Ensure only looking at positively identified doublets
     doublets = labels == 1
 
     fig, axes = plt.subplots(1, 1, figsize=(4, 4), dpi=150)
-    axes.scatter(umap_dr[:, 0], umap_dr[:, 1], c=communities, cmap=plt.cm.tab20, s=1)
     axes.scatter(
-        umap_dr[:, 0][doublets], umap_dr[:, 1][doublets], s=3, c="black", label="predictions"
+        umap_dr[:, 0],
+        umap_dr[:, 1],
+        c="grey",
+        cmap=plt.cm.tab20,
+        s=1,
+        label="predicted singlets",
+    )
+    axes.scatter(
+        umap_dr[:, 0][doublets],
+        umap_dr[:, 1][doublets],
+        s=3,
+        c="black",
+        label="predicted doublets",
     )
     axes.axis("off")
     axes.legend(frameon=False)
@@ -155,11 +169,18 @@ def umap_plot(
     if isinstance(save, str):
         fig.savefig(save, format="pdf", bbox_inches="tight")
 
-    return fig, umap_dr, communities
+    return fig, umap_dr
 
 
 def threshold(
-    clf, show=False, save=None, log10=True, log_p_grid=None, voter_grid=None, v_step=2, p_step=5
+    clf,
+    show=False,
+    save=None,
+    log10=True,
+    log_p_grid=None,
+    voter_grid=None,
+    v_step=2,
+    p_step=5,
 ):
     """Produce a plot showing number of cells called doublet across
        various thresholds
@@ -196,12 +217,16 @@ def threshold(
                 voting_average = np.mean(
                     np.ma.masked_invalid(all_log_p_values_) <= log_p_grid[j], axis=0
                 )
-                labels = np.ma.filled((voting_average >= voter_grid[i]).astype(float), np.nan)
+                labels = np.ma.filled(
+                    (voting_average >= voter_grid[i]).astype(float), np.nan
+                )
                 doubs_per_t[i, j] = np.nansum(labels)
 
     # Ignore warning for convergence plot
     with warnings.catch_warnings():
-        warnings.filterwarnings(action="ignore", module="matplotlib", message="^tight_layout")
+        warnings.filterwarnings(
+            action="ignore", module="matplotlib", message="^tight_layout"
+        )
 
         f, ax = plt.subplots(1, 1, figsize=(4, 4), dpi=150)
         cax = ax.imshow(doubs_per_t, cmap="hot", aspect="auto")

@@ -4,13 +4,6 @@ import collections
 import warnings
 
 import numpy as np
-try:
-    import phenograph
-except ImportError:
-    raise ImportError(
-        'please install phenograph: '
-        'pip3 install git+https://github.com/JonathanShor/PhenoGraph.git')
-from sklearn.decomposition import PCA
 from sklearn.utils import check_array
 from sklearn.utils.sparsefuncs_fast import inplace_csr_row_normalize_l1
 from scipy.io import mmread
@@ -18,6 +11,19 @@ from scipy.stats import hypergeom
 import scipy.sparse as sp_sparse
 from scipy.sparse import csr_matrix
 import tables
+import scanpy as sc
+import anndata
+from tqdm.auto import tqdm
+
+try:
+    import phenograph
+except ImportError:
+    warn_msg = (
+        "PhenoGraph not installed. You will be unable to cluster using PhenoGraph."
+        + "You can install PhenoGraph using "
+        + "pip3 install git+https://github.com/JonathanShor/PhenoGraph.git"
+    )
+    warnings.warn(warn_msg)
 
 
 def load_10x_h5(file, genome):
@@ -80,10 +86,12 @@ class BoostClassifier:
             use; other genes discarded. Will use all genes when zero.
         replace (bool, optional): If False, a cell will be selected as a
             synthetic doublet's parent no more than once.
+        use_phenograph (bool, optional): Set to True to use PhenoGraph clustering.
+            Defaults to False, which uses louvain clustering implemented in scanpy.
         phenograph_parameters (dict, optional): Parameter dict to pass directly
-            to Phenograph. Note that we change the Phenograph 'prune' default to
+            to PhenoGraph. Note that we change the PhenoGraph 'prune' default to
             True; you must specifically include 'prune': False here to change
-            this.
+            this. Only used when use_phenograph is True.
         n_iters (int, optional): Number of fit operations from which to collect
             p-values. Defualt value is 25.
         normalizer ((sp_sparse) -> ndarray): Method to normalize raw_counts.
@@ -93,11 +101,13 @@ class BoostClassifier:
             normalizer=lambda counts: doubletdetection.normalize_counts(counts,
             pseudocount=new_var)
         random_state (int, optional): If provided, passed to PCA and used to
-            seedrandom seed numpy's RNG. NOTE: Phenograph does not currently
+            seedrandom seed numpy's RNG. NOTE: PhenoGraph does not currently
             admit a random seed, and so this will not guarantee identical
             results across runs.
         verbose (bool, optional): Set to False to silence all normal operation
             informational messages. Defaults to True.
+        standard_scaling (bool, optional): Set to False to disable standard scaling
+            of normalized count matrix prior to clustering. Defaults to True.
 
     Attributes:
         all_log_p_values_ (ndarray): Hypergeometric test natural log p-value per
@@ -129,18 +139,22 @@ class BoostClassifier:
         n_components=30,
         n_top_var_genes=10000,
         replace=False,
+        use_phenograph=True,
         phenograph_parameters={"prune": True},
         n_iters=25,
         normalizer=None,
-        random_state=None,
-        verbose=True,
+        random_state=0,
+        verbose=False,
+        standard_scaling=True,
     ):
         self.boost_rate = boost_rate
         self.replace = replace
+        self.use_phenograph = use_phenograph
         self.n_iters = n_iters
         self.normalizer = normalizer
         self.random_state = random_state
         self.verbose = verbose
+        self.standard_scaling = standard_scaling
 
         if self.random_state:
             np.random.seed(self.random_state)
@@ -153,17 +167,16 @@ class BoostClassifier:
         # Floor negative n_top_var_genes by 0
         self.n_top_var_genes = max(0, n_top_var_genes)
 
-        if "prune" not in phenograph_parameters:
-            phenograph_parameters["prune"] = True
-        if ("verbosity" not in phenograph_parameters) and (not self.verbose):
-            phenograph_parameters["verbosity"] = 1
-        self.phenograph_parameters = phenograph_parameters
-        if (self.n_iters == 1) and (phenograph_parameters.get("prune") is True):
-            warn_msg = (
-                "Using phenograph parameter prune=False is strongly recommended when "
-                + "running only one iteration. Otherwise, expect many NaN labels."
-            )
-            warnings.warn(warn_msg)
+        if use_phenograph is True:
+            if "prune" not in phenograph_parameters:
+                phenograph_parameters["prune"] = True
+            self.phenograph_parameters = phenograph_parameters
+            if (self.n_iters == 1) and (phenograph_parameters.get("prune") is True):
+                warn_msg = (
+                    "Using phenograph parameter prune=False is strongly recommended when "
+                    + "running only one iteration. Otherwise, expect many NaN labels."
+                )
+                warnings.warn(warn_msg)
 
         if not self.replace and self.boost_rate > 0.5:
             warn_msg = (
@@ -194,7 +207,11 @@ class BoostClassifier:
         """
 
         raw_counts = check_array(
-            raw_counts, accept_sparse="csr", force_all_finite=True, ensure_2d=True, dtype="float32"
+            raw_counts,
+            accept_sparse="csr",
+            force_all_finite=True,
+            ensure_2d=True,
+            dtype="float32",
         )
 
         if sp_sparse.issparse(raw_counts) is not True:
@@ -227,9 +244,11 @@ class BoostClassifier:
         self.all_log_p_values_ = np.zeros((self.n_iters, self._num_cells))
         all_communities = np.zeros((self.n_iters, self._num_cells))
         all_parents = []
-        all_synth_communities = np.zeros((self.n_iters, int(self.boost_rate * self._num_cells)))
+        all_synth_communities = np.zeros(
+            (self.n_iters, int(self.boost_rate * self._num_cells))
+        )
 
-        for i in range(self.n_iters):
+        for i in tqdm(range(self.n_iters)):
             if self.verbose:
                 print("Iteration {:3}/{}".format(i + 1, self.n_iters))
             self.all_scores_[i], self.all_log_p_values_[i] = self._one_fit()
@@ -271,7 +290,9 @@ class BoostClassifier:
         """
         log_p_thresh = np.log(p_thresh)
         if self.n_iters > 1:
-            with np.errstate(invalid="ignore"):  # Silence numpy warning about NaN comparison
+            with np.errstate(
+                invalid="ignore"
+            ):  # Silence numpy warning about NaN comparison
                 self.voting_average_ = np.mean(
                     np.ma.masked_invalid(self.all_log_p_values_) <= log_p_thresh, axis=0
                 )
@@ -283,11 +304,15 @@ class BoostClassifier:
             # Find a cutoff score
             potential_cutoffs = np.unique(self.all_scores_[~np.isnan(self.all_scores_)])
             if len(potential_cutoffs) > 1:
-                max_dropoff = np.argmax(potential_cutoffs[1:] - potential_cutoffs[:-1]) + 1
+                max_dropoff = (
+                    np.argmax(potential_cutoffs[1:] - potential_cutoffs[:-1]) + 1
+                )
             else:  # Most likely pathological dataset, only one (or no) clusters
                 max_dropoff = 0
             self.suggested_score_cutoff_ = potential_cutoffs[max_dropoff]
-            with np.errstate(invalid="ignore"):  # Silence numpy warning about NaN comparison
+            with np.errstate(
+                invalid="ignore"
+            ):  # Silence numpy warning about NaN comparison
                 self.labels_ = self.all_scores_[0, :] >= self.suggested_score_cutoff_
             self.labels_[np.isnan(self.all_scores_)[0, :]] = np.nan
 
@@ -317,14 +342,28 @@ class BoostClassifier:
         self._norm_counts = aug_counts[: self._num_cells]
         self._synthetics = aug_counts[self._num_cells :]
 
+        aug_counts = anndata.AnnData(aug_counts)
+        aug_counts.obs["n_counts"] = aug_lib_size
+        if self.standard_scaling is True:
+            sc.pp.scale(aug_counts, max_value=15)
+
         if self.verbose:
             print("Running PCA...")
-        # Get phenograph results
-        pca = PCA(n_components=self.n_components, random_state=self.random_state)
-        reduced_counts = pca.fit_transform(aug_counts)
+        sc.tl.pca(aug_counts, n_comps=self.n_components, random_state=self.random_state)
         if self.verbose:
-            print("Clustering augmented data set with Phenograph...\n")
-        fullcommunities, _, _ = phenograph.cluster(reduced_counts, **self.phenograph_parameters)
+            print("Clustering augmented data set...\n")
+        sc.pp.neighbors(
+            aug_counts, random_state=self.random_state, method="umap", n_neighbors=10
+        )
+        if self.use_phenograph:
+            fullcommunities, _, _ = phenograph.cluster(
+                aug_counts.obsm["X_pca"], **self.phenograph_parameters
+            )
+        else:
+            sc.tl.louvain(
+                aug_counts, random_state=self.random_state, resolution=4, directed=False
+            )
+            fullcommunities = np.array(aug_counts.obs["louvain"], dtype=int)
         min_ID = min(fullcommunities)
         self.communities_ = fullcommunities[: self._num_cells]
         self.synth_communities_ = fullcommunities[self._num_cells :]
@@ -333,7 +372,7 @@ class BoostClassifier:
         ]
         if self.verbose:
             print(
-                "Found communities [{0}, ... {2}], with sizes: {1}\n".format(
+                "Found clusters [{0}, ... {2}], with sizes: {1}\n".format(
                     min(fullcommunities), community_sizes, max(fullcommunities)
                 )
             )
@@ -344,7 +383,8 @@ class BoostClassifier:
         orig_cells_per_comm = collections.Counter(self.communities_)
         community_IDs = orig_cells_per_comm.keys()
         community_scores = {
-            i: float(synth_cells_per_comm[i]) / (synth_cells_per_comm[i] + orig_cells_per_comm[i])
+            i: float(synth_cells_per_comm[i])
+            / (synth_cells_per_comm[i] + orig_cells_per_comm[i])
             for i in community_IDs
         }
         scores = np.array([community_scores[i] for i in self.communities_])
@@ -375,7 +415,9 @@ class BoostClassifier:
         num_synths = int(self.boost_rate * self._num_cells)
 
         # Parent indices
-        choices = np.random.choice(self._num_cells, size=(num_synths, 2), replace=self.replace)
+        choices = np.random.choice(
+            self._num_cells, size=(num_synths, 2), replace=self.replace
+        )
         parents = [list(p) for p in choices]
 
         parent0 = self._raw_counts[choices[:, 0], :]
