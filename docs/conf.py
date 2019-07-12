@@ -13,8 +13,7 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath(".."))
-
+sys.path.insert(0, os.path.abspath("../.."))
 
 # -- Project information -----------------------------------------------------
 
@@ -23,7 +22,7 @@ copyright = "2019, Adam Gayoso and Jonathan Shor"
 author = "Adam Gayoso and Jonathan Shor"
 
 # The full version, including alpha/beta/rc tags
-release = "2.4.0"
+release = "2.5.0"
 
 
 # -- General configuration ---------------------------------------------------
