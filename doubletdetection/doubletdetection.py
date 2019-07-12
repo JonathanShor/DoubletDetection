@@ -4,13 +4,26 @@ import collections
 import warnings
 
 import numpy as np
-import phenograph
-from sklearn.decomposition import PCA
 from sklearn.utils import check_array
+from sklearn.utils.sparsefuncs_fast import inplace_csr_row_normalize_l1
 from scipy.io import mmread
 from scipy.stats import hypergeom
 import scipy.sparse as sp_sparse
+from scipy.sparse import csr_matrix
 import tables
+import scanpy as sc
+import anndata
+from tqdm.auto import tqdm
+
+try:
+    import phenograph
+except ImportError:
+    warn_msg = (
+        "PhenoGraph not installed. You will be unable to cluster using PhenoGraph."
+        + "You can install PhenoGraph using "
+        + "pip3 install git+https://github.com/JonathanShor/PhenoGraph.git"
+    )
+    warnings.warn(warn_msg)
 
 
 def load_10x_h5(file, genome):
@@ -29,23 +42,22 @@ def load_10x_h5(file, genome):
         ndarray: Gene names
     """
 
-    with tables.open_file(file, 'r') as f:
+    with tables.open_file(file, "r") as f:
         try:
             group = f.get_node(f.root, genome)
         except tables.NoSuchNodeError:
             print("That genome does not exist in this file.")
             return None
     # gene_ids = getattr(group, 'genes').read()
-    gene_names = getattr(group, 'gene_names').read()
-    barcodes = getattr(group, 'barcodes').read()
-    data = getattr(group, 'data').read()
-    indices = getattr(group, 'indices').read()
-    indptr = getattr(group, 'indptr').read()
-    shape = getattr(group, 'shape').read()
+    gene_names = getattr(group, "gene_names").read()
+    barcodes = getattr(group, "barcodes").read()
+    data = getattr(group, "data").read()
+    indices = getattr(group, "indices").read()
+    indptr = getattr(group, "indptr").read()
+    shape = getattr(group, "shape").read()
     matrix = sp_sparse.csc_matrix((data, indices, indptr), shape=shape)
-    dense_matrix = matrix.toarray()
 
-    return dense_matrix, barcodes, gene_names
+    return matrix, barcodes, gene_names
 
 
 def load_mtx(file):
@@ -57,9 +69,9 @@ def load_mtx(file):
     Returns:
         ndarray: Raw count matrix.
     """
-    raw_counts = np.transpose(mmread(file).toarray())
+    raw_counts = np.transpose(mmread(file))
 
-    return raw_counts
+    return raw_counts.tocsc()
 
 
 class BoostClassifier:
@@ -72,28 +84,30 @@ class BoostClassifier:
             clustering.
         n_top_var_genes (int, optional): Number of highest variance genes to
             use; other genes discarded. Will use all genes when zero.
-        new_lib_as: (([int, int]) -> int, optional): Method to use in choosing
-            library size for synthetic doublets. Defaults to None which makes
-            synthetic doublets the exact addition of its parents; alternative
-            is new_lib_as=np.max.
         replace (bool, optional): If False, a cell will be selected as a
             synthetic doublet's parent no more than once.
+        use_phenograph (bool, optional): Set to True to use PhenoGraph clustering.
+            Defaults to False, which uses louvain clustering implemented in scanpy.
         phenograph_parameters (dict, optional): Parameter dict to pass directly
-            to Phenograph. Note that we change the Phenograph 'prune' default to
+            to PhenoGraph. Note that we change the PhenoGraph 'prune' default to
             True; you must specifically include 'prune': False here to change
-            this.
+            this. Only used when use_phenograph is True.
         n_iters (int, optional): Number of fit operations from which to collect
             p-values. Defualt value is 25.
-        normalizer ((ndarray) -> ndarray): Method to normalize raw_counts.
+        normalizer ((sp_sparse) -> ndarray): Method to normalize raw_counts.
             Defaults to normalize_counts, included in this package. Note: To use
             normalize_counts with its pseudocount parameter changed from the
             default 0.1 value to some positive float `new_var`, use:
             normalizer=lambda counts: doubletdetection.normalize_counts(counts,
             pseudocount=new_var)
         random_state (int, optional): If provided, passed to PCA and used to
-            seedrandom seed numpy's RNG. NOTE: Phenograph does not currently
+            seedrandom seed numpy's RNG. NOTE: PhenoGraph does not currently
             admit a random seed, and so this will not guarantee identical
             results across runs.
+        verbose (bool, optional): Set to False to silence all normal operation
+            informational messages. Defaults to True.
+        standard_scaling (bool, optional): Set to False to disable standard scaling
+            of normalized count matrix prior to clustering. Defaults to True.
 
     Attributes:
         all_log_p_values_ (ndarray): Hypergeometric test natural log p-value per
@@ -119,15 +133,28 @@ class BoostClassifier:
             doublet.
     """
 
-    def __init__(self, boost_rate=0.25, n_components=30, n_top_var_genes=10000, new_lib_as=None,
-                 replace=False, phenograph_parameters={'prune': True}, n_iters=25,
-                 normalizer=None, random_state=None):
+    def __init__(
+        self,
+        boost_rate=0.25,
+        n_components=30,
+        n_top_var_genes=10000,
+        replace=False,
+        use_phenograph=True,
+        phenograph_parameters={"prune": True},
+        n_iters=25,
+        normalizer=None,
+        random_state=0,
+        verbose=False,
+        standard_scaling=True,
+    ):
         self.boost_rate = boost_rate
-        self.new_lib_as = new_lib_as
         self.replace = replace
+        self.use_phenograph = use_phenograph
         self.n_iters = n_iters
         self.normalizer = normalizer
         self.random_state = random_state
+        self.verbose = verbose
+        self.standard_scaling = standard_scaling
 
         if self.random_state:
             np.random.seed(self.random_state)
@@ -140,23 +167,32 @@ class BoostClassifier:
         # Floor negative n_top_var_genes by 0
         self.n_top_var_genes = max(0, n_top_var_genes)
 
-        if 'prune' not in phenograph_parameters:
-            phenograph_parameters['prune'] = True
-        self.phenograph_parameters = phenograph_parameters
-        if (self.n_iters == 1) and (phenograph_parameters.get('prune') is True):
-            warn_msg = ("Using phenograph parameter prune=False is strongly recommended when " +
-                        "running only one iteration. Otherwise, expect many NaN labels.")
-            warnings.warn(warn_msg)
+        if use_phenograph is True:
+            if "prune" not in phenograph_parameters:
+                phenograph_parameters["prune"] = True
+            if ("verbosity" not in phenograph_parameters) and (not self.verbose):
+                phenograph_parameters["verbosity"] = 1
+            self.phenograph_parameters = phenograph_parameters
+            if (self.n_iters == 1) and (phenograph_parameters.get("prune") is True):
+                warn_msg = (
+                    "Using phenograph parameter prune=False is strongly recommended when "
+                    + "running only one iteration. Otherwise, expect many NaN labels."
+                )
+                warnings.warn(warn_msg)
 
         if not self.replace and self.boost_rate > 0.5:
-            warn_msg = ("boost_rate is trimmed to 0.5 when replace=False." +
-                        " Set replace=True to use greater boost rates.")
+            warn_msg = (
+                "boost_rate is trimmed to 0.5 when replace=False."
+                + " Set replace=True to use greater boost rates."
+            )
             warnings.warn(warn_msg)
             self.boost_rate = 0.5
 
-        assert (self.n_top_var_genes == 0) or (self.n_components <= self.n_top_var_genes), (
-            "n_components={0} cannot be larger than n_top_var_genes={1}".format(n_components,
-                                                                                n_top_var_genes))
+        assert (self.n_top_var_genes == 0) or (
+            self.n_components <= self.n_top_var_genes
+        ), "n_components={0} cannot be larger than n_top_var_genes={1}".format(
+            n_components, n_top_var_genes
+        )
 
     def fit(self, raw_counts):
         """Fits the classifier on raw_counts.
@@ -171,35 +207,52 @@ class BoostClassifier:
         Returns:
             The fitted classifier.
         """
-        try:
-            raw_counts = check_array(raw_counts, accept_sparse=False, force_all_finite=True,
-                                     ensure_2d=True)
-        except TypeError:   # Only catches sparse error. Non-finite & n_dims still raised.
-            warnings.warn("Sparse raw_counts is automatically densified.")
-            raw_counts = raw_counts.toarray()
+
+        raw_counts = check_array(
+            raw_counts,
+            accept_sparse="csr",
+            force_all_finite=True,
+            ensure_2d=True,
+            dtype="float32",
+        )
+
+        if sp_sparse.issparse(raw_counts) is not True:
+            if self.verbose:
+                print("Sparsifying matrix.")
+            raw_counts = csr_matrix(raw_counts)
 
         if self.n_top_var_genes > 0:
             if self.n_top_var_genes < raw_counts.shape[1]:
-                gene_variances = np.var(raw_counts, axis=0)
+                gene_variances = (
+                    np.array(raw_counts.power(2).mean(axis=0))
+                    - (np.array(raw_counts.mean(axis=0))) ** 2
+                )[0]
                 top_var_indexes = np.argsort(gene_variances)
-                self.top_var_genes_ = top_var_indexes[-self.n_top_var_genes:]
+                self.top_var_genes_ = top_var_indexes[-self.n_top_var_genes :]
+                # csc if faster for column indexing
+                raw_counts = raw_counts.tocsc()
                 raw_counts = raw_counts[:, self.top_var_genes_]
+                raw_counts = raw_counts.tocsr()
 
         self._raw_counts = raw_counts
         (self._num_cells, self._num_genes) = self._raw_counts.shape
         if self.normalizer is None:
             # Memoize these; default normalizer treats these invariant for all synths
-            self._lib_size = np.sum(raw_counts, axis=1)
-            self._normed_raw_counts = self._raw_counts / self._lib_size[:, np.newaxis]
+            self._lib_size = np.sum(raw_counts, axis=1).A1
+            self._normed_raw_counts = self._raw_counts.copy()
+            inplace_csr_row_normalize_l1(self._normed_raw_counts)
 
         self.all_scores_ = np.zeros((self.n_iters, self._num_cells))
         self.all_log_p_values_ = np.zeros((self.n_iters, self._num_cells))
         all_communities = np.zeros((self.n_iters, self._num_cells))
         all_parents = []
-        all_synth_communities = np.zeros((self.n_iters, int(self.boost_rate * self._num_cells)))
+        all_synth_communities = np.zeros(
+            (self.n_iters, int(self.boost_rate * self._num_cells))
+        )
 
-        for i in range(self.n_iters):
-            print("Iteration {:3}/{}".format(i + 1, self.n_iters))
+        for i in tqdm(range(self.n_iters)):
+            if self.verbose:
+                print("Iteration {:3}/{}".format(i + 1, self.n_iters))
             self.all_scores_[i], self.all_log_p_values_[i] = self._one_fit()
             all_communities[i] = self.communities_
             all_parents.append(self.parents_)
@@ -239,75 +292,114 @@ class BoostClassifier:
         """
         log_p_thresh = np.log(p_thresh)
         if self.n_iters > 1:
-            with np.errstate(invalid='ignore'):  # Silence numpy warning about NaN comparison
+            with np.errstate(
+                invalid="ignore"
+            ):  # Silence numpy warning about NaN comparison
                 self.voting_average_ = np.mean(
-                    np.ma.masked_invalid(self.all_log_p_values_) <= log_p_thresh, axis=0)
-                self.labels_ = np.ma.filled((self.voting_average_ >= voter_thresh).astype(float),
-                                            np.nan)
+                    np.ma.masked_invalid(self.all_log_p_values_) <= log_p_thresh, axis=0
+                )
+                self.labels_ = np.ma.filled(
+                    (self.voting_average_ >= voter_thresh).astype(float), np.nan
+                )
                 self.voting_average_ = np.ma.filled(self.voting_average_, np.nan)
         else:
             # Find a cutoff score
             potential_cutoffs = np.unique(self.all_scores_[~np.isnan(self.all_scores_)])
             if len(potential_cutoffs) > 1:
-                max_dropoff = np.argmax(potential_cutoffs[1:] - potential_cutoffs[:-1]) + 1
-            else:   # Most likely pathological dataset, only one (or no) clusters
+                max_dropoff = (
+                    np.argmax(potential_cutoffs[1:] - potential_cutoffs[:-1]) + 1
+                )
+            else:  # Most likely pathological dataset, only one (or no) clusters
                 max_dropoff = 0
             self.suggested_score_cutoff_ = potential_cutoffs[max_dropoff]
-            with np.errstate(invalid='ignore'):  # Silence numpy warning about NaN comparison
+            with np.errstate(
+                invalid="ignore"
+            ):  # Silence numpy warning about NaN comparison
                 self.labels_ = self.all_scores_[0, :] >= self.suggested_score_cutoff_
             self.labels_[np.isnan(self.all_scores_)[0, :]] = np.nan
 
         return self.labels_
 
     def _one_fit(self):
-        print("\nCreating synthetic doublets...")
+        if self.verbose:
+            print("\nCreating synthetic doublets...")
         self._createDoublets()
 
         # Normalize combined augmented set
-        print("Normalizing...")
+        if self.verbose:
+            print("Normalizing...")
         if self.normalizer is not None:
-            aug_counts = self.normalizer(np.append(self._raw_counts, self._raw_synthetics, axis=0))
+            aug_counts = self.normalizer(
+                sp_sparse.vstack((self._raw_counts, self._raw_synthetics))
+            )
         else:
             # Follows doubletdetection.plot.normalize_counts, but uses memoized normed raw_counts
-            synth_lib_size = np.sum(self._raw_synthetics, axis=1)
+            synth_lib_size = np.sum(self._raw_synthetics, axis=1).A1
             aug_lib_size = np.concatenate([self._lib_size, synth_lib_size])
-            normed_synths = self._raw_synthetics / synth_lib_size[:, np.newaxis]
-            aug_counts = np.concatenate([self._normed_raw_counts, normed_synths], axis=0)
-            aug_counts = np.log(aug_counts * np.median(aug_lib_size) + 0.1)
+            normed_synths = self._raw_synthetics.copy()
+            inplace_csr_row_normalize_l1(normed_synths)
+            aug_counts = sp_sparse.vstack((self._normed_raw_counts, normed_synths))
+            aug_counts = np.log(aug_counts.A * np.median(aug_lib_size) + 0.1)
 
-        self._norm_counts = aug_counts[:self._num_cells]
-        self._synthetics = aug_counts[self._num_cells:]
+        self._norm_counts = aug_counts[: self._num_cells]
+        self._synthetics = aug_counts[self._num_cells :]
 
-        print("Running PCA...")
-        # Get phenograph results
-        pca = PCA(n_components=self.n_components, random_state=self.random_state)
-        reduced_counts = pca.fit_transform(aug_counts)
-        print("Clustering augmented data set with Phenograph...\n")
-        fullcommunities, _, _ = phenograph.cluster(reduced_counts, **self.phenograph_parameters)
+        aug_counts = anndata.AnnData(aug_counts)
+        aug_counts.obs["n_counts"] = aug_lib_size
+        if self.standard_scaling is True:
+            sc.pp.scale(aug_counts, max_value=15)
+
+        if self.verbose:
+            print("Running PCA...")
+        sc.tl.pca(aug_counts, n_comps=self.n_components, random_state=self.random_state)
+        if self.verbose:
+            print("Clustering augmented data set...\n")
+        sc.pp.neighbors(
+            aug_counts, random_state=self.random_state, method="umap", n_neighbors=10
+        )
+        if self.use_phenograph:
+            fullcommunities, _, _ = phenograph.cluster(
+                aug_counts.obsm["X_pca"], **self.phenograph_parameters
+            )
+        else:
+            sc.tl.louvain(
+                aug_counts, random_state=self.random_state, resolution=4, directed=False
+            )
+            fullcommunities = np.array(aug_counts.obs["louvain"], dtype=int)
         min_ID = min(fullcommunities)
-        self.communities_ = fullcommunities[:self._num_cells]
-        self.synth_communities_ = fullcommunities[self._num_cells:]
-        community_sizes = [np.count_nonzero(fullcommunities == i)
-                           for i in np.unique(fullcommunities)]
-        print("Found communities [{0}, ... {2}], with sizes: {1}\n".format(min(fullcommunities),
-                                                                           community_sizes,
-                                                                           max(fullcommunities)))
+        self.communities_ = fullcommunities[: self._num_cells]
+        self.synth_communities_ = fullcommunities[self._num_cells :]
+        community_sizes = [
+            np.count_nonzero(fullcommunities == i) for i in np.unique(fullcommunities)
+        ]
+        if self.verbose:
+            print(
+                "Found clusters [{0}, ... {2}], with sizes: {1}\n".format(
+                    min(fullcommunities), community_sizes, max(fullcommunities)
+                )
+            )
 
         # Count number of fake doublets in each community and assign score
         # Number of synth/orig cells in each cluster.
         synth_cells_per_comm = collections.Counter(self.synth_communities_)
         orig_cells_per_comm = collections.Counter(self.communities_)
         community_IDs = orig_cells_per_comm.keys()
-        community_scores = {i: float(synth_cells_per_comm[i]) /
-                            (synth_cells_per_comm[i] + orig_cells_per_comm[i])
-                            for i in community_IDs}
+        community_scores = {
+            i: float(synth_cells_per_comm[i])
+            / (synth_cells_per_comm[i] + orig_cells_per_comm[i])
+            for i in community_IDs
+        }
         scores = np.array([community_scores[i] for i in self.communities_])
 
-        community_log_p_values = {i: hypergeom.logsf(synth_cells_per_comm[i], aug_counts.shape[0],
-                                                     self._synthetics.shape[0],
-                                                     synth_cells_per_comm[i] +
-                                                     orig_cells_per_comm[i])
-                                  for i in community_IDs}
+        community_log_p_values = {
+            i: hypergeom.logsf(
+                synth_cells_per_comm[i],
+                aug_counts.shape[0],
+                self._synthetics.shape[0],
+                synth_cells_per_comm[i] + orig_cells_per_comm[i],
+            )
+            for i in community_IDs
+        }
         log_p_values = np.array([community_log_p_values[i] for i in self.communities_])
 
         if min_ID < 0:
@@ -316,28 +408,6 @@ class BoostClassifier:
 
         return scores, log_p_values
 
-    def _downsampleCellPair(self, cell1, cell2):
-        """Downsample the sum of two cells' gene expression profiles.
-
-        Args:
-            cell1 (ndarray, ndim=1): Gene count vector.
-            cell2 (ndarray, ndim=1): Gene count vector.
-
-        Returns:
-            ndarray, ndim=1: Downsampled gene count vector.
-        """
-        new_cell = cell1 + cell2
-
-        lib1 = np.sum(cell1)
-        lib2 = np.sum(cell2)
-        new_lib_size = int(self.new_lib_as([lib1, lib2]))
-        mol_ind = np.random.permutation(int(lib1 + lib2))[:new_lib_size]
-        mol_ind += 1
-        bins = np.append(np.zeros((1)), np.cumsum(new_cell))
-        new_cell = np.histogram(mol_ind, bins)[0]
-
-        return new_cell
-
     def _createDoublets(self):
         """Create synthetic doublets.
 
@@ -345,19 +415,16 @@ class BoostClassifier:
         """
         # Number of synthetic doublets to add
         num_synths = int(self.boost_rate * self._num_cells)
-        synthetic = np.zeros((num_synths, self._num_genes))
-        parents = []
 
-        choices = np.random.choice(self._num_cells, size=(num_synths, 2), replace=self.replace)
-        for i, parent_pair in enumerate(choices):
-            row1 = parent_pair[0]
-            row2 = parent_pair[1]
-            if self.new_lib_as is not None:
-                new_row = self._downsampleCellPair(self._raw_counts[row1], self._raw_counts[row2])
-            else:
-                new_row = self._raw_counts[row1] + self._raw_counts[row2]
-            synthetic[i] = new_row
-            parents.append([row1, row2])
+        # Parent indices
+        choices = np.random.choice(
+            self._num_cells, size=(num_synths, 2), replace=self.replace
+        )
+        parents = [list(p) for p in choices]
+
+        parent0 = self._raw_counts[choices[:, 0], :]
+        parent1 = self._raw_counts[choices[:, 1], :]
+        synthetic = parent0 + parent1
 
         self._raw_synthetics = synthetic
         self.parents_ = parents
