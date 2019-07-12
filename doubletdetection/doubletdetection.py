@@ -14,16 +14,7 @@ import tables
 import scanpy as sc
 import anndata
 from tqdm.auto import tqdm
-
-try:
-    import phenograph
-except ImportError:
-    warn_msg = (
-        "PhenoGraph not installed. You will be unable to cluster using PhenoGraph."
-        + "You can install PhenoGraph using "
-        + "pip3 install git+https://github.com/JonathanShor/PhenoGraph.git"
-    )
-    warnings.warn(warn_msg)
+import phenograph
 
 
 def load_10x_h5(file, genome):
