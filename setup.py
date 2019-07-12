@@ -32,5 +32,6 @@ setup(
         "tables>=3.4.2",
         "umap-learn>=0.3.7",
         "matplotlib>=2.2.2",
+        "phenograph @ https://api.github.com/repos/JonathanShor/PhenoGraph/tarball/v1.6",
     ],
 )
