@@ -30,6 +30,8 @@ The classifier works best when
 - There are several cell types present in the data
 - It is applied individually to each run in an aggregated count matrix
 
+In `v2.5` we have added a new experimental clustering method (`scanpy`'s Louvain clustering) that is much faster than phenograph. We are still validating results from this new clustering. Please see the notebook below for an example of using this new feature.
+
 See our [jupyter notebook](https://nbviewer.jupyter.org/github/JonathanShor/DoubletDetection/blob/master/tests/notebooks/PBMC_8k_vignette.ipynb) for an example on 8k PBMCs from 10x.
 
 ## Obtaining data
