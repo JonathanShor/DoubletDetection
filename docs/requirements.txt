@@ -1,1 +1,10 @@
 m2r
+matplotlib
+numpy
+pandas
+scipy
+sklearn
+tables
+git+https://github.com/JonathanShor/PhenoGraph
+umap-learn
+scanpy
