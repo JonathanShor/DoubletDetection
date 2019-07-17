@@ -98,7 +98,8 @@ class BoostClassifier:
         verbose (bool, optional): Set to False to silence all normal operation
             informational messages. Defaults to True.
         standard_scaling (bool, optional): Set to True to enable standard scaling
-            of normalized count matrix prior to clustering. Defaults to False.
+            of normalized count matrix prior to PCA. Recommended when not using
+            Phenograph. Defaults to False.
 
     Attributes:
         all_log_p_values_ (ndarray): Hypergeometric test natural log p-value per
