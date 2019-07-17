@@ -77,8 +77,8 @@ class BoostClassifier:
             use; other genes discarded. Will use all genes when zero.
         replace (bool, optional): If False, a cell will be selected as a
             synthetic doublet's parent no more than once.
-        use_phenograph (bool, optional): Set to True to use PhenoGraph clustering.
-            Defaults to False, which uses louvain clustering implemented in scanpy.
+        use_phenograph (bool, optional): Set to False to disable PhenoGraph clustering
+            in exchange for louvain clustering implemented in scanpy. Defaults to True.
         phenograph_parameters (dict, optional): Parameter dict to pass directly
             to PhenoGraph. Note that we change the PhenoGraph 'prune' default to
             True; you must specifically include 'prune': False here to change
@@ -97,8 +97,9 @@ class BoostClassifier:
             results across runs.
         verbose (bool, optional): Set to False to silence all normal operation
             informational messages. Defaults to True.
-        standard_scaling (bool, optional): Set to False to disable standard scaling
-            of normalized count matrix prior to clustering. Defaults to True.
+        standard_scaling (bool, optional): Set to True to enable standard scaling
+            of normalized count matrix prior to PCA. Recommended when not using
+            Phenograph. Defaults to False.
 
     Attributes:
         all_log_p_values_ (ndarray): Hypergeometric test natural log p-value per
@@ -136,7 +137,7 @@ class BoostClassifier:
         normalizer=None,
         random_state=0,
         verbose=False,
-        standard_scaling=True,
+        standard_scaling=False,
     ):
         self.boost_rate = boost_rate
         self.replace = replace
