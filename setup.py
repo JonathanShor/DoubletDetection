@@ -25,13 +25,9 @@ setup(
     include_package_data=True,
     packages=["doubletdetection"],
     install_requires=[
-        "numpy>=1.14.2",
-        "pandas>=0.22.0",
-        "scipy>=1.0.1",
-        "scikit-learn",
-        "tables>=3.4.2",
-        "umap-learn>=0.3.7",
-        "matplotlib>=2.2.2",
         "phenograph @ https://api.github.com/repos/JonathanShor/PhenoGraph/tarball/v1.6",
+        "matplotlib>=3.1",
+        "scanpy>=1.4.4",
+        "louvain",
     ],
 )
