@@ -346,14 +346,17 @@ class BoostClassifier:
         sc.tl.pca(aug_counts, n_comps=self.n_components, random_state=self.random_state)
         if self.verbose:
             print("Clustering augmented data set...\n")
-        sc.pp.neighbors(
-            aug_counts, random_state=self.random_state, method="umap", n_neighbors=10
-        )
         if self.use_phenograph:
             fullcommunities, _, _ = phenograph.cluster(
                 aug_counts.obsm["X_pca"], **self.phenograph_parameters
             )
         else:
+            sc.pp.neighbors(
+                aug_counts,
+                random_state=self.random_state,
+                method="umap",
+                n_neighbors=10,
+            )
             sc.tl.louvain(
                 aug_counts, random_state=self.random_state, resolution=4, directed=False
             )
