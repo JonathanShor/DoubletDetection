@@ -3,18 +3,18 @@
 import collections
 import warnings
 
+import anndata
 import numpy as np
-from sklearn.utils import check_array
-from sklearn.utils.sparsefuncs_fast import inplace_csr_row_normalize_l1
-from scipy.io import mmread
-from scipy.stats import hypergeom
+import phenograph
 import scipy.sparse as sp_sparse
-from scipy.sparse import csr_matrix
 import tables
 import scanpy as sc
-import anndata
+from scipy.io import mmread
+from scipy.sparse import csr_matrix
+from scipy.stats import hypergeom
+from sklearn.utils import check_array
+from sklearn.utils.sparsefuncs_fast import inplace_csr_row_normalize_l1
 from tqdm.auto import tqdm
-import phenograph
 
 
 def load_10x_h5(file, genome):
@@ -346,14 +346,17 @@ class BoostClassifier:
         sc.tl.pca(aug_counts, n_comps=self.n_components, random_state=self.random_state)
         if self.verbose:
             print("Clustering augmented data set...\n")
-        sc.pp.neighbors(
-            aug_counts, random_state=self.random_state, method="umap", n_neighbors=10
-        )
         if self.use_phenograph:
             fullcommunities, _, _ = phenograph.cluster(
                 aug_counts.obsm["X_pca"], **self.phenograph_parameters
             )
         else:
+            sc.pp.neighbors(
+                aug_counts,
+                random_state=self.random_state,
+                method="umap",
+                n_neighbors=10,
+            )
             sc.tl.louvain(
                 aug_counts, random_state=self.random_state, resolution=4, directed=False
             )

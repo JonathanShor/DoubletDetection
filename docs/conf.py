@@ -23,7 +23,7 @@ copyright = "2019, Adam Gayoso and Jonathan Shor"
 author = "Adam Gayoso and Jonathan Shor"
 
 # The full version, including alpha/beta/rc tags
-release = "2.5.0"
+release = "2.5.2"
 
 
 # -- General configuration ---------------------------------------------------
