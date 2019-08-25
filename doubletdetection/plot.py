@@ -1,12 +1,11 @@
-from sklearn.decomposition import PCA
-import umap
-
 import os
 import warnings
-import numpy as np
-from sklearn.utils import check_array
 
 import matplotlib
+import numpy as np
+import umap
+from sklearn.decomposition import PCA
+from sklearn.utils import check_array
 
 try:
     os.environ["DISPLAY"]

@@ -3,18 +3,18 @@
 import collections
 import warnings
 
+import anndata
 import numpy as np
-from sklearn.utils import check_array
-from sklearn.utils.sparsefuncs_fast import inplace_csr_row_normalize_l1
-from scipy.io import mmread
-from scipy.stats import hypergeom
+import phenograph
 import scipy.sparse as sp_sparse
-from scipy.sparse import csr_matrix
 import tables
 import scanpy as sc
-import anndata
+from scipy.io import mmread
+from scipy.sparse import csr_matrix
+from scipy.stats import hypergeom
+from sklearn.utils import check_array
+from sklearn.utils.sparsefuncs_fast import inplace_csr_row_normalize_l1
 from tqdm.auto import tqdm
-import phenograph
 
 
 def load_10x_h5(file, genome):

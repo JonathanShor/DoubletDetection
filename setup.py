@@ -16,7 +16,7 @@ if sys.version_info.major != 3:
 
 setup(
     name="doubletdetection",
-    version="2.5.0",
+    version="2.5.2",
     description="Method to detect and enable removal of doublets from single-cell RNA-sequencing "
     "data",
     url="https://github.com/JonathanShor/DoubletDetection",
@@ -25,9 +25,17 @@ setup(
     include_package_data=True,
     packages=["doubletdetection"],
     install_requires=[
-        "phenograph @ https://api.github.com/repos/JonathanShor/PhenoGraph/tarball/v1.6",
+        "numpy>=1.14.2",
+        "pandas>=0.22.0",
+        "scipy>=1.0.1",
+        "scikit-learn",
+        "tables>=3.4.2",
+        "umap-learn>=0.3.7",
         "matplotlib>=3.1",
+        "phenograph @ https://api.github.com/repos/JonathanShor/PhenoGraph/tarball/v1.6",
         "scanpy>=1.4.4",
         "louvain",
+        "tqdm",
+        "anndata",
     ],
 )
