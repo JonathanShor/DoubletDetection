@@ -1,6 +1,6 @@
 # DoubletDetection
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.2678042.svg)](https://doi.org/10.5281/zenodo.2678042)
+[![DOI](https://zenodo.org/badge/86256007.svg)](https://zenodo.org/badge/latestdoi/86256007)
 [![Documentation Status](https://readthedocs.org/projects/doubletdetection/badge/?version=latest)](https://doubletdetection.readthedocs.io/en/latest/?badge=latest)
 
 DoubletDetection is a Python3 package to detect doublets (technical errors) in single-cell RNA-seq count matrices.
