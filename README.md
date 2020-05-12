@@ -47,10 +47,10 @@ See our [jupyter notebook](https://nbviewer.jupyter.org/github/JonathanShor/Doub
 
 Data can be downloaded from the [10x website](https://support.10xgenomics.com/single-cell/datasets).
 
-## Citations
+## Credits and citations
 
-bioRxiv submission and journal publication expected in the coming months. Please use the following for now:
+Gayoso, Adam, Shor, Jonathan, Carr, Ambrose J., Sharma, Roshan, Pe'er, Dana (2018, July 17). DoubletDetection (Version v2.4). Zenodo. http://doi.org/10.5281/zenodo.2678042
 
-Gayoso, Adam, & Shor, Jonathan. (2018, July 17). DoubletDetection (Version v2.4). Zenodo. http://doi.org/10.5281/zenodo.2678042
+We also thank the participants of the 1st Human Cell Atlas Jamboree, Chun J. Ye for providing data useful in developing this method, and Itsik Pe'er for providing guidance in early development as part of the Computational genomics class at Columbia University.
 
 This project is licensed under the terms of the MIT license.
