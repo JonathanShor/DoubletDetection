@@ -1,0 +1,43 @@
+[tool.poetry]
+authors = ["Adam Gayoso <adamgayoso@berkeley.edu>", "Jonathan Shor", "Ambrose Carr"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "Natural Language :: English",
+  "Programming Language :: Python :: 3.6",
+  "Programming Language :: Python :: 3.7",
+  "Operating System :: MacOS :: MacOS X",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+description = "Method to detect and enable removal of doublets from single-cell RNA-sequencing."
+documentation = "https://doubletdetection.readthedocs.io/"
+homepage = "https://github.com/JonathanShor/DoubletDetection"
+license = "MIT"
+name = "doubletdetection"
+packages = [
+  {include = "doubletdetection"},
+]
+readme = "README.md"
+version = "2.5.2"
+
+[tool.poetry.dependencies]
+anndata = ">=0.6"
+ipywidgets = "*"
+leidenalg = "*"
+louvain = "*"
+matplotlib = ">=3.1"
+numpy = ">=1.14.2"
+pandas = ">=0.22.0"
+phenograph = "*"
+scanpy = ">1.4.4"
+scipy = ">=1.0.1"
+tqdm = "*"
+
+[build-system]
+build-backend = "poetry.masonry.api"
+requires = [
+  "poetry>=1.0",
+  "setuptools", # keep it here or "pip install -e" would fail
+]

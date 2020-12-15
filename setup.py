@@ -1,41 +1,8 @@
-from setuptools import setup
-import sys
+#!/usr/bin/env python
 
-CLASSIFIERS = [
-    "Development Status :: 4 - Beta",
-    "Natural Language :: English",
-    "License :: OSI Approved :: MIT",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.7",
-    "Topic :: Scientific/Engineering :: Bio-Informatics",
-]
+# This is a shim to hopefully allow Github to detect the package, build is done with poetry
 
-if sys.version_info.major != 3:
-    print("doubletdetection requires Python 3.7")
-    sys.exit(1)
+import setuptools
 
-setup(
-    name="doubletdetection",
-    version="2.5.2",
-    description="Method to detect and enable removal of doublets from single-cell RNA-sequencing "
-    "data",
-    url="https://github.com/JonathanShor/DoubletDetection",
-    author="Adam Gayoso, Jonathan Shor, Ambrose J. Carr",
-    author_email="ajg2188@columbia.edu",
-    include_package_data=True,
-    packages=["doubletdetection"],
-    install_requires=[
-        "numpy>=1.14.2",
-        "pandas>=0.22.0",
-        "scipy>=1.0.1",
-        "scikit-learn",
-        "tables>=3.4.2",
-        "umap-learn>=0.3.7",
-        "matplotlib>=3.1",
-        "phenograph @ https://api.github.com/repos/JonathanShor/PhenoGraph/tarball/v1.6",
-        "scanpy>=1.4.4",
-        "louvain",
-        "tqdm",
-        "anndata",
-    ],
-)
+if __name__ == "__main__":
+    setuptools.setup(name="doubletdetection")

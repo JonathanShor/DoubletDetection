@@ -1,68 +1,20 @@
 """Doublet detection in single-cell RNA-seq data."""
 
 import collections
+import io
 import warnings
+from contextlib import redirect_stdout
 
 import anndata
 import numpy as np
 import phenograph
 import scipy.sparse as sp_sparse
-import tables
 import scanpy as sc
-from scipy.io import mmread
 from scipy.sparse import csr_matrix
 from scipy.stats import hypergeom
 from sklearn.utils import check_array
 from sklearn.utils.sparsefuncs_fast import inplace_csr_row_normalize_l1
 from tqdm.auto import tqdm
-
-
-def load_10x_h5(file, genome):
-    """Load count matrix in 10x H5 format
-       Adapted from:
-       https://support.10xgenomics.com/single-cell-gene-expression/software/
-       pipelines/latest/advanced/h5_matrices
-
-    Args:
-        file (str): Path to H5 file
-        genome (str): genome, top level h5 group
-
-    Returns:
-        ndarray: Raw count matrix.
-        ndarray: Barcodes
-        ndarray: Gene names
-    """
-
-    with tables.open_file(file, "r") as f:
-        try:
-            group = f.get_node(f.root, genome)
-        except tables.NoSuchNodeError:
-            print("That genome does not exist in this file.")
-            return None
-    # gene_ids = getattr(group, 'genes').read()
-    gene_names = getattr(group, "gene_names").read()
-    barcodes = getattr(group, "barcodes").read()
-    data = getattr(group, "data").read()
-    indices = getattr(group, "indices").read()
-    indptr = getattr(group, "indptr").read()
-    shape = getattr(group, "shape").read()
-    matrix = sp_sparse.csc_matrix((data, indices, indptr), shape=shape)
-
-    return matrix, barcodes, gene_names
-
-
-def load_mtx(file):
-    """Load count matrix in mtx format
-
-    Args:
-        file (str): Path to mtx file
-
-    Returns:
-        ndarray: Raw count matrix.
-    """
-    raw_counts = np.transpose(mmread(file))
-
-    return raw_counts.tocsc()
 
 
 class BoostClassifier:
@@ -162,8 +114,6 @@ class BoostClassifier:
         if use_phenograph is True:
             if "prune" not in phenograph_parameters:
                 phenograph_parameters["prune"] = True
-            if ("verbosity" not in phenograph_parameters) and (not self.verbose):
-                phenograph_parameters["verbosity"] = 1
             self.phenograph_parameters = phenograph_parameters
             if (self.n_iters == 1) and (phenograph_parameters.get("prune") is True):
                 warn_msg = (
@@ -312,6 +262,28 @@ class BoostClassifier:
 
         return self.labels_
 
+    def doublet_score(self):
+        """Produce doublet scores
+
+        The doublet score is the average negative log p-value of doublet enrichment
+        averaged over the iterations. Higher means more likely to be doublet.
+
+        Returns:
+            scores (ndarray, ndims=1):  Average negative log p-value over iterations
+        """
+
+        if self.n_iters > 1:
+            with np.errstate(
+                invalid="ignore"
+            ):  # Silence numpy warning about NaN comparison
+                avg_log_p = np.mean(
+                    np.ma.masked_invalid(self.all_log_p_values_), axis=0
+                )
+        else:
+            avg_log_p = self.all_log_p_values_[0]
+
+        return -avg_log_p
+
     def _one_fit(self):
         if self.verbose:
             print("\nCreating synthetic doublets...")
@@ -347,9 +319,14 @@ class BoostClassifier:
         if self.verbose:
             print("Clustering augmented data set...\n")
         if self.use_phenograph:
-            fullcommunities, _, _ = phenograph.cluster(
-                aug_counts.obsm["X_pca"], **self.phenograph_parameters
-            )
+            f = io.StringIO()
+            with redirect_stdout(f):
+                fullcommunities, _, _ = phenograph.cluster(
+                    aug_counts.obsm["X_pca"], **self.phenograph_parameters
+                )
+            out = f.getvalue()
+            if self.verbose:
+                print(out)
         else:
             sc.pp.neighbors(
                 aug_counts,
