@@ -7,6 +7,14 @@ DoubletDetection is a Python3 package to detect doublets (technical errors) in s
 
 ## Installing DoubletDetection
 
+Install from PyPI
+
+```bash
+pip install doubletdetection
+```
+
+Install from source
+
 ```bash
 git clone https://github.com/JonathanShor/DoubletDetection.git
 cd DoubletDetection
