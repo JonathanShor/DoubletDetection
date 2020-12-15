@@ -10,3 +10,5 @@ except ModuleNotFoundError:
     import importlib_metadata
 package_name = "doubletdetection"
 __version__ = importlib_metadata.version(package_name)
+
+__all__ = ["BoostClassifier", "plot"]
