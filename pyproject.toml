@@ -42,6 +42,21 @@ tqdm = "*"
 [tool.poetry.extras]
 dev = ["black", "pytest", "flake8", "pre-commit"]
 
+[tool.black]
+exclude = '''
+(
+  /(
+      \.eggs         # exclude a few common directories in the
+    | \.git          # root of the project
+    | \.mypy_cache
+    | \.venv
+  )/
+)
+'''
+include = '\.pyi?$'
+line-length = 99
+target_version = ['py37']
+
 [build-system]
 build-backend = "poetry.masonry.api"
 requires = [

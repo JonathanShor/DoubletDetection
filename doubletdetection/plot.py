@@ -59,16 +59,12 @@ def convergence(clf, show=False, save=None, p_thresh=1e-7, voter_thresh=0.9):
             cum_vote_average = np.mean(
                 np.ma.masked_invalid(cum_log_p_values) <= log_p_thresh, axis=0
             )
-            cum_doublets = np.ma.filled(
-                (cum_vote_average >= voter_thresh).astype(float), np.nan
-            )
+            cum_doublets = np.ma.filled((cum_vote_average >= voter_thresh).astype(float), np.nan)
             doubs_per_run.append(np.nansum(cum_doublets))
 
     # Ignore warning for convergence plot
     with warnings.catch_warnings():
-        warnings.filterwarnings(
-            action="ignore", module="matplotlib", message="^tight_layout"
-        )
+        warnings.filterwarnings(action="ignore", module="matplotlib", message="^tight_layout")
 
         f, ax = plt.subplots(1, 1, figsize=(4, 4), dpi=150)
         ax.plot(np.arange(len(doubs_per_run)), doubs_per_run)
@@ -129,16 +125,12 @@ def threshold(
                 voting_average = np.mean(
                     np.ma.masked_invalid(all_log_p_values_) <= log_p_grid[j], axis=0
                 )
-                labels = np.ma.filled(
-                    (voting_average >= voter_grid[i]).astype(float), np.nan
-                )
+                labels = np.ma.filled((voting_average >= voter_grid[i]).astype(float), np.nan)
                 doubs_per_t[i, j] = np.nansum(labels)
 
     # Ignore warning for convergence plot
     with warnings.catch_warnings():
-        warnings.filterwarnings(
-            action="ignore", module="matplotlib", message="^tight_layout"
-        )
+        warnings.filterwarnings(action="ignore", module="matplotlib", message="^tight_layout")
 
         f, ax = plt.subplots(1, 1, figsize=(4, 4), dpi=150)
         cax = ax.imshow(doubs_per_t, cmap="hot", aspect="auto")
