@@ -35,6 +35,7 @@ pandas = ">=0.22.0"
 phenograph = "*"
 pre-commit = {version = ">=2.7.1", optional = true}
 pytest = {version = ">=4.4", optional = true}
+python = ">=3.6.1,<3.9"
 scanpy = ">1.4.4"
 scipy = ">=1.0.1"
 tqdm = "*"
