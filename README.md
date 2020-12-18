@@ -39,6 +39,8 @@ import doubletdetection
 clf = doubletdetection.BoostClassifier()
 # raw_counts is a cells by genes count matrix
 labels = clf.fit(raw_counts).predict()
+# higher means more likely to be doublet
+scores = clf.doublet_score()
 ```
 
 - `raw_counts` is a scRNA-seq count matrix (cells by genes), and is array-like
