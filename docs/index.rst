@@ -6,12 +6,12 @@
 .. mdinclude:: ../README.md
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 5
    :caption: Contents:
-   
 
-   doubletdetection.doubletdetection
-   doubletdetection.plot
+
+   doubletdetection
+   plot
 
 
 Indices and tables

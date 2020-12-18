@@ -1,9 +1,7 @@
+sphinx_rtd_theme>=0.3.1
+sphinx==2.4.0
+nbsphinx
+sphinx-autodoc-typehints
+nbsphinx
+nbsphinx-link
 m2r
-matplotlib
-numpy
-pandas
-scipy
-sklearn
-PhenoGraph
-umap-learn
-scanpy

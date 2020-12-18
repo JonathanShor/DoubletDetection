@@ -1,11 +1,12 @@
-DoubletDetection
+Plot
 ====================
 
 .. currentmodule:: doubletdetection
 
-Classifier
-~~~~~~~~~~
+Plot
+~~~~
 .. autosummary::
    :toctree: reference/
 
-   BoostClassifier
+   plot.convergence
+   plot.threshold
