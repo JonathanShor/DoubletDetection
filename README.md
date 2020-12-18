@@ -45,6 +45,7 @@ scores = clf.doublet_score()
 
 - `raw_counts` is a scRNA-seq count matrix (cells by genes), and is array-like
 - `labels` is a 1-dimensional numpy ndarray with the value 1 representing a detected doublet, 0 a singlet, and `np.nan` an ambiguous cell.
+- `scores` is a 1-dimensional numpy ndarray representing a score for how likely a cell is to be a doublet. The score is used to create the labels.
 
 The classifier works best when
 
