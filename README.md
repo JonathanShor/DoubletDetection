@@ -59,7 +59,7 @@ Data can be downloaded from the [10x website](https://support.10xgenomics.com/si
 
 ## Credits and citations
 
-Gayoso, Adam, Shor, Jonathan, Carr, Ambrose J., Sharma, Roshan, Pe'er, Dana (2018, July 17). DoubletDetection (Version v2.4). Zenodo. http://doi.org/10.5281/zenodo.2678041
+Gayoso, Adam, Shor, Jonathan, Carr, Ambrose J., Sharma, Roshan, Pe'er, Dana (2020, December 18). DoubletDetection (Version v3.0). Zenodo. http://doi.org/10.5281/zenodo.2678041
 
 We also thank the participants of the 1st Human Cell Atlas Jamboree, Chun J. Ye for providing data useful in developing this method, and Itsik Pe'er for providing guidance in early development as part of the Computational genomics class at Columbia University.
 
