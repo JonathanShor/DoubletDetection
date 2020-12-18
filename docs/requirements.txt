@@ -4,7 +4,6 @@ numpy
 pandas
 scipy
 sklearn
-tables
-git+https://github.com/JonathanShor/PhenoGraph
+PhenoGraph
 umap-learn
 scanpy
