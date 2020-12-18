@@ -39,10 +39,13 @@ import doubletdetection
 clf = doubletdetection.BoostClassifier()
 # raw_counts is a cells by genes count matrix
 labels = clf.fit(raw_counts).predict()
+# higher means more likely to be doublet
+scores = clf.doublet_score()
 ```
 
 - `raw_counts` is a scRNA-seq count matrix (cells by genes), and is array-like
 - `labels` is a 1-dimensional numpy ndarray with the value 1 representing a detected doublet, 0 a singlet, and `np.nan` an ambiguous cell.
+- `scores` is a 1-dimensional numpy ndarray representing a score for how likely a cell is to be a doublet. The score is used to create the labels.
 
 The classifier works best when
 
@@ -59,7 +62,7 @@ Data can be downloaded from the [10x website](https://support.10xgenomics.com/si
 
 ## Credits and citations
 
-Gayoso, Adam, Shor, Jonathan, Carr, Ambrose J., Sharma, Roshan, Pe'er, Dana (2018, July 17). DoubletDetection (Version v2.4). Zenodo. http://doi.org/10.5281/zenodo.2678041
+Gayoso, Adam, Shor, Jonathan, Carr, Ambrose J., Sharma, Roshan, Pe'er, Dana (2020, December 18). DoubletDetection (Version v3.0). Zenodo. http://doi.org/10.5281/zenodo.2678041
 
 We also thank the participants of the 1st Human Cell Atlas Jamboree, Chun J. Ye for providing data useful in developing this method, and Itsik Pe'er for providing guidance in early development as part of the Computational genomics class at Columbia University.
 
