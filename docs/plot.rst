@@ -3,8 +3,6 @@ Plot
 
 .. currentmodule:: doubletdetection
 
-Plot
-~~~~
 .. autosummary::
    :toctree: reference/
 

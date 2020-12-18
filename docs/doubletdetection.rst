@@ -3,9 +3,10 @@ DoubletDetection
 
 .. currentmodule:: doubletdetection
 
-Classifier
-~~~~~~~~~~
 .. autosummary::
    :toctree: reference/
 
    BoostClassifier
+   BoostClassifier.fit
+   BoostClassifier.doublet_score
+   BoostClassifier.predict
