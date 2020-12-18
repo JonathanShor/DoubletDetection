@@ -1,68 +1,20 @@
 """Doublet detection in single-cell RNA-seq data."""
 
 import collections
+import io
 import warnings
+from contextlib import redirect_stdout
 
 import anndata
 import numpy as np
 import phenograph
 import scipy.sparse as sp_sparse
-import tables
 import scanpy as sc
-from scipy.io import mmread
 from scipy.sparse import csr_matrix
 from scipy.stats import hypergeom
 from sklearn.utils import check_array
 from sklearn.utils.sparsefuncs_fast import inplace_csr_row_normalize_l1
 from tqdm.auto import tqdm
-
-
-def load_10x_h5(file, genome):
-    """Load count matrix in 10x H5 format
-       Adapted from:
-       https://support.10xgenomics.com/single-cell-gene-expression/software/
-       pipelines/latest/advanced/h5_matrices
-
-    Args:
-        file (str): Path to H5 file
-        genome (str): genome, top level h5 group
-
-    Returns:
-        ndarray: Raw count matrix.
-        ndarray: Barcodes
-        ndarray: Gene names
-    """
-
-    with tables.open_file(file, "r") as f:
-        try:
-            group = f.get_node(f.root, genome)
-        except tables.NoSuchNodeError:
-            print("That genome does not exist in this file.")
-            return None
-    # gene_ids = getattr(group, 'genes').read()
-    gene_names = getattr(group, "gene_names").read()
-    barcodes = getattr(group, "barcodes").read()
-    data = getattr(group, "data").read()
-    indices = getattr(group, "indices").read()
-    indptr = getattr(group, "indptr").read()
-    shape = getattr(group, "shape").read()
-    matrix = sp_sparse.csc_matrix((data, indices, indptr), shape=shape)
-
-    return matrix, barcodes, gene_names
-
-
-def load_mtx(file):
-    """Load count matrix in mtx format
-
-    Args:
-        file (str): Path to mtx file
-
-    Returns:
-        ndarray: Raw count matrix.
-    """
-    raw_counts = np.transpose(mmread(file))
-
-    return raw_counts.tocsc()
 
 
 class BoostClassifier:
@@ -162,8 +114,6 @@ class BoostClassifier:
         if use_phenograph is True:
             if "prune" not in phenograph_parameters:
                 phenograph_parameters["prune"] = True
-            if ("verbosity" not in phenograph_parameters) and (not self.verbose):
-                phenograph_parameters["verbosity"] = 1
             self.phenograph_parameters = phenograph_parameters
             if (self.n_iters == 1) and (phenograph_parameters.get("prune") is True):
                 warn_msg = (
@@ -238,9 +188,7 @@ class BoostClassifier:
         self.all_log_p_values_ = np.zeros((self.n_iters, self._num_cells))
         all_communities = np.zeros((self.n_iters, self._num_cells))
         all_parents = []
-        all_synth_communities = np.zeros(
-            (self.n_iters, int(self.boost_rate * self._num_cells))
-        )
+        all_synth_communities = np.zeros((self.n_iters, int(self.boost_rate * self._num_cells)))
 
         for i in tqdm(range(self.n_iters)):
             if self.verbose:
@@ -284,9 +232,7 @@ class BoostClassifier:
         """
         log_p_thresh = np.log(p_thresh)
         if self.n_iters > 1:
-            with np.errstate(
-                invalid="ignore"
-            ):  # Silence numpy warning about NaN comparison
+            with np.errstate(invalid="ignore"):  # Silence numpy warning about NaN comparison
                 self.voting_average_ = np.mean(
                     np.ma.masked_invalid(self.all_log_p_values_) <= log_p_thresh, axis=0
                 )
@@ -298,19 +244,33 @@ class BoostClassifier:
             # Find a cutoff score
             potential_cutoffs = np.unique(self.all_scores_[~np.isnan(self.all_scores_)])
             if len(potential_cutoffs) > 1:
-                max_dropoff = (
-                    np.argmax(potential_cutoffs[1:] - potential_cutoffs[:-1]) + 1
-                )
+                max_dropoff = np.argmax(potential_cutoffs[1:] - potential_cutoffs[:-1]) + 1
             else:  # Most likely pathological dataset, only one (or no) clusters
                 max_dropoff = 0
             self.suggested_score_cutoff_ = potential_cutoffs[max_dropoff]
-            with np.errstate(
-                invalid="ignore"
-            ):  # Silence numpy warning about NaN comparison
+            with np.errstate(invalid="ignore"):  # Silence numpy warning about NaN comparison
                 self.labels_ = self.all_scores_[0, :] >= self.suggested_score_cutoff_
             self.labels_[np.isnan(self.all_scores_)[0, :]] = np.nan
 
         return self.labels_
+
+    def doublet_score(self):
+        """Produce doublet scores
+
+        The doublet score is the average negative log p-value of doublet enrichment
+        averaged over the iterations. Higher means more likely to be doublet.
+
+        Returns:
+            scores (ndarray, ndims=1):  Average negative log p-value over iterations
+        """
+
+        if self.n_iters > 1:
+            with np.errstate(invalid="ignore"):  # Silence numpy warning about NaN comparison
+                avg_log_p = np.mean(np.ma.masked_invalid(self.all_log_p_values_), axis=0)
+        else:
+            avg_log_p = self.all_log_p_values_[0]
+
+        return -avg_log_p
 
     def _one_fit(self):
         if self.verbose:
@@ -347,9 +307,14 @@ class BoostClassifier:
         if self.verbose:
             print("Clustering augmented data set...\n")
         if self.use_phenograph:
-            fullcommunities, _, _ = phenograph.cluster(
-                aug_counts.obsm["X_pca"], **self.phenograph_parameters
-            )
+            f = io.StringIO()
+            with redirect_stdout(f):
+                fullcommunities, _, _ = phenograph.cluster(
+                    aug_counts.obsm["X_pca"], **self.phenograph_parameters
+                )
+            out = f.getvalue()
+            if self.verbose:
+                print(out)
         else:
             sc.pp.neighbors(
                 aug_counts,
@@ -357,9 +322,7 @@ class BoostClassifier:
                 method="umap",
                 n_neighbors=10,
             )
-            sc.tl.louvain(
-                aug_counts, random_state=self.random_state, resolution=4, directed=False
-            )
+            sc.tl.louvain(aug_counts, random_state=self.random_state, resolution=4, directed=False)
             fullcommunities = np.array(aug_counts.obs["louvain"], dtype=int)
         min_ID = min(fullcommunities)
         self.communities_ = fullcommunities[: self._num_cells]
@@ -380,8 +343,7 @@ class BoostClassifier:
         orig_cells_per_comm = collections.Counter(self.communities_)
         community_IDs = orig_cells_per_comm.keys()
         community_scores = {
-            i: float(synth_cells_per_comm[i])
-            / (synth_cells_per_comm[i] + orig_cells_per_comm[i])
+            i: float(synth_cells_per_comm[i]) / (synth_cells_per_comm[i] + orig_cells_per_comm[i])
             for i in community_IDs
         }
         scores = np.array([community_scores[i] for i in self.communities_])
@@ -412,9 +374,7 @@ class BoostClassifier:
         num_synths = int(self.boost_rate * self._num_cells)
 
         # Parent indices
-        choices = np.random.choice(
-            self._num_cells, size=(num_synths, 2), replace=self.replace
-        )
+        choices = np.random.choice(self._num_cells, size=(num_synths, 2), replace=self.replace)
         parents = [list(p) for p in choices]
 
         parent0 = self._raw_counts[choices[:, 0], :]

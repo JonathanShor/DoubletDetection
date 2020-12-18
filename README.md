@@ -2,10 +2,20 @@
 
 [![DOI](https://zenodo.org/badge/86256007.svg)](https://zenodo.org/badge/latestdoi/86256007)
 [![Documentation Status](https://readthedocs.org/projects/doubletdetection/badge/?version=latest)](https://doubletdetection.readthedocs.io/en/latest/?badge=latest)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/python/black)
+![Build Status](https://github.com/JonathanShor/DoubletDetection/workflows/doubletdetection/badge.svg)
 
 DoubletDetection is a Python3 package to detect doublets (technical errors) in single-cell RNA-seq count matrices.
 
 ## Installing DoubletDetection
+
+Install from PyPI
+
+```bash
+pip install doubletdetection
+```
+
+Install from source
 
 ```bash
 git clone https://github.com/JonathanShor/DoubletDetection.git
@@ -41,7 +51,7 @@ The classifier works best when
 
 In `v2.5` we have added a new experimental clustering method (`scanpy`'s Louvain clustering) that is much faster than phenograph. We are still validating results from this new clustering. Please see the notebook below for an example of using this new feature.
 
-See our [jupyter notebook](https://nbviewer.jupyter.org/github/JonathanShor/DoubletDetection/blob/master/tests/notebooks/PBMC_8k_vignette.ipynb) for an example on 8k PBMCs from 10x.
+See our [jupyter notebook](https://nbviewer.jupyter.org/github/JonathanShor/DoubletDetection/blob/master/tests/notebooks/PBMC_10k_vignette.ipynb) for an example on 8k PBMCs from 10x.
 
 ## Obtaining data
 

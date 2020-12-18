@@ -3,9 +3,6 @@ import warnings
 
 import matplotlib
 import numpy as np
-import umap
-from sklearn.decomposition import PCA
-from sklearn.utils import check_array
 
 try:
     os.environ["DISPLAY"]
@@ -62,16 +59,12 @@ def convergence(clf, show=False, save=None, p_thresh=1e-7, voter_thresh=0.9):
             cum_vote_average = np.mean(
                 np.ma.masked_invalid(cum_log_p_values) <= log_p_thresh, axis=0
             )
-            cum_doublets = np.ma.filled(
-                (cum_vote_average >= voter_thresh).astype(float), np.nan
-            )
+            cum_doublets = np.ma.filled((cum_vote_average >= voter_thresh).astype(float), np.nan)
             doubs_per_run.append(np.nansum(cum_doublets))
 
     # Ignore warning for convergence plot
     with warnings.catch_warnings():
-        warnings.filterwarnings(
-            action="ignore", module="matplotlib", message="^tight_layout"
-        )
+        warnings.filterwarnings(action="ignore", module="matplotlib", message="^tight_layout")
 
         f, ax = plt.subplots(1, 1, figsize=(4, 4), dpi=150)
         ax.plot(np.arange(len(doubs_per_run)), doubs_per_run)
@@ -85,90 +78,6 @@ def convergence(clf, show=False, save=None, p_thresh=1e-7, voter_thresh=0.9):
             f.savefig(save, format="pdf", bbox_inches="tight")
 
     return f
-
-
-def umap_plot(
-    raw_counts,
-    labels,
-    n_components=30,
-    show=False,
-    save=None,
-    normalizer=normalize_counts,
-    random_state=None,
-):
-    """Produce a umap plot of the data with doublets in black.
-
-        Count matrix is normalized and dimension reduced before plotting.
-
-    Args:
-        raw_counts (array-like): Count matrix, oriented cells by genes.
-        labels (ndarray): predicted doublets from predict method
-        n_components (int, optional): number of PCs to use prior to UMAP
-        show (bool, optional): If True, runs plt.show()
-        save (str, optional): filename for saved figure,
-            figure not saved by default
-        normalizer ((ndarray) -> ndarray, optional): Method to normalize
-            raw_counts. Defaults to normalize_counts, included in this package.
-            Note: To use normalize_counts with its pseudocount parameter changed
-            from the default 0.1 value to some positive float `new_var`, use:
-            normalizer=lambda counts: doubletdetection.normalize_counts(counts,
-            pseudocount=new_var)
-        random_state (int, optional): If provided, passed to PCA and UMAP
-
-    Returns:
-        matplotlib figure
-        ndarray: umap reduction
-    """
-
-    try:
-        raw_counts = check_array(
-            raw_counts, accept_sparse=False, force_all_finite=True, ensure_2d=True
-        )
-    except TypeError:  # Only catches sparse error. Non-finite & n_dims still raised.
-        warnings.warn("Sparse raw_counts is automatically densified.")
-        raw_counts = raw_counts.toarray()
-    norm_counts = normalizer(raw_counts)
-    reduced_counts = PCA(
-        n_components=n_components, svd_solver="randomized", random_state=random_state
-    ).fit_transform(norm_counts)
-    umap_dr = umap.UMAP(random_state=random_state, min_dist=0.5).fit_transform(
-        reduced_counts
-    )
-    # Ensure only looking at positively identified doublets
-    doublets = labels == 1
-
-    fig, axes = plt.subplots(1, 1, figsize=(4, 4), dpi=150)
-    axes.scatter(
-        umap_dr[:, 0],
-        umap_dr[:, 1],
-        c="grey",
-        cmap=plt.cm.tab20,
-        s=1,
-        label="predicted singlets",
-    )
-    axes.scatter(
-        umap_dr[:, 0][doublets],
-        umap_dr[:, 1][doublets],
-        s=3,
-        c="black",
-        label="predicted doublets",
-    )
-    axes.axis("off")
-    axes.legend(frameon=False)
-    axes.set_title(
-        "{} doublets out of {} cells\n {}% cross-type doublet rate".format(
-            np.sum(doublets),
-            raw_counts.shape[0],
-            np.round(100 * np.sum(doublets) / raw_counts.shape[0], 2),
-        )
-    )
-
-    if show is True:
-        plt.show()
-    if isinstance(save, str):
-        fig.savefig(save, format="pdf", bbox_inches="tight")
-
-    return fig, umap_dr
 
 
 def threshold(
@@ -216,16 +125,12 @@ def threshold(
                 voting_average = np.mean(
                     np.ma.masked_invalid(all_log_p_values_) <= log_p_grid[j], axis=0
                 )
-                labels = np.ma.filled(
-                    (voting_average >= voter_grid[i]).astype(float), np.nan
-                )
+                labels = np.ma.filled((voting_average >= voter_grid[i]).astype(float), np.nan)
                 doubs_per_t[i, j] = np.nansum(labels)
 
     # Ignore warning for convergence plot
     with warnings.catch_warnings():
-        warnings.filterwarnings(
-            action="ignore", module="matplotlib", message="^tight_layout"
-        )
+        warnings.filterwarnings(action="ignore", module="matplotlib", message="^tight_layout")
 
         f, ax = plt.subplots(1, 1, figsize=(4, 4), dpi=150)
         cax = ax.imshow(doubs_per_t, cmap="hot", aspect="auto")
