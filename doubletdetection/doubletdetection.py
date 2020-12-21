@@ -85,7 +85,7 @@ class BoostClassifier:
         n_components=30,
         n_top_var_genes=10000,
         replace=False,
-        clustering_algorithm="louvain",
+        clustering_algorithm="phenograph",
         clustering_kwargs=None,
         n_iters=25,
         normalizer=None,
