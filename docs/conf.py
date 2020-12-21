@@ -10,11 +10,12 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-import os
-import sys
+import sys  # noqa
+from pathlib import Path
 
-sys.path.insert(0, os.path.abspath(".."))
-sys.path.append(os.path.dirname(__file__))
+HERE = Path(__file__).parent
+
+import doubletdetection  # noqa
 
 # -- Project information -----------------------------------------------------
 
@@ -22,25 +23,49 @@ project = "DoubletDetection"
 copyright = "2019, Adam Gayoso and Jonathan Shor"
 author = "Adam Gayoso and Jonathan Shor"
 
-# The full version, including alpha/beta/rc tags
-release = "2.5.2"
-
 
 # -- General configuration ---------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["sphinx.ext.autodoc", "sphinx.ext.viewcode", "sphinx.ext.napoleon", "m2r"]
+
+needs_sphinx = "2.4"  # Nicer param docs
+
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx.ext.viewcode",
+    "m2r",
+    "nbsphinx",
+    "nbsphinx_link",
+    "sphinx.ext.mathjax",
+    "sphinx.ext.napoleon",
+    "sphinx_autodoc_typehints",  # needs to be after napoleon
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.autosummary",
+]
+
+# nbsphinx specific settings
+nbsphinx_execute = "never"
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 
+source_suffix = ".rst"
+
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
 
+# Generate the API documentation when building
+autosummary_generate = True
+autodoc_member_order = "bysource"
+napoleon_google_docstring = True
+napoleon_include_init_with_doc = False
+napoleon_use_rtype = True  # having a separate entry generally helps readability
+napoleon_use_param = True
+napoleon_custom_sections = [("Params", "Parameters")]
 
 # -- Options for HTML output -------------------------------------------------
 
