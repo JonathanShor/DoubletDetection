@@ -203,9 +203,7 @@ class BoostClassifier:
 
         # Release unneeded large data vars
         del self._raw_counts
-        del self._norm_counts
         del self._raw_synthetics
-        del self._synthetics
         if self.normalizer is None:
             del self._normed_raw_counts
             del self._lib_size
@@ -294,10 +292,7 @@ class BoostClassifier:
             normed_synths = self._raw_synthetics.copy()
             inplace_csr_row_normalize_l1(normed_synths)
             aug_counts = sp_sparse.vstack((self._normed_raw_counts, normed_synths))
-            aug_counts = np.log(aug_counts.A * np.median(aug_lib_size) + 0.1)
-
-        self._norm_counts = aug_counts[: self._num_cells]
-        self._synthetics = aug_counts[self._num_cells :]
+            aug_counts = np.log((aug_counts * np.median(aug_lib_size)).A + 0.1)
 
         aug_counts = anndata.AnnData(aug_counts)
         aug_counts.obs["n_counts"] = aug_lib_size
@@ -364,7 +359,7 @@ class BoostClassifier:
             i: hypergeom.logsf(
                 synth_cells_per_comm[i],
                 aug_counts.shape[0],
-                self._synthetics.shape[0],
+                normed_synths.shape[0],
                 synth_cells_per_comm[i] + orig_cells_per_comm[i],
             )
             for i in community_IDs
