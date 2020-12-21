@@ -58,11 +58,8 @@ class BoostClassifier:
 
     Attributes:
         all_log_p_values_ (ndarray): Hypergeometric test natural log p-value per
-            cell for cluster enrichment of synthetic doublets. Shape (n_iters,
-            num_cells).
-        all_p_values_ (ndarray): DEPRECATED. Exponentiated all_log_p_values.
-            Due to rounding point errors, use of all_log_p_values recommended.
-            Will be removed in v3.0.
+            cell for cluster enrichment of synthetic doublets. Use for tresholding.
+            Shape (n_iters, num_cells).
         all_scores_ (ndarray): The fraction of a cell's cluster that is
             synthetic doublets. Shape (n_iters, num_cells).
         communities_ (ndarray): Cluster ID for corresponding cell. Shape
@@ -149,7 +146,7 @@ class BoostClassifier:
             raw_counts (array-like): Count matrix, oriented cells by genes.
 
         Sets:
-            all_scores_, all_p_values_, all_log_p_values_, communities_,
+            all_scores_, all_log_p_values_, communities_,
             top_var_genes, parents, synth_communities
 
         Returns:
@@ -220,7 +217,6 @@ class BoostClassifier:
         self.communities_ = all_communities
         self.parents_ = all_parents
         self.synth_communities_ = all_synth_communities
-        self.all_p_values_ = np.exp(self.all_log_p_values_)
 
         return self
 
