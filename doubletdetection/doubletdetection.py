@@ -88,7 +88,7 @@ class BoostClassifier:
         replace=False,
         clustering_algorithm="phenograph",
         clustering_kwargs=None,
-        n_iters=25,
+        n_iters=10,
         normalizer=None,
         random_state=0,
         verbose=False,
