@@ -54,6 +54,7 @@ class BoostClassifier:
         standard_scaling (bool, optional): Set to True to enable standard scaling
             of normalized count matrix prior to PCA. Recommended when not using
             Phenograph. Defaults to False.
+        n_jobs (int, optional): Number of jobs to use. Speeds up neighbor computation.
 
     Attributes:
         all_log_p_values_ (ndarray): Hypergeometric test natural log p-value per
@@ -92,6 +93,7 @@ class BoostClassifier:
         random_state=0,
         verbose=False,
         standard_scaling=False,
+        n_jobs=1,
     ):
         self.boost_rate = boost_rate
         self.replace = replace
@@ -101,6 +103,7 @@ class BoostClassifier:
         self.random_state = random_state
         self.verbose = verbose
         self.standard_scaling = standard_scaling
+        self.n_jobs = n_jobs
 
         if self.clustering_algorithm not in ["louvain", "phenograph", "leiden"]:
             raise ValueError(
@@ -166,6 +169,9 @@ class BoostClassifier:
                 print("Sparsifying matrix.")
             raw_counts = csr_matrix(raw_counts)
 
+        old_n_jobs = sc.settings.n_jobs
+        sc.settings.n_jobs = self.n_jobs
+
         if self.n_top_var_genes > 0:
             if self.n_top_var_genes < raw_counts.shape[1]:
                 gene_variances = (
@@ -207,6 +213,9 @@ class BoostClassifier:
         if self.normalizer is None:
             del self._normed_raw_counts
             del self._lib_size
+
+        # reset scanpy n_jobs
+        sc.settings.n_jobs = old_n_jobs
 
         self.communities_ = all_communities
         self.parents_ = all_parents
@@ -308,7 +317,7 @@ class BoostClassifier:
             f = io.StringIO()
             with redirect_stdout(f):
                 fullcommunities, _, _ = phenograph.cluster(
-                    aug_counts.obsm["X_pca"], **self.clustering_kwargs
+                    aug_counts.obsm["X_pca"], n_jobs=self.n_jobs, **self.clustering_kwargs
                 )
             out = f.getvalue()
             if self.verbose:
