@@ -210,8 +210,14 @@ class BoostClassifier(BaseEstimator):
 
         return self
 
-    def get_predictions(self):
+    def get_predictions(self, p_thresh=None, voter_thresh=None):
         """Produce doublet calls from fitted classifier
+
+        Args:
+            p_thresh (float, optional): hypergeometric test p-value threshold
+                that determines per iteration doublet calls. Defaults to self.p_thresh.
+            voter_thresh (float, optional): fraction of iterations a cell must
+                be called a doublet. Defaults to self.voter_thresh.
 
         Sets:
             labels_ and voting_average_ if n_iters > 1.
@@ -220,14 +226,16 @@ class BoostClassifier(BaseEstimator):
         Returns:
             labels_ (ndarray, ndims=1):  0 for singlet, 1 for detected doublet
         """
-        log_p_thresh = np.log(self.p_thresh)
+        p_thresh = self.p_thresh if p_thresh is None else p_thresh
+        voter_thresh = self.voter_thresh if voter_thresh is None else voter_thresh
+        log_p_thresh = np.log(p_thresh)
         if self.n_iters > 1:
             with np.errstate(invalid="ignore"):  # Silence numpy warning about NaN comparison
                 self.voting_average_ = np.mean(
                     np.ma.masked_invalid(self.all_log_p_values_) <= log_p_thresh, axis=0
                 )
                 self.labels_ = np.ma.filled(
-                    (self.voting_average_ >= self.voter_thresh).astype(float), np.nan
+                    (self.voting_average_ >= voter_thresh).astype(float), np.nan
                 )
                 self.voting_average_ = np.ma.filled(self.voting_average_, np.nan)
         else:
