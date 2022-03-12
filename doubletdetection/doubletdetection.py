@@ -424,6 +424,8 @@ class BoostClassifier(BaseEstimator):
         Set attrs for use during fit using validation.
 
         Sklearn doesn't like mutating params, do set private attrs for fit.
+
+        self._boost_rate, self._n_components are set here and used in fit.
         """
         if self.clustering_algorithm not in ["louvain", "phenograph", "leiden"]:
             raise ValueError(
