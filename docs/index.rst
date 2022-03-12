@@ -11,7 +11,7 @@
    :caption: Contents:
 
 
-   doubletdetection
+   api
    plot
    tutorial
 
