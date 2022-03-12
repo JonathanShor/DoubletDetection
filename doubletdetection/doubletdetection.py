@@ -42,9 +42,13 @@ class BoostClassifier:
         normalizer ((sp_sparse) -> ndarray): Method to normalize raw_counts.
             Defaults to normalize_counts, included in this package. Note: To use
             normalize_counts with its pseudocount parameter changed from the
-            default 0.1 value to some positive float `new_var`, use:
+            default pseudocount value to some positive float `new_var`, use:
             normalizer=lambda counts: doubletdetection.normalize_counts(counts,
             pseudocount=new_var)
+        pseudocount (int, optional): Pseudocount used in normalize_counts.
+            If `1` is used, and `standard_scaling=False`, the classifier is
+            much more memory efficient; however, this may result in fewer doublets
+            detected.
         random_state (int, optional): If provided, passed to PCA and used to
             seedrandom seed numpy's RNG. NOTE: PhenoGraph does not currently
             admit a random seed, and so this will not guarantee identical
@@ -87,6 +91,7 @@ class BoostClassifier:
         clustering_kwargs=None,
         n_iters=10,
         normalizer=None,
+        pseudocount=0.1,
         random_state=0,
         verbose=False,
         standard_scaling=False,
@@ -101,6 +106,7 @@ class BoostClassifier:
         self.verbose = verbose
         self.standard_scaling = standard_scaling
         self.n_jobs = n_jobs
+        self.pseudocount = pseudocount
 
         if self.clustering_algorithm not in ["louvain", "phenograph", "leiden"]:
             raise ValueError(
@@ -297,7 +303,12 @@ class BoostClassifier:
             normed_synths = self._raw_synthetics.copy()
             inplace_csr_row_normalize_l1(normed_synths)
             aug_counts = sp_sparse.vstack((self._normed_raw_counts, normed_synths))
-            aug_counts = np.log((aug_counts * np.median(aug_lib_size)).A + 0.1)
+            scaled_aug_counts = aug_counts * np.median(aug_lib_size)
+            if self.pseudocount != 1:
+                aug_counts = np.log(scaled_aug_counts.A + 0.1)
+            else:
+                aug_counts = np.log1p(scaled_aug_counts)
+            del scaled_aug_counts
 
         aug_counts = anndata.AnnData(aug_counts)
         aug_counts.obs["n_counts"] = aug_lib_size
@@ -306,7 +317,9 @@ class BoostClassifier:
 
         if self.verbose:
             print("Running PCA...")
-        sc.tl.pca(aug_counts, n_comps=self.n_components, random_state=self.random_state)
+        # "auto" solver faster for dense matrices
+        solver="arpack" if sp_sparse.issparse(aug_counts.X) else "auto"
+        sc.tl.pca(aug_counts, n_comps=self.n_components, random_state=self.random_state, svd_solver=solver)
         if self.verbose:
             print("Clustering augmented data set...\n")
         if self.clustering_algorithm == "phenograph":
