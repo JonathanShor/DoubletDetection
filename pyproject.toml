@@ -30,8 +30,8 @@ furo = {version = "*", optional = true}
 ipywidgets = "*"
 leidenalg = "*"
 louvain = "*"
-m2r = {version = "*", optional = true}
 matplotlib = ">=3.1"
+myst-parser = {version = "*", optional = true}
 nbsphinx = {version = "*", optional = true}
 nbsphinx-link = {version = "*", optional = true}
 numpy = ">=1.14.2"
@@ -48,7 +48,7 @@ tqdm = "*"
 
 [tool.poetry.extras]
 dev = ["black", "pytest", "flake8", "pre-commit"]
-docs = ["m2r", "nbsphinx", "sphinx", "sphinx-autodoc-typehints", "nbsphinx-link", "furo"]
+docs = ["nbsphinx", "sphinx", "sphinx-autodoc-typehints", "nbsphinx-link", "furo", "myst-parser"]
 
 [tool.black]
 exclude = '''
