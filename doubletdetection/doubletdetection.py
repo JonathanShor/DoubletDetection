@@ -142,6 +142,8 @@ class BoostClassifier(BaseEstimator):
             force_all_finite=True,
             ensure_2d=True,
             dtype="float32",
+            ensure_min_samples=10,
+            ensure_min_features=2,
         )
 
         if sp_sparse.issparse(raw_counts) is not True:
@@ -152,14 +154,16 @@ class BoostClassifier(BaseEstimator):
         old_n_jobs = sc.settings.n_jobs
         sc.settings.n_jobs = self.n_jobs
 
-        if self.n_top_var_genes > 0:
+        # Floor negative n_top_var_genes by 0
+        self._n_top_var_genes = max(0, self.n_top_var_genes)
+        if self._n_top_var_genes > 0:
             if self.n_top_var_genes < raw_counts.shape[1]:
                 gene_variances = (
                     np.array(raw_counts.power(2).mean(axis=0))
                     - (np.array(raw_counts.mean(axis=0))) ** 2
                 )[0]
                 top_var_indexes = np.argsort(gene_variances)
-                self.top_var_genes_ = top_var_indexes[-self.n_top_var_genes :]
+                self.top_var_genes_ = top_var_indexes[-self._n_top_var_genes :]
                 # csc if faster for column indexing
                 raw_counts = raw_counts.tocsc()
                 raw_counts = raw_counts[:, self.top_var_genes_]
@@ -296,7 +300,7 @@ class BoostClassifier(BaseEstimator):
         solver = "arpack" if sp_sparse.issparse(aug_counts.X) else "auto"
         sc.tl.pca(
             aug_counts,
-            n_comps=self.n_components,
+            n_comps=self._n_components,
             random_state=self.random_state,
             svd_solver=solver,
         )
@@ -376,7 +380,7 @@ class BoostClassifier(BaseEstimator):
         Sets .parents_
         """
         # Number of synthetic doublets to add
-        num_synths = int(self.boost_rate * self._num_cells)
+        num_synths = int(self._boost_rate * self._num_cells)
 
         # Parent indices
         choices = np.random.choice(self._num_cells, size=(num_synths, 2), replace=self.replace)
@@ -416,6 +420,11 @@ class BoostClassifier(BaseEstimator):
                 )
 
     def _validate_kwargs(self):
+        """
+        Set attrs for use during fit using validation.
+
+        Sklearn doesn't like mutating params, do set private attrs for fit.
+        """
         if self.clustering_algorithm not in ["louvain", "phenograph", "leiden"]:
             raise ValueError(
                 "Clustering algorithm needs to be one of ['louvain', 'phenograph', 'leiden']"
@@ -427,28 +436,28 @@ class BoostClassifier(BaseEstimator):
             np.random.seed(self.random_state)
 
         min_comps = min(self._num_cells, self._num_genes)
-        if self.n_components == 30 and self.n_top_var_genes > 0:
+        self._n_components = self.n_components
+        if self._n_components == 30 and self._n_top_var_genes > 0:
             # If user did not change n_components, silently cap it by n_top_var_genes if needed
-            self.n_components = min(self.n_components, self.n_top_var_genes)
-        if self.n_components > min_comps:
+            self._n_components = min(self._n_components, self._n_top_var_genes)
+        if self._n_components > min_comps:
             # can't use more components than genes
             warnings.warn(f"Capping n_components to {min_comps}.")
-            self.n_components = min_comps
-        # Floor negative n_top_var_genes by 0
-        self.n_top_var_genes = max(0, self.n_top_var_genes)
+            self._n_components = min_comps
 
         self._set_clustering_kwargs()
 
+        self._boost_rate = self.boost_rate
         if not self.replace and self.boost_rate > 0.5:
             warn_msg = (
                 "boost_rate is trimmed to 0.5 when replace=False."
                 + " Set replace=True to use greater boost rates."
             )
             warnings.warn(warn_msg)
-            self.boost_rate = 0.5
+            self._boost_rate = 0.5
 
-        assert (self.n_top_var_genes == 0) or (
-            self.n_components <= self.n_top_var_genes
+        assert (self._n_top_var_genes == 0) or (
+            self._n_components <= self._n_top_var_genes
         ), "n_components={0} cannot be larger than n_top_var_genes={1}".format(
-            self.n_components, self.n_top_var_genes
+            self._n_components, self._n_top_var_genes
         )
