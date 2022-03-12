@@ -20,7 +20,7 @@ import doubletdetection  # noqa
 # -- Project information -----------------------------------------------------
 
 project = "DoubletDetection"
-copyright = "2019, Adam Gayoso and Jonathan Shor"
+copyright = "2022, Adam Gayoso and Jonathan Shor"
 author = "Adam Gayoso and Jonathan Shor"
 
 
@@ -30,12 +30,12 @@ author = "Adam Gayoso and Jonathan Shor"
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 
-needs_sphinx = "2.4"  # Nicer param docs
+needs_sphinx = "4.3"  # Nicer param docs
 
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.viewcode",
-    "m2r",
+    "myst_parser",
     "nbsphinx",
     "nbsphinx_link",
     "sphinx.ext.mathjax",
@@ -72,7 +72,20 @@ napoleon_custom_sections = [("Params", "Parameters")]
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "sphinx_rtd_theme"
+html_theme = "furo"
+
+html_title = "DoubletDetection"
+
+html_theme_options = {
+    "sidebar_hide_name": False,
+    "light_css_variables": {
+        "color-brand-primary": "#003262",
+        "color-brand-content": "#003262",
+        "admonition-font-size": "var(--font-size-normal)",
+        "admonition-title-font-size": "var(--font-size-normal)",
+        "code-font-size": "var(--font-size--small)",
+    },
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
