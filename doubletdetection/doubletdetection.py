@@ -8,8 +8,8 @@ from contextlib import redirect_stdout
 import anndata
 import numpy as np
 import phenograph
-import scipy.sparse as sp_sparse
 import scanpy as sc
+import scipy.sparse as sp_sparse
 from scipy.sparse import csr_matrix
 from scipy.stats import hypergeom
 from sklearn.utils import check_array
@@ -428,7 +428,7 @@ class BoostClassifier:
                 warnings.warn(warn_msg)
         else:
             if "directed" not in self.clustering_kwargs:
-                self.clustering_kwargs["directed"] = True
+                self.clustering_kwargs["directed"] = False
             if "resolution" not in self.clustering_kwargs:
                 self.clustering_kwargs["resolution"] = 4
             if "key_added" in self.clustering_kwargs:
