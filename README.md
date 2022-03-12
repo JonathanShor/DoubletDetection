@@ -56,7 +56,7 @@ In `v2.5` we have added a new experimental clustering method (`scanpy`'s Louvain
 
 ## Tutorial
 
-See our [jupyter notebook](https://nbviewer.jupyter.org/github/JonathanShor/DoubletDetection/blob/master/tests/notebooks/PBMC_10k_vignette.ipynb) for an example on 10k PBMCs from 10x Genomics.
+See our [tutorial](https://doubletdetection.readthedocs.io/en/latest/tutorial.html) for an example on 10k PBMCs from 10x Genomics.
 
 ## Obtaining data
 
