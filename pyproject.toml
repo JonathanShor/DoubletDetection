@@ -26,7 +26,7 @@ version = "3.0"
 anndata = ">=0.6"
 black = {version = ">=20.8b1", optional = true}
 flake8 = {version = ">=3.7.7", optional = true}
-furo = {"*" , optional = true}
+furo = {version = "*", optional = true}
 ipywidgets = "*"
 leidenalg = "*"
 louvain = "*"
