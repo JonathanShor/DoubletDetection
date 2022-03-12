@@ -35,7 +35,7 @@ needs_sphinx = "4.3"  # Nicer param docs
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.viewcode",
-    "m2r",
+    "myst_parser",
     "nbsphinx",
     "nbsphinx_link",
     "sphinx.ext.mathjax",
