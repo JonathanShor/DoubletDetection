@@ -318,8 +318,13 @@ class BoostClassifier:
         if self.verbose:
             print("Running PCA...")
         # "auto" solver faster for dense matrices
-        solver="arpack" if sp_sparse.issparse(aug_counts.X) else "auto"
-        sc.tl.pca(aug_counts, n_comps=self.n_components, random_state=self.random_state, svd_solver=solver)
+        solver = "arpack" if sp_sparse.issparse(aug_counts.X) else "auto"
+        sc.tl.pca(
+            aug_counts,
+            n_comps=self.n_components,
+            random_state=self.random_state,
+            svd_solver=solver,
+        )
         if self.verbose:
             print("Clustering augmented data set...\n")
         if self.clustering_algorithm == "phenograph":
