@@ -8,16 +8,18 @@ from contextlib import redirect_stdout
 import anndata
 import numpy as np
 import phenograph
-import scipy.sparse as sp_sparse
 import scanpy as sc
+import scipy.sparse as sp_sparse
 from scipy.sparse import csr_matrix
 from scipy.stats import hypergeom
+from sklearn.base import BaseEstimator
 from sklearn.utils import check_array
 from sklearn.utils.sparsefuncs_fast import inplace_csr_row_normalize_l1
+from sklearn.utils.validation import check_is_fitted
 from tqdm.auto import tqdm
 
 
-class BoostClassifier:
+class BoostClassifier(BaseEstimator):
     """Classifier for doublets in single-cell RNA-seq data.
 
     Parameters:
@@ -59,6 +61,10 @@ class BoostClassifier:
             of normalized count matrix prior to PCA. Recommended when not using
             Phenograph. Defaults to False.
         n_jobs (int, optional): Number of jobs to use. Speeds up neighbor computation.
+        p_thresh (float, optional): hypergeometric test p-value threshold
+            that determines per iteration doublet calls
+        voter_thresh (float, optional): fraction of iterations a cell must
+            be called a doublet
 
     Attributes:
         all_log_p_values_ (ndarray): Hypergeometric test natural log p-value per
@@ -96,6 +102,8 @@ class BoostClassifier:
         verbose=False,
         standard_scaling=False,
         n_jobs=1,
+        p_thresh=1e-7,
+        voter_thresh=0.9,
     ):
         self.boost_rate = boost_rate
         self.replace = replace
@@ -107,49 +115,18 @@ class BoostClassifier:
         self.standard_scaling = standard_scaling
         self.n_jobs = n_jobs
         self.pseudocount = pseudocount
+        self.n_components = n_components
+        self.n_top_var_genes = n_top_var_genes
+        self.clustering_kwargs = clustering_kwargs
+        self.p_thresh = p_thresh
+        self.voter_thresh = voter_thresh
 
-        if self.clustering_algorithm not in ["louvain", "phenograph", "leiden"]:
-            raise ValueError(
-                "Clustering algorithm needs to be one of ['louvain', 'phenograph', 'leiden']"
-            )
-        if self.clustering_algorithm == "leiden":
-            warnings.warn("Leiden clustering is experimental and results have not been validated.")
-
-        if self.random_state:
-            np.random.seed(self.random_state)
-
-        if n_components == 30 and n_top_var_genes > 0:
-            # If user did not change n_components, silently cap it by n_top_var_genes if needed
-            self.n_components = min(n_components, n_top_var_genes)
-        else:
-            self.n_components = n_components
-        # Floor negative n_top_var_genes by 0
-        self.n_top_var_genes = max(0, n_top_var_genes)
-
-        self.clustering_kwargs = (
-            {} if not isinstance(clustering_kwargs, dict) else clustering_kwargs
-        )
-        self._set_clustering_kwargs()
-
-        if not self.replace and self.boost_rate > 0.5:
-            warn_msg = (
-                "boost_rate is trimmed to 0.5 when replace=False."
-                + " Set replace=True to use greater boost rates."
-            )
-            warnings.warn(warn_msg)
-            self.boost_rate = 0.5
-
-        assert (self.n_top_var_genes == 0) or (
-            self.n_components <= self.n_top_var_genes
-        ), "n_components={0} cannot be larger than n_top_var_genes={1}".format(
-            n_components, n_top_var_genes
-        )
-
-    def fit(self, raw_counts):
+    def fit(self, raw_counts, y=None):
         """Fits the classifier on raw_counts.
 
         Args:
             raw_counts (array-like): Count matrix, oriented cells by genes.
+            y: Ignored
 
         Sets:
             all_scores_, all_log_p_values_, communities_,
@@ -190,6 +167,9 @@ class BoostClassifier:
 
         self._raw_counts = raw_counts
         (self._num_cells, self._num_genes) = self._raw_counts.shape
+
+        self._validate_kwargs()
+
         if self.normalizer is None:
             # Memoize these; default normalizer treats these invariant for all synths
             self._lib_size = np.sum(raw_counts, axis=1).A1
@@ -226,14 +206,8 @@ class BoostClassifier:
 
         return self
 
-    def predict(self, p_thresh=1e-7, voter_thresh=0.9):
+    def get_predictions(self):
         """Produce doublet calls from fitted classifier
-
-        Args:
-            p_thresh (float, optional): hypergeometric test p-value threshold
-                that determines per iteration doublet calls
-            voter_thresh (float, optional): fraction of iterations a cell must
-                be called a doublet
 
         Sets:
             labels_ and voting_average_ if n_iters > 1.
@@ -242,14 +216,14 @@ class BoostClassifier:
         Returns:
             labels_ (ndarray, ndims=1):  0 for singlet, 1 for detected doublet
         """
-        log_p_thresh = np.log(p_thresh)
+        log_p_thresh = np.log(self.p_thresh)
         if self.n_iters > 1:
             with np.errstate(invalid="ignore"):  # Silence numpy warning about NaN comparison
                 self.voting_average_ = np.mean(
                     np.ma.masked_invalid(self.all_log_p_values_) <= log_p_thresh, axis=0
                 )
                 self.labels_ = np.ma.filled(
-                    (self.voting_average_ >= voter_thresh).astype(float), np.nan
+                    (self.voting_average_ >= self.voter_thresh).astype(float), np.nan
                 )
                 self.voting_average_ = np.ma.filled(self.voting_average_, np.nan)
         else:
@@ -266,7 +240,7 @@ class BoostClassifier:
 
         return self.labels_
 
-    def doublet_score(self):
+    def get_doublet_scores(self):
         """Produce doublet scores
 
         The doublet score is the average negative log p-value of doublet enrichment
@@ -276,6 +250,7 @@ class BoostClassifier:
             scores (ndarray, ndims=1):  Average negative log p-value over iterations
         """
 
+        check_is_fitted(self)
         if self.n_iters > 1:
             with np.errstate(invalid="ignore"):  # Silence numpy warning about NaN comparison
                 avg_log_p = np.mean(np.ma.masked_invalid(self.all_log_p_values_), axis=0)
@@ -287,7 +262,7 @@ class BoostClassifier:
     def _one_fit(self):
         if self.verbose:
             print("\nCreating synthetic doublets...")
-        self._createDoublets()
+        self._create_doublets()
 
         # Normalize combined augmented set
         if self.verbose:
@@ -331,7 +306,7 @@ class BoostClassifier:
             f = io.StringIO()
             with redirect_stdout(f):
                 fullcommunities, _, _ = phenograph.cluster(
-                    aug_counts.obsm["X_pca"], n_jobs=self.n_jobs, **self.clustering_kwargs
+                    aug_counts.obsm["X_pca"], n_jobs=self.n_jobs, **self._clustering_kwargs
                 )
             out = f.getvalue()
             if self.verbose:
@@ -351,7 +326,7 @@ class BoostClassifier:
                 aug_counts,
                 key_added="clusters",
                 random_state=self.random_state,
-                **self.clustering_kwargs,
+                **self._clustering_kwargs,
             )
             fullcommunities = np.array(aug_counts.obs["clusters"], dtype=int)
         min_ID = min(fullcommunities)
@@ -395,7 +370,7 @@ class BoostClassifier:
 
         return scores, log_p_values
 
-    def _createDoublets(self):
+    def _create_doublets(self):
         """Create synthetic doublets.
 
         Sets .parents_
@@ -415,25 +390,65 @@ class BoostClassifier:
         self.parents_ = parents
 
     def _set_clustering_kwargs(self):
-        """Sets .clustering_kwargs"""
+        """Sets ._clustering_kwargs"""
+        self._clustering_kwargs = {}
+        if isinstance(self.clustering_kwargs, dict):
+            self._clustering_kwargs.update(self.clustering_kwargs)
         if self.clustering_algorithm == "phenograph":
-            if "prune" not in self.clustering_kwargs:
-                self.clustering_kwargs["prune"] = True
-            self.clustering_kwargs = self.clustering_kwargs
-            if (self.n_iters == 1) and (self.clustering_kwargs.get("prune") is True):
+            if "prune" not in self._clustering_kwargs:
+                self._clustering_kwargs["prune"] = True
+            if (self.n_iters == 1) and (self._clustering_kwargs.get("prune") is True):
                 warn_msg = (
                     "Using phenograph parameter prune=False is strongly recommended when "
                     + "running only one iteration. Otherwise, expect many NaN labels."
                 )
                 warnings.warn(warn_msg)
         else:
-            if "directed" not in self.clustering_kwargs:
-                self.clustering_kwargs["directed"] = True
-            if "resolution" not in self.clustering_kwargs:
-                self.clustering_kwargs["resolution"] = 4
-            if "key_added" in self.clustering_kwargs:
+            if "directed" not in self._clustering_kwargs:
+                self._clustering_kwargs["directed"] = True
+            if "resolution" not in self._clustering_kwargs:
+                self._clustering_kwargs["resolution"] = 4
+            if "key_added" in self._clustering_kwargs:
                 raise ValueError("'key_added' param cannot be overriden")
-            if "random_state" in self.clustering_kwargs:
+            if "random_state" in self._clustering_kwargs:
                 raise ValueError(
                     "'random_state' param cannot be overriden. Please use classifier 'random_state'."
                 )
+
+    def _validate_kwargs(self):
+        if self.clustering_algorithm not in ["louvain", "phenograph", "leiden"]:
+            raise ValueError(
+                "Clustering algorithm needs to be one of ['louvain', 'phenograph', 'leiden']"
+            )
+        if self.clustering_algorithm == "leiden":
+            warnings.warn("Leiden clustering is experimental and results have not been validated.")
+
+        if self.random_state:
+            np.random.seed(self.random_state)
+
+        min_comps = min(self._num_cells, self._num_genes)
+        if self.n_components == 30 and self.n_top_var_genes > 0:
+            # If user did not change n_components, silently cap it by n_top_var_genes if needed
+            self.n_components = min(self.n_components, self.n_top_var_genes)
+        if self.n_components > min_comps:
+            # can't use more components than genes
+            warnings.warn(f"Capping n_components to {min_comps}.")
+            self.n_components = min_comps
+        # Floor negative n_top_var_genes by 0
+        self.n_top_var_genes = max(0, self.n_top_var_genes)
+
+        self._set_clustering_kwargs()
+
+        if not self.replace and self.boost_rate > 0.5:
+            warn_msg = (
+                "boost_rate is trimmed to 0.5 when replace=False."
+                + " Set replace=True to use greater boost rates."
+            )
+            warnings.warn(warn_msg)
+            self.boost_rate = 0.5
+
+        assert (self.n_top_var_genes == 0) or (
+            self.n_components <= self.n_top_var_genes
+        ), "n_components={0} cannot be larger than n_top_var_genes={1}".format(
+            self.n_components, self.n_top_var_genes
+        )
