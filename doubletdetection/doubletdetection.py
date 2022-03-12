@@ -29,12 +29,14 @@ class BoostClassifier:
             use; other genes discarded. Will use all genes when zero.
         replace (bool, optional): If False, a cell will be selected as a
             synthetic doublet's parent no more than once.
-        use_phenograph (bool, optional): Set to False to disable PhenoGraph clustering
-            in exchange for louvain clustering implemented in scanpy. Defaults to True.
-        phenograph_parameters (dict, optional): Parameter dict to pass directly
-            to PhenoGraph. Note that we change the PhenoGraph 'prune' default to
-            True; you must specifically include 'prune': False here to change
-            this. Only used when use_phenograph is True.
+        self.clustering_algorithm (str, optional): One of `["louvain", "leiden",
+        "phenograph"]`. `"louvain"` and `leiden` refer to the scanpy implementations.
+        clustering_kwargs (dict, optional): Keyword args to pass directly
+            to clusering algorithm. Note that we change the PhenoGraph 'prune' default to
+            True. We also set `directed=False` and `resolution=4` for Louvain
+            and Leiden clustering. You must specifically include these params here
+            to change them. `random_state` and `key_added` should not be overriden
+            when clustering algorithm is Louvain or Leiden.
         n_iters (int, optional): Number of fit operations from which to collect
             p-values. Defualt value is 25.
         normalizer ((sp_sparse) -> ndarray): Method to normalize raw_counts.
@@ -52,14 +54,12 @@ class BoostClassifier:
         standard_scaling (bool, optional): Set to True to enable standard scaling
             of normalized count matrix prior to PCA. Recommended when not using
             Phenograph. Defaults to False.
+        n_jobs (int, optional): Number of jobs to use. Speeds up neighbor computation.
 
     Attributes:
         all_log_p_values_ (ndarray): Hypergeometric test natural log p-value per
-            cell for cluster enrichment of synthetic doublets. Shape (n_iters,
-            num_cells).
-        all_p_values_ (ndarray): DEPRECATED. Exponentiated all_log_p_values.
-            Due to rounding point errors, use of all_log_p_values recommended.
-            Will be removed in v3.0.
+            cell for cluster enrichment of synthetic doublets. Use for tresholding.
+            Shape (n_iters, num_cells).
         all_scores_ (ndarray): The fraction of a cell's cluster that is
             synthetic doublets. Shape (n_iters, num_cells).
         communities_ (ndarray): Cluster ID for corresponding cell. Shape
@@ -83,22 +83,31 @@ class BoostClassifier:
         n_components=30,
         n_top_var_genes=10000,
         replace=False,
-        use_phenograph=True,
-        phenograph_parameters={"prune": True},
-        n_iters=25,
+        clustering_algorithm="phenograph",
+        clustering_kwargs=None,
+        n_iters=10,
         normalizer=None,
         random_state=0,
         verbose=False,
         standard_scaling=False,
+        n_jobs=1,
     ):
         self.boost_rate = boost_rate
         self.replace = replace
-        self.use_phenograph = use_phenograph
+        self.clustering_algorithm = clustering_algorithm
         self.n_iters = n_iters
         self.normalizer = normalizer
         self.random_state = random_state
         self.verbose = verbose
         self.standard_scaling = standard_scaling
+        self.n_jobs = n_jobs
+
+        if self.clustering_algorithm not in ["louvain", "phenograph", "leiden"]:
+            raise ValueError(
+                "Clustering algorithm needs to be one of ['louvain', 'phenograph', 'leiden']"
+            )
+        if self.clustering_algorithm == "leiden":
+            warnings.warn("Leiden clustering is experimental and results have not been validated.")
 
         if self.random_state:
             np.random.seed(self.random_state)
@@ -111,16 +120,10 @@ class BoostClassifier:
         # Floor negative n_top_var_genes by 0
         self.n_top_var_genes = max(0, n_top_var_genes)
 
-        if use_phenograph is True:
-            if "prune" not in phenograph_parameters:
-                phenograph_parameters["prune"] = True
-            self.phenograph_parameters = phenograph_parameters
-            if (self.n_iters == 1) and (phenograph_parameters.get("prune") is True):
-                warn_msg = (
-                    "Using phenograph parameter prune=False is strongly recommended when "
-                    + "running only one iteration. Otherwise, expect many NaN labels."
-                )
-                warnings.warn(warn_msg)
+        self.clustering_kwargs = (
+            {} if not isinstance(clustering_kwargs, dict) else clustering_kwargs
+        )
+        self._set_clustering_kwargs()
 
         if not self.replace and self.boost_rate > 0.5:
             warn_msg = (
@@ -143,7 +146,7 @@ class BoostClassifier:
             raw_counts (array-like): Count matrix, oriented cells by genes.
 
         Sets:
-            all_scores_, all_p_values_, all_log_p_values_, communities_,
+            all_scores_, all_log_p_values_, communities_,
             top_var_genes, parents, synth_communities
 
         Returns:
@@ -162,6 +165,9 @@ class BoostClassifier:
             if self.verbose:
                 print("Sparsifying matrix.")
             raw_counts = csr_matrix(raw_counts)
+
+        old_n_jobs = sc.settings.n_jobs
+        sc.settings.n_jobs = self.n_jobs
 
         if self.n_top_var_genes > 0:
             if self.n_top_var_genes < raw_counts.shape[1]:
@@ -200,17 +206,17 @@ class BoostClassifier:
 
         # Release unneeded large data vars
         del self._raw_counts
-        del self._norm_counts
         del self._raw_synthetics
-        del self._synthetics
         if self.normalizer is None:
             del self._normed_raw_counts
             del self._lib_size
 
+        # reset scanpy n_jobs
+        sc.settings.n_jobs = old_n_jobs
+
         self.communities_ = all_communities
         self.parents_ = all_parents
         self.synth_communities_ = all_synth_communities
-        self.all_p_values_ = np.exp(self.all_log_p_values_)
 
         return self
 
@@ -291,10 +297,7 @@ class BoostClassifier:
             normed_synths = self._raw_synthetics.copy()
             inplace_csr_row_normalize_l1(normed_synths)
             aug_counts = sp_sparse.vstack((self._normed_raw_counts, normed_synths))
-            aug_counts = np.log(aug_counts.A * np.median(aug_lib_size) + 0.1)
-
-        self._norm_counts = aug_counts[: self._num_cells]
-        self._synthetics = aug_counts[self._num_cells :]
+            aug_counts = np.log((aug_counts * np.median(aug_lib_size)).A + 0.1)
 
         aug_counts = anndata.AnnData(aug_counts)
         aug_counts.obs["n_counts"] = aug_lib_size
@@ -306,24 +309,33 @@ class BoostClassifier:
         sc.tl.pca(aug_counts, n_comps=self.n_components, random_state=self.random_state)
         if self.verbose:
             print("Clustering augmented data set...\n")
-        if self.use_phenograph:
+        if self.clustering_algorithm == "phenograph":
             f = io.StringIO()
             with redirect_stdout(f):
                 fullcommunities, _, _ = phenograph.cluster(
-                    aug_counts.obsm["X_pca"], **self.phenograph_parameters
+                    aug_counts.obsm["X_pca"], n_jobs=self.n_jobs, **self.clustering_kwargs
                 )
             out = f.getvalue()
             if self.verbose:
                 print(out)
         else:
+            if self.clustering_algorithm == "louvain":
+                clus = sc.tl.louvain
+            else:
+                clus = sc.tl.leiden
             sc.pp.neighbors(
                 aug_counts,
                 random_state=self.random_state,
                 method="umap",
                 n_neighbors=10,
             )
-            sc.tl.louvain(aug_counts, random_state=self.random_state, resolution=4, directed=False)
-            fullcommunities = np.array(aug_counts.obs["louvain"], dtype=int)
+            clus(
+                aug_counts,
+                key_added="clusters",
+                random_state=self.random_state,
+                **self.clustering_kwargs,
+            )
+            fullcommunities = np.array(aug_counts.obs["clusters"], dtype=int)
         min_ID = min(fullcommunities)
         self.communities_ = fullcommunities[: self._num_cells]
         self.synth_communities_ = fullcommunities[self._num_cells :]
@@ -352,7 +364,7 @@ class BoostClassifier:
             i: hypergeom.logsf(
                 synth_cells_per_comm[i],
                 aug_counts.shape[0],
-                self._synthetics.shape[0],
+                normed_synths.shape[0],
                 synth_cells_per_comm[i] + orig_cells_per_comm[i],
             )
             for i in community_IDs
@@ -383,3 +395,27 @@ class BoostClassifier:
 
         self._raw_synthetics = synthetic
         self.parents_ = parents
+
+    def _set_clustering_kwargs(self):
+        """Sets .clustering_kwargs"""
+        if self.clustering_algorithm == "phenograph":
+            if "prune" not in self.clustering_kwargs:
+                self.clustering_kwargs["prune"] = True
+            self.clustering_kwargs = self.clustering_kwargs
+            if (self.n_iters == 1) and (self.clustering_kwargs.get("prune") is True):
+                warn_msg = (
+                    "Using phenograph parameter prune=False is strongly recommended when "
+                    + "running only one iteration. Otherwise, expect many NaN labels."
+                )
+                warnings.warn(warn_msg)
+        else:
+            if "directed" not in self.clustering_kwargs:
+                self.clustering_kwargs["directed"] = True
+            if "resolution" not in self.clustering_kwargs:
+                self.clustering_kwargs["resolution"] = 4
+            if "key_added" in self.clustering_kwargs:
+                raise ValueError("'key_added' param cannot be overriden")
+            if "random_state" in self.clustering_kwargs:
+                raise ValueError(
+                    "'random_state' param cannot be overriden. Please use classifier 'random_state'."
+                )

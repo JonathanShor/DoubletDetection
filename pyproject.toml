@@ -20,7 +20,7 @@ packages = [
   {include = "doubletdetection"},
 ]
 readme = "README.md"
-version = "3.0"
+version = "4.0"
 
 [tool.poetry.dependencies]
 anndata = ">=0.6"
