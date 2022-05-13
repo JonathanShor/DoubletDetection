@@ -416,9 +416,9 @@ class BoostClassifier(BaseEstimator):
                 )
                 warnings.warn(warn_msg)
         else:
-            if "directed" not in self.clustering_kwargs:
+            if "directed" not in self._clustering_kwargs:
                 self._clustering_kwargs["directed"] = False
-            if "resolution" not in self.clustering_kwargs:
+            if "resolution" not in self._clustering_kwargs:
                 self._clustering_kwargs["resolution"] = 4
             if "key_added" in self._clustering_kwargs:
                 raise ValueError("'key_added' param cannot be overriden")
