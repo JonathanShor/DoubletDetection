@@ -1,6 +1,15 @@
 import numpy as np
 import pytest
+from sklearn.utils.estimator_checks import check_estimator
+
 import doubletdetection
+
+
+def test_sklearn_estimator():
+    clf = doubletdetection.BoostClassifier(
+        n_iters=2, clustering_algorithm="louvain", standard_scaling=True
+    )
+    check_estimator(clf)
 
 
 def test_classifier():
@@ -11,34 +20,37 @@ def test_classifier():
     clf = doubletdetection.BoostClassifier(
         n_iters=2, clustering_algorithm="louvain", standard_scaling=True
     )
-    clf.fit(counts).predict(p_thresh=1e-16, voter_thresh=0.5)
-    clf.doublet_score()
+    clf.fit(counts).get_predictions()
+    clf.get_doublet_scores()
 
     # with phenograph
     clf = doubletdetection.BoostClassifier(
         n_iters=2, clustering_algorithm="phenograph", standard_scaling=True
     )
-    clf.fit(counts).predict(p_thresh=1e-16, voter_thresh=0.5)
-    clf.doublet_score()
+    clf.fit(counts).get_predictions()
+    clf.get_doublet_scores()
 
     # with leiden
     clf = doubletdetection.BoostClassifier(
         n_iters=2, clustering_algorithm="leiden", standard_scaling=True, random_state=123
     )
-    clf.fit(counts).predict(p_thresh=1e-16, voter_thresh=0.5)
-    scores1 = clf.doublet_score()
+    clf.fit(counts).get_predictions()
+    scores1 = clf.get_doublet_scores()
 
     # test random state
     # with leiden
     clf = doubletdetection.BoostClassifier(
         n_iters=2, clustering_algorithm="leiden", standard_scaling=True, random_state=123
     )
-    clf.fit(counts).predict(p_thresh=1e-16, voter_thresh=0.5)
-    scores2 = clf.doublet_score()
+    clf.fit(counts).get_predictions()
+    scores2 = clf.get_doublet_scores()
     np.testing.assert_equal(scores1, scores2)
 
     # plotting
-    doubletdetection.plot.convergence(clf, show=False, p_thresh=1e-16, voter_thresh=0.5)
+    doubletdetection.plot.convergence(
+        clf,
+        show=False,
+    )
     doubletdetection.plot.threshold(clf, show=False, p_step=6)
 
     # test that you can't use random clustering algorithm
@@ -46,3 +58,4 @@ def test_classifier():
         clf = doubletdetection.BoostClassifier(
             n_iters=2, clustering_algorithm="my_clusters", standard_scaling=True
         )
+        clf.fit(counts)
