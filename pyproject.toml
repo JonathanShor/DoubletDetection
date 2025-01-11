@@ -32,10 +32,7 @@ dependencies = [
     "scanpy>1.10.0",
     "matplotlib>=3.6",
     "tqdm",
-    "ipywidgets",
     "phenograph",
-    "louvain",
-    "leidenalg",
 ]
 
 [project.urls]
