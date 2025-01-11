@@ -25,12 +25,12 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
 dependencies = [
-    "anndata>=0.6",
-    "numpy>=1.14.2",
+    "anndata>=0.8",
+    "numpy>=1.24",
     "pandas>=0.22.0",
-    "scipy>=1.0.1",
-    "scanpy>1.4.4",
-    "matplotlib>=3.1",
+    "scipy>=1.8",
+    "scanpy>1.10.0",
+    "matplotlib>=3.6",
     "tqdm",
     "ipywidgets",
     "phenograph",
