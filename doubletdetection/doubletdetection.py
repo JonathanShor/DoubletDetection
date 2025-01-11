@@ -192,7 +192,7 @@ class BoostClassifier:
         (self._num_cells, self._num_genes) = self._raw_counts.shape
         if self.normalizer is None:
             # Memoize these; default normalizer treats these invariant for all synths
-            self._lib_size = np.sum(raw_counts, axis=1).A1
+            self._lib_size = np.asarray(np.sum(raw_counts, axis=1)).ravel()
             self._normed_raw_counts = self._raw_counts.copy()
             inplace_csr_row_normalize_l1(self._normed_raw_counts)
 
@@ -298,7 +298,7 @@ class BoostClassifier:
             )
         else:
             # Follows doubletdetection.plot.normalize_counts, but uses memoized normed raw_counts
-            synth_lib_size = np.sum(self._raw_synthetics, axis=1).A1
+            synth_lib_size = np.asarray(np.sum(self._raw_synthetics, axis=1)).ravel()
             aug_lib_size = np.concatenate([self._lib_size, synth_lib_size])
             normed_synths = self._raw_synthetics.copy()
             inplace_csr_row_normalize_l1(normed_synths)
