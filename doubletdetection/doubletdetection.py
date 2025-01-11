@@ -115,9 +115,6 @@ class BoostClassifier:
         if self.clustering_algorithm == "leiden":
             warnings.warn("Leiden clustering is experimental and results have not been validated.")
 
-        if self.random_state:
-            np.random.seed(self.random_state)
-
         if n_components == 30 and n_top_var_genes > 0:
             # If user did not change n_components, silently cap it by n_top_var_genes if needed
             self.n_components = min(n_components, n_top_var_genes)
@@ -404,7 +401,8 @@ class BoostClassifier:
         num_synths = int(self.boost_rate * self._num_cells)
 
         # Parent indices
-        choices = np.random.choice(self._num_cells, size=(num_synths, 2), replace=self.replace)
+        rng = np.random.default_rng(self.random_state)
+        choices = rng.choice(self._num_cells, size=(num_synths, 2), replace=self.replace)
         parents = [list(p) for p in choices]
 
         parent0 = self._raw_counts[choices[:, 0], :]
