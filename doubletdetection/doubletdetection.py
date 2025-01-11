@@ -305,7 +305,7 @@ class BoostClassifier:
             aug_counts = sp_sparse.vstack((self._normed_raw_counts, normed_synths))
             scaled_aug_counts = aug_counts * np.median(aug_lib_size)
             if self.pseudocount != 1:
-                aug_counts = np.log(scaled_aug_counts.A + 0.1)
+                aug_counts = np.log(scaled_aug_counts.toarray() + 0.1)
             else:
                 aug_counts = np.log1p(scaled_aug_counts)
             del scaled_aug_counts
