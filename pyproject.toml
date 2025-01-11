@@ -1,56 +1,61 @@
-[tool.poetry]
-authors = ["Adam Gayoso <adamgayoso@berkeley.edu>", "Jonathan Shor <jonathan.shor@nyu.edu>", "Ambrose Carr"]
-classifiers = [
-  "Development Status :: 4 - Beta",
-  "Intended Audience :: Science/Research",
-  "Natural Language :: English",
-  "Programming Language :: Python :: 3.6",
-  "Programming Language :: Python :: 3.7",
-  "Operating System :: MacOS :: MacOS X",
-  "Operating System :: Microsoft :: Windows",
-  "Operating System :: POSIX :: Linux",
-  "Topic :: Scientific/Engineering :: Bio-Informatics",
-]
-description = "Method to detect and enable removal of doublets from single-cell RNA-sequencing."
-documentation = "https://doubletdetection.readthedocs.io/"
-homepage = "https://github.com/JonathanShor/DoubletDetection"
-license = "MIT"
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
 name = "doubletdetection"
-packages = [
-  {include = "doubletdetection"},
-]
-readme = "README.md"
 version = "4.2"
+description = "Method to detect and enable removal of doublets from single-cell RNA-sequencing."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Adam Gayoso", email = "adamgayoso@berkeley.edu" },
+    { name = "Jonathan Shor", email = "jonathan.shor@nyu.edu" },
+    { name = "Ambrose Carr" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3.10",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dependencies = [
+    "anndata>=0.6",
+    "numpy>=1.14.2",
+    "pandas>=0.22.0",
+    "scipy>=1.0.1",
+    "scanpy>1.4.4",
+    "matplotlib>=3.1",
+    "tqdm",
+    "ipywidgets",
+    "phenograph",
+    "louvain",
+    "leidenalg",
+]
 
-[tool.poetry.dependencies]
-anndata = ">=0.6"
-black = {version = ">=20.8b1", optional = true}
-flake8 = {version = ">=3.7.7", optional = true}
-furo = {version = "*", optional = true}
-ipywidgets = "*"
-leidenalg = "*"
-louvain = "*"
-matplotlib = ">=3.1"
-myst-parser = {version = "*", optional = true}
-nbsphinx = {version = "*", optional = true}
-nbsphinx-link = {version = "*", optional = true}
-numpy = ">=1.14.2"
-pandas = ">=0.22.0"
-phenograph = "*"
-pre-commit = {version = ">=2.7.1", optional = true}
-pytest = {version = ">=4.4", optional = true}
-python = ">=3.6.1,<4.0"
-scanpy = ">1.4.4"
-scipy = ">=1.0.1"
-sphinx = {version = ">=4.1,<4.4", optional = true}
-sphinx-autodoc-typehints = {version = "*", optional = true}
-tqdm = "*"
+[project.urls]
+Documentation = "https://doubletdetection.readthedocs.io/"
+Homepage = "https://github.com/JonathanShor/DoubletDetection"
 
-[tool.poetry.extras]
-dev = ["black", "pytest", "flake8", "pre-commit"]
-docs = ["nbsphinx", "sphinx", "sphinx-autodoc-typehints", "nbsphinx-link", "furo", "myst-parser"]
+[project.optional-dependencies]
+dev = ["black>=20.8b1", "flake8>=3.7.7", "pre-commit>=2.7.1", "pytest>=4.4"]
+docs = [
+    "sphinx>=4.1,<4.4",
+    "sphinx-autodoc-typehints",
+    "nbsphinx",
+    "nbsphinx-link",
+    "furo",
+    "myst-parser",
+]
 
 [tool.black]
+line-length = 99
+include = '\.pyi?$'
 exclude = '''
 (
   /(
@@ -61,13 +66,3 @@ exclude = '''
   )/
 )
 '''
-include = '\.pyi?$'
-line-length = 99
-target_version = ['py37']
-
-[build-system]
-build-backend = "poetry.masonry.api"
-requires = [
-  "poetry>=1.0",
-  "setuptools", # keep it here or "pip install -e" would fail
-]
