@@ -23,6 +23,18 @@ project = "DoubletDetection"
 copyright = "2022, Adam Gayoso and Jonathan Shor"
 author = "Adam Gayoso and Jonathan Shor"
 
+repository_url = f"https://github.com/JonathanShor/{project}"
+
+
+
+templates_path = ["_templates"]
+html_context = {
+    "display_github": True,  # Integrate GitHub
+    "github_user": "JonathanShor",  # Username
+    "github_repo": "DoubletDetection",  # Repo name
+    "github_version": "main",  # Version
+    "conf_py_path": "/docs/",  # Path in the checkout to the docs root
+}
 
 # -- General configuration ---------------------------------------------------
 
@@ -30,61 +42,89 @@ author = "Adam Gayoso and Jonathan Shor"
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 
-needs_sphinx = "4.3"  # Nicer param docs
-
 extensions = [
-    "sphinx.ext.autodoc",
+    "myst_nb",
     "sphinx.ext.viewcode",
-    "myst_parser",
-    "nbsphinx",
-    "nbsphinx_link",
-    "sphinx.ext.mathjax",
-    "sphinx.ext.napoleon",
-    "sphinx_autodoc_typehints",  # needs to be after napoleon
+    "sphinx.ext.autodoc",
+    "sphinx_copybutton",
     "sphinx.ext.intersphinx",
     "sphinx.ext.autosummary",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.extlinks",
+    "sphinx_autodoc_typehints",
+    "sphinx.ext.mathjax",
+    "IPython.sphinxext.ipython_console_highlighting",
+    "sphinxext.opengraph",
 ]
 
-# nbsphinx specific settings
-nbsphinx_execute = "never"
+autosummary_generate = True
+autodoc_member_order = "groupwise"
+default_role = "literal"
+bibtex_reference_style = "author_year"
+napoleon_google_docstring = True
+napoleon_numpy_docstring = False
+napoleon_include_init_with_doc = False
+napoleon_use_rtype = True  # having a separate entry generally helps readability
+napoleon_use_param = True
+myst_heading_anchors = 6  # create anchors for h1-h6
+myst_enable_extensions = [
+    "amsmath",
+    "colon_fence",
+    "deflist",
+    "dollarmath",
+    "html_image",
+    "html_admonition",
+]
+myst_url_schemes = ("http", "https", "mailto")
+nb_output_stderr = "remove"
+nb_execution_mode = "off"
+nb_merge_streams = True
+typehints_defaults = "braces"
 
-# Add any paths that contain templates here, relative to this directory.
-templates_path = ["_templates"]
+source_suffix = {
+    ".rst": "restructuredtext",
+    ".ipynb": "myst-nb",
+    ".myst": "myst-nb",
+}
 
-source_suffix = ".rst"
+intersphinx_mapping = {
+    "anndata": ("https://anndata.readthedocs.io/en/stable/", None),
+    "ipython": ("https://ipython.readthedocs.io/en/stable/", None),
+    "matplotlib": ("https://matplotlib.org/", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "pandas": ("https://pandas.pydata.org/docs/", None),
+    "python": ("https://docs.python.org/3", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/reference/", None),
+    "sklearn": ("https://scikit-learn.org/stable/", None),
+    "scanpy": ("https://scanpy.readthedocs.io/en/stable/", None),
+}
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
 
-# Generate the API documentation when building
-autosummary_generate = True
-autodoc_member_order = "bysource"
-napoleon_google_docstring = True
-napoleon_include_init_with_doc = False
-napoleon_use_rtype = True  # having a separate entry generally helps readability
-napoleon_use_param = True
-napoleon_custom_sections = [("Params", "Parameters")]
+# extlinks config
+extlinks = {
+    "issue": (f"{repository_url}/issues/%s", "#%s"),
+    "pr": (f"{repository_url}/pull/%s", "#%s"),
+    "ghuser": ("https://github.com/%s", "@%s"),
+}
+
+
 
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "furo"
+html_theme = "sphinx_book_theme"
 
 html_title = "DoubletDetection"
 
 html_theme_options = {
-    "sidebar_hide_name": False,
-    "light_css_variables": {
-        "color-brand-primary": "#003262",
-        "color-brand-content": "#003262",
-        "admonition-font-size": "var(--font-size-normal)",
-        "admonition-title-font-size": "var(--font-size-normal)",
-        "code-font-size": "var(--font-size--small)",
-    },
+    "repository_url": "https://github.com/JonathanShor/DoubletDetection",
+    "use_repository_button": True,
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
