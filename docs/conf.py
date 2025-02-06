@@ -26,7 +26,6 @@ author = "Adam Gayoso and Jonathan Shor"
 repository_url = f"https://github.com/JonathanShor/{project}"
 
 
-
 templates_path = ["_templates"]
 html_context = {
     "display_github": True,  # Integrate GitHub
@@ -110,7 +109,6 @@ extlinks = {
     "pr": (f"{repository_url}/pull/%s", "#%s"),
     "ghuser": ("https://github.com/%s", "@%s"),
 }
-
 
 
 # -- Options for HTML output -------------------------------------------------
