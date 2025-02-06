@@ -23,64 +23,51 @@ class BoostClassifier:
     """Classifier for doublets in single-cell RNA-seq data.
 
     Parameters:
-        boost_rate (float, optional): Proportion of cell population size to
-            produce as synthetic doublets.
-        n_components (int, optional): Number of principal components used for
-            clustering.
-        n_top_var_genes (int, optional): Number of highest variance genes to
-            use; other genes discarded. Will use all genes when zero.
-        replace (bool, optional): If False, a cell will be selected as a
-            synthetic doublet's parent no more than once.
-        self.clustering_algorithm (str, optional): One of `["louvain", "leiden",
-        "phenograph"]`. `"louvain"` and `leiden` refer to the scanpy implementations.
-        clustering_kwargs (dict, optional): Keyword args to pass directly
-            to clusering algorithm. Note that we change the PhenoGraph 'prune' default to
-            True. We also set `directed=False` and `resolution=4` for Louvain
-            and Leiden clustering. You must specifically include these params here
-            to change them. `random_state` and `key_added` should not be overriden
-            when clustering algorithm is Louvain or Leiden.
-        n_iters (int, optional): Number of fit operations from which to collect
-            p-values. Defualt value is 25.
-        normalizer ((sp_sparse) -> ndarray): Method to normalize raw_counts.
-            Defaults to normalize_counts, included in this package. Note: To use
-            normalize_counts with its pseudocount parameter changed from the
-            default pseudocount value to some positive float `new_var`, use:
-            normalizer=lambda counts: doubletdetection.normalize_counts(counts,
-            pseudocount=new_var)
-        pseudocount (int, optional): Pseudocount used in normalize_counts.
-            If `1` is used, and `standard_scaling=False`, the classifier is
-            much more memory efficient; however, this may result in fewer doublets
-            detected.
-        random_state (int, optional): If provided, passed to PCA and used to
-            seedrandom seed numpy's RNG. NOTE: PhenoGraph does not currently
-            admit a random seed, and so this will not guarantee identical
-            results across runs.
-        verbose (bool, optional): Set to False to silence all normal operation
-            informational messages. Defaults to True.
-        standard_scaling (bool, optional): Set to True to enable standard scaling
-            of normalized count matrix prior to PCA. Recommended when not using
-            Phenograph. Defaults to False.
-        n_jobs (int, optional): Number of jobs to use. Speeds up neighbor computation.
+        boost_rate: Proportion of cell population size to produce as synthetic doublets.
+        n_components: Number of principal components used for clustering.
+        n_top_var_genes: Number of highest variance genes to use. Other genes are
+            discarded. Will use all genes when zero.
+        replace: If False, a cell will be selected as a synthetic doublet's parent
+            no more than once.
+        clustering_algorithm: One of "louvain", "leiden", or "phenograph". "louvain"
+            and "leiden" refer to the scanpy implementations.
+        clustering_kwargs: Keyword args to pass directly to clustering algorithm.
+            Note that PhenoGraph 'prune' default is changed to True. For Louvain and
+            Leiden clustering, we set `directed=False` and `resolution=4`. Include
+            these params explicitly to change them. Do not override `random_state`
+            and `key_added` for Louvain/Leiden.
+        n_iters: Number of fit operations from which to collect p-values. Default is 25.
+        normalizer: Method to normalize raw_counts. Defaults to normalize_counts from
+            this package. To use normalize_counts with a different pseudocount value,
+            use: `lambda counts: doubletdetection.normalize_counts(counts,
+            pseudocount=new_value)`
+        pseudocount: Pseudocount used in normalize_counts. Using 1 with
+            standard_scaling=False makes the classifier more memory efficient but may
+            detect fewer doublets.
+        random_state: Passed to PCA and doublet parent creation. Note: PhenoGraph does not
+            support random seeds, so identical results aren't guaranteed across runs.
+        verbose: Set to False to silence informational messages. Defaults to True.
+        standard_scaling: Enable standard scaling of normalized count matrix prior to
+            PCA. Recommended when not using Phenograph. Defaults to False.
+        n_jobs: Number of jobs to use. Speeds up neighbor computation.
 
     Attributes:
-        all_log_p_values_ (ndarray): Hypergeometric test natural log p-value per
-            cell for cluster enrichment of synthetic doublets. Use for tresholding.
+        all_log_p_values_: Hypergeometric test natural log p-value per cell for
+            cluster enrichment of synthetic doublets. Use for thresholding.
             Shape (n_iters, num_cells).
-        all_scores_ (ndarray): The fraction of a cell's cluster that is
-            synthetic doublets. Shape (n_iters, num_cells).
-        communities_ (ndarray): Cluster ID for corresponding cell. Shape
-            (n_iters, num_cells).
-        labels_ (ndarray, ndims=1): 0 for singlet, 1 for detected doublet.
-        parents_ (list of sequences of int): Parent cells' indexes for each
-            synthetic doublet. A list wrapping the results from each run.
-        suggested_score_cutoff_ (float): Cutoff used to classify cells when
-            n_iters == 1 (scores >= cutoff). Not produced when n_iters > 1.
-        synth_communities_ (sequence of ints): Cluster ID for corresponding
-            synthetic doublet. Shape (n_iters, num_cells * boost_rate).
-        top_var_genes_ (ndarray): Indices of the n_top_var_genes used. Not
-            generated if n_top_var_genes <= 0.
-        voting_average_ (ndarray): Fraction of iterations each cell is called a
-            doublet.
+        all_scores_: The fraction of a cell's cluster that is synthetic doublets.
+            Shape (n_iters, num_cells).
+        communities_: Cluster ID for corresponding cell. Shape (n_iters, num_cells).
+        labels_: 0 for singlet, 1 for detected doublet.
+        parents_: Parent cells' indexes for each synthetic doublet. A list wrapping
+            the results from each run.
+        suggested_score_cutoff_: Cutoff used to classify cells when n_iters == 1
+            (scores >= cutoff). Not produced when n_iters > 1.
+        synth_communities_: Cluster ID for corresponding synthetic doublet.
+            Shape (n_iters, num_cells * boost_rate).
+        top_var_genes_: Indices of the n_top_var_genes used. Not generated if
+            n_top_var_genes <= 0.
+        voting_average_: Fraction of iterations each cell is called a doublet.
     """
 
     def __init__(
