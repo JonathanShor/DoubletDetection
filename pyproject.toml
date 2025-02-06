@@ -48,12 +48,17 @@ dev = [
     "leidenalg",
 ]
 docs = [
-    "sphinx>=4.1,<4.4",
-    "sphinx-autodoc-typehints",
-    "nbsphinx",
+    "sphinx>=4",
+    "sphinx-book-theme>=1.0",
+    "myst-nb",
+    "sphinxcontrib-bibtex>=1.0.0",
+    "scanpydoc[typehints]>=0.7.4",
+    "sphinxext-opengraph",
+    # For notebooks
+    "ipython",
+    "ipykernel",
+    "sphinx-copybutton",
     "nbsphinx-link",
-    "furo",
-    "myst-parser",
 ]
 
 [tool.black]
