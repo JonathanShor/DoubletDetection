@@ -135,7 +135,7 @@ class BoostClassifier:
         """Fits the classifier on raw_counts.
 
         Args:
-            raw_counts (array-like): Count matrix, oriented cells by genes.
+            raw_counts: Count matrix, oriented cells by genes.
 
         Sets:
             all_scores_, all_log_p_values_, communities_,
