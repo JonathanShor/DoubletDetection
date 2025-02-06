@@ -96,6 +96,7 @@ class BoostClassifier:
         self.standard_scaling = standard_scaling
         self.n_jobs = n_jobs
         self.pseudocount = pseudocount
+        self.rng = np.random.default_rng(self.random_state)
 
         if self.clustering_algorithm not in ["louvain", "phenograph", "leiden"]:
             raise ValueError(
@@ -148,7 +149,7 @@ class BoostClassifier:
         raw_counts = check_array(
             raw_counts,
             accept_sparse="csr",
-            force_all_finite=True,
+            ensure_all_finite=True,
             ensure_2d=True,
             dtype="float32",
         )
@@ -390,8 +391,7 @@ class BoostClassifier:
         num_synths = int(self.boost_rate * self._num_cells)
 
         # Parent indices
-        rng = np.random.default_rng(self.random_state)
-        choices = rng.choice(self._num_cells, size=(num_synths, 2), replace=self.replace)
+        choices = self.rng.choice(self._num_cells, size=(num_synths, 2), replace=self.replace)
         parents = [list(p) for p in choices]
 
         parent0 = self._raw_counts[choices[:, 0], :]
