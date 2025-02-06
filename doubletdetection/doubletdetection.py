@@ -1,12 +1,14 @@
 """Doublet detection in single-cell RNA-seq data."""
 
 import collections
+from collections.abc import Callable
 import io
 import warnings
 from contextlib import redirect_stdout
 
 import anndata
 import numpy as np
+from numpy.typing import NDArray
 import phenograph
 import scanpy as sc
 import scipy.sparse as sp_sparse
@@ -83,20 +85,20 @@ class BoostClassifier:
 
     def __init__(
         self,
-        boost_rate=0.25,
-        n_components=30,
-        n_top_var_genes=10000,
-        replace=False,
-        clustering_algorithm="phenograph",
-        clustering_kwargs=None,
-        n_iters=10,
-        normalizer=None,
-        pseudocount=0.1,
-        random_state=0,
-        verbose=False,
-        standard_scaling=False,
-        n_jobs=1,
-    ):
+        boost_rate: float = 0.25,
+        n_components: int = 30,
+        n_top_var_genes: int = 10000,
+        replace: bool = False,
+        clustering_algorithm: str = "phenograph",
+        clustering_kwargs: dict | None = None,
+        n_iters: int = 10,
+        normalizer: Callable | None = None,
+        pseudocount: float = 0.1,
+        random_state: int = 0,
+        verbose: bool = False,
+        standard_scaling: bool = False,
+        n_jobs: int = 1,
+    ) -> None:
         self.boost_rate = boost_rate
         self.replace = replace
         self.clustering_algorithm = clustering_algorithm
@@ -145,7 +147,7 @@ class BoostClassifier:
             n_components, n_top_var_genes
         )
 
-    def fit(self, raw_counts):
+    def fit(self, raw_counts: NDArray | sp_sparse.csr_matrix) -> "BoostClassifier":
         """Fits the classifier on raw_counts.
 
         Args:
@@ -226,7 +228,7 @@ class BoostClassifier:
 
         return self
 
-    def predict(self, p_thresh=1e-7, voter_thresh=0.9):
+    def predict(self, p_thresh: float = 1e-7, voter_thresh: float = 0.9) -> NDArray:
         """Produce doublet calls from fitted classifier
 
         Args:
@@ -266,7 +268,7 @@ class BoostClassifier:
 
         return self.labels_
 
-    def doublet_score(self):
+    def doublet_score(self) -> NDArray:
         """Produce doublet scores
 
         The doublet score is the average negative log p-value of doublet enrichment
@@ -284,7 +286,7 @@ class BoostClassifier:
 
         return -avg_log_p
 
-    def _one_fit(self):
+    def _one_fit(self) -> tuple[NDArray, NDArray]:
         if self.verbose:
             print("\nCreating synthetic doublets...")
         self._createDoublets()
@@ -395,7 +397,7 @@ class BoostClassifier:
 
         return scores, log_p_values
 
-    def _createDoublets(self):
+    def _createDoublets(self) -> None:
         """Create synthetic doublets.
 
         Sets .parents_
@@ -414,7 +416,7 @@ class BoostClassifier:
         self._raw_synthetics = synthetic
         self.parents_ = parents
 
-    def _set_clustering_kwargs(self):
+    def _set_clustering_kwargs(self) -> None:
         """Sets .clustering_kwargs"""
         if self.clustering_algorithm == "phenograph":
             if "prune" not in self.clustering_kwargs:

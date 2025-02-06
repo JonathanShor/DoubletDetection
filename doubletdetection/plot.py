@@ -1,8 +1,11 @@
 import os
 import warnings
+from typing import Any
 
 import matplotlib
 import numpy as np
+from numpy.typing import NDArray
+from matplotlib.figure import Figure
 
 try:
     os.environ["DISPLAY"]
@@ -11,7 +14,7 @@ except KeyError:
 import matplotlib.pyplot as plt
 
 
-def normalize_counts(raw_counts, pseudocount=0.1):
+def normalize_counts(raw_counts: NDArray, pseudocount: float = 0.1) -> NDArray:
     """Normalize count array. Default normalizer used by BoostClassifier.
 
     Args:
@@ -22,7 +25,6 @@ def normalize_counts(raw_counts, pseudocount=0.1):
         ndarray: Normalized data.
     """
     # Sum across cells
-
     cell_sums = np.sum(raw_counts, axis=1)
 
     # Mutiply by median and divide each cell by cell sum
@@ -34,7 +36,13 @@ def normalize_counts(raw_counts, pseudocount=0.1):
     return normed
 
 
-def convergence(clf, show=False, save=None, p_thresh=1e-7, voter_thresh=0.9):
+def convergence(
+    clf: Any,
+    show: bool = False,
+    save: str | None = None,
+    p_thresh: float = 1e-7,
+    voter_thresh: float = 0.9,
+) -> Figure:
     """Produce a plot showing number of cells called doublet per iter
 
     Args:
@@ -81,15 +89,15 @@ def convergence(clf, show=False, save=None, p_thresh=1e-7, voter_thresh=0.9):
 
 
 def threshold(
-    clf,
-    show=False,
-    save=None,
-    log10=True,
-    log_p_grid=None,
-    voter_grid=None,
-    v_step=2,
-    p_step=5,
-):
+    clf: Any,
+    show: bool = False,
+    save: str | None = None,
+    log10: bool = True,
+    log_p_grid: NDArray | None = None,
+    voter_grid: NDArray | None = None,
+    v_step: int = 2,
+    p_step: int = 5,
+) -> Figure:
     """Produce a plot showing number of cells called doublet across
        various thresholds
 
