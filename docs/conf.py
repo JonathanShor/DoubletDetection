@@ -44,6 +44,7 @@ html_context = {
 
 extensions = [
     "myst_nb",
+    "sphinx.ext.viewcode",
     "sphinx.ext.autodoc",
     "sphinx_copybutton",
     "sphinx.ext.intersphinx",
@@ -62,8 +63,8 @@ autosummary_generate = True
 autodoc_member_order = "groupwise"
 default_role = "literal"
 bibtex_reference_style = "author_year"
-napoleon_google_docstring = False
-napoleon_numpy_docstring = True
+napoleon_google_docstring = True
+napoleon_numpy_docstring = False
 napoleon_include_init_with_doc = False
 napoleon_use_rtype = True  # having a separate entry generally helps readability
 napoleon_use_param = True
