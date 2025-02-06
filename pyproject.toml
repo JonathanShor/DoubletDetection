@@ -58,7 +58,6 @@ docs = [
     "ipython",
     "ipykernel",
     "sphinx-copybutton",
-    "nbsphinx-link",
 ]
 
 [tool.black]
